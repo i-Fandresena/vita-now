@@ -1,4 +1,4 @@
-# DESIGN.md — Sillage
+# DESIGN.md — Aura++
 
 > Source de vérité **esthétique**. Subordonné à [PRODUCT.md](PRODUCT.md) et [Product_2.0.md](Product_2.0.md) :
 > en cas de conflit, le produit gagne sur le style.
@@ -8,7 +8,7 @@
 
 ## 1. Le concept — « La braise »
 
-**Sillage** : la trace que laisse un passage. Ce qui reste quand l'effort est parti.
+**Aura++** : la trace que laisse un passage. Ce qui reste quand l'effort est parti.
 
 Le produit ne parle pas de productivité. Il parle de **ce qui n'est pas encore éteint**.
 Un mémoire oublié n'est pas mort — c'est une braise. Il suffit qu'on souffle dessus.
@@ -29,7 +29,7 @@ exécutée avec la densité et la discipline d'un outil pro (Linear, Raycast).
 
 ---
 
-## 2. Anti-références — ce que Sillage ne doit jamais ressembler
+## 2. Anti-références — ce que Aura++ ne doit jamais ressembler
 
 Reprises de [PRODUCT.md §4](PRODUCT.md#L60), non négociables :
 
@@ -158,7 +158,7 @@ interdit toute dépendance Internet critique. Aucun `<link>` vers Google Fonts.
 
 **Le serif est la voix du produit. Le sans est la voix de l'utilisateur.**
 
-Tout ce que Sillage énonce — la thèse d'accueil, un titre de fragment, la phrase
+Tout ce que Aura++ énonce — la thèse d'accueil, un titre de fragment, la phrase
 du retour à l'auteur — est en Newsreader. Tout ce que l'utilisateur produit ou
 manipule — le texte qu'il tape, les libellés de champs, les boutons — est en
 Inter. C'est ce qui empêche une requête de ressembler à une citation.

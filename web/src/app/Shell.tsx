@@ -39,7 +39,7 @@ export function Shell({ route, navigate, children }: ShellProps) {
             href={hrefFor({ name: "recherche" })}
             className="rounded-control font-display text-[1.0625rem] tracking-tight text-bone transition-colors duration-90 hover:text-bone-2"
           >
-            Sillage
+            Aura++
           </a>
 
           <nav aria-label="Principale" className="flex items-center gap-1">

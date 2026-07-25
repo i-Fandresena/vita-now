@@ -1,9 +1,9 @@
-# Product_2.0.md — Sillage
+# Product_2.0.md — Aura++
 
 > Single Source of Truth pour tout le développement.
 
 ## Vision
-Sillage transforme les efforts académiques en connaissances réutilisables. Notre objectif n'est pas de gérer des projets mais d'empêcher que les efforts disparaissent dans le silence.
+Aura++ transforme les efforts académiques en connaissances réutilisables. Notre objectif n'est pas de gérer des projets mais d'empêcher que les efforts disparaissent dans le silence.
 
 ## North Star Metric
 Nombre de projets repris grâce à un fragment existant.

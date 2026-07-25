@@ -75,7 +75,7 @@ export function CapsuleScreen({ navigate }: { navigate: (to: Route) => void }) {
     return (
       <EmptyState
         title="Aucun projet en sommeil"
-        body="Sillage ne génère une capsule que lorsqu’un travail s’est arrêté. Rien à reprendre pour le moment."
+        body="Aura++ ne génère une capsule que lorsqu’un travail s’est arrêté. Rien à reprendre pour le moment."
       />
     );
   }

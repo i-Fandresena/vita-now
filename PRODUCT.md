@@ -1,4 +1,4 @@
-# PRODUCT.md — Sillage (SOA)
+# PRODUCT.md — Aura++ (SOA)
 
 > Ce fichier cadre tout le développement du hackathon. Claude Code, Impeccable, et tout agent doivent le lire avant toute génération de code ou d'interface. Toute fonctionnalité, tout écran, toute animation qui contredit ce document doit être refusé ou signalé, même si demandé rapidement en cours de route.
 
@@ -18,7 +18,7 @@ La lettre **rejette explicitement** deux catégories de solutions :
 
 ---
 
-## 2. Ce que Sillage EST
+## 2. Ce que Aura++ EST
 
 Un produit, deux mécaniques, une seule infrastructure technique :
 
@@ -26,7 +26,7 @@ Un produit, deux mécaniques, une seule infrastructure technique :
 2. **Capsule de reprise** — à l'inactivité détectée sur un projet, génération d'une fiche factuelle (où j'en étais, ce qui bloquait, un micro-pas de 5-10 min) — silencieuse, non culpabilisante, sans notion de streak.
 3. **Boucle de retour** — quand un fragment sert à quelqu'un d'autre, l'auteur original reçoit un signal factuel ("ton travail a aidé X sur Y"). C'est le seul "signal de progression" du produit, et il n'est ni un score ni une compétition.
 
-## 2bis. Ce que Sillage N'EST PAS
+## 2bis. Ce que Aura++ N'EST PAS
 
 - ❌ Pas de leaderboard, pas de classement, pas de podium
 - ❌ Pas de points, pas de badges, pas de niveaux

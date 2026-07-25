@@ -2,7 +2,7 @@
  * types.ts — le modèle du domaine.
  *
  * Ce fichier ne connaît ni React, ni HTTP, ni la base. Il décrit ce que
- * Sillage manipule : des efforts passés, ce qu'on peut en apprendre, et le
+ * Aura++ manipule : des efforts passés, ce qu'on peut en apprendre, et le
  * signal qui remonte à celui qui les a produits.
  *
  * Contrainte produit inscrite dans le type lui-même : un fragment expose un

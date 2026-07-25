@@ -80,7 +80,7 @@ export function SearchScreen({ navigate }: { navigate: (to: Route) => void }) {
               Quelqu’un est déjà passé par là.
             </h1>
             <p className="mt-6 text-body-lg text-bone-2">
-              Décrivez ce qui vous bloque. Sillage cherche, dans les mémoires et les
+              Décrivez ce qui vous bloque. Aura++ cherche, dans les mémoires et les
               projets de l’école, ce qui a déjà été compris — le raisonnement, les
               choix, les impasses. Pas le code.
             </p>

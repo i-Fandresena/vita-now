@@ -167,7 +167,7 @@ export function SignalScreen({
         {...step(1.5)}
         className="prose-measure mt-20 text-body text-bone-3"
       >
-        Sillage ne dira ni combien de fois, ni à quel rang, ni comparé à qui.
+        Aura++ ne dira ni combien de fois, ni à quel rang, ni comparé à qui.
         Seulement que c’est arrivé.
       </motion.p>
 

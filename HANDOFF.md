@@ -1,4 +1,4 @@
-# HANDOFF.md — Sillage
+# HANDOFF.md — Aura++
 
 > Document de passation. Destiné à un agent (ou un humain) qui reprend le projet
 > sur le VPS sans avoir assisté à ce qui précède.
@@ -12,7 +12,7 @@ Trois documents font contrat. Ils ne sont pas indicatifs.
 
 | Fichier | Autorité | Ce qu'il fixe |
 |---|---|---|
-| [PRODUCT.md](PRODUCT.md) | **Produit — souverain** | Ce que Sillage est, et surtout ce qu'il n'est pas |
+| [PRODUCT.md](PRODUCT.md) | **Produit — souverain** | Ce que Aura++ est, et surtout ce qu'il n'est pas |
 | [Product_2.0.md](Product_2.0.md) | **Produit** | Vision, MVP, happy path, règles de démo |
 | [DESIGN.md](DESIGN.md) | **Esthétique** | Tokens, typographie, mouvement, checklist anti-slop |
 
@@ -145,8 +145,8 @@ npm run build      # produit web/dist/
 `/etc/caddy/Caddyfile` :
 
 ```
-sillage.exemple.mg {
-    root * /var/www/sillage
+auraplusplus.exemple.mg {
+    root * /var/www/aura-plus-plus
     encode zstd gzip
     file_server
 
@@ -158,7 +158,7 @@ sillage.exemple.mg {
 ```
 
 ```bash
-sudo rsync -a --delete web/dist/ /var/www/sillage/
+sudo rsync -a --delete web/dist/ /var/www/aura-plus-plus/
 sudo systemctl reload caddy
 ```
 
@@ -167,8 +167,8 @@ sudo systemctl reload caddy
 ```nginx
 server {
     listen 80;
-    server_name sillage.exemple.mg;
-    root /var/www/sillage;
+    server_name auraplusplus.exemple.mg;
+    root /var/www/aura-plus-plus;
 
     location /assets/ {
         add_header Cache-Control "public, max-age=31536000, immutable";
@@ -188,8 +188,8 @@ changer après le build n'a aucun effet).
 ### Vérification post-déploiement
 
 ```bash
-curl -sI https://sillage.exemple.mg | head -1          # 200
-curl -s https://sillage.exemple.mg | grep -o '<title>.*</title>'
+curl -sI https://auraplusplus.exemple.mg | head -1          # 200
+curl -s https://auraplusplus.exemple.mg | grep -o '<title>.*</title>'
 ```
 
 Puis, dans un navigateur, dérouler le scénario du [README](web/README.md).
@@ -259,7 +259,7 @@ app mobile, dette de contexte collective.
 
 ### Déploiement
 - [ ] Node 22+ installé sur le VPS
-- [ ] Build produit et transféré dans `/var/www/sillage`
+- [ ] Build produit et transféré dans `/var/www/aura-plus-plus`
 - [ ] Serveur web configuré (Caddy ou nginx)
 - [ ] HTTPS actif
 - [ ] Les 5 URLs répondent (`#/`, `#/fragment/f-sync-conflits`, `#/reprise`, `#/deposer`, `#/signal/f-sync-conflits`)

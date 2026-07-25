@@ -1,4 +1,4 @@
-# Sillage — application web
+# Aura++ — application web
 
 Interface du produit décrit par [PRODUCT.md](../PRODUCT.md) et
 [Product_2.0.md](../Product_2.0.md). Les décisions visuelles sont dans

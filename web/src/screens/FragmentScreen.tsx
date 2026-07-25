@@ -224,7 +224,7 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
             <section className="flex flex-col gap-4">
               <p className="text-body text-bone-2">
                 Si ce raisonnement vous a débloqué, {fragment.author.name} peut
-                l’apprendre. C’est la seule chose que Sillage renvoie à un auteur.
+                l’apprendre. C’est la seule chose que Aura++ renvoie à un auteur.
               </p>
               <div>
                 <Button variant="primary" onClick={() => setDeclaring(true)}>

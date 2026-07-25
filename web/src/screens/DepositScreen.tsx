@@ -15,7 +15,7 @@ import { ArchiveLabel, Rule } from "@/ui/Editorial";
  *
  * Raisonnement UX
  * ───────────────
- * C'est ici que Sillage se sépare le plus nettement d'un GitHub ou d'un Notion,
+ * C'est ici que Aura++ se sépare le plus nettement d'un GitHub ou d'un Notion,
  * refusés par Product_2.0.md:12. Ces outils demandent un livrable. Cet écran
  * demande autre chose : **ce qui a été compris**, et surtout **ce qui a été
  * essayé pour rien**.
