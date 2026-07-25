@@ -1,0 +1,155 @@
+/**
+ * base.css — comportements de socle.
+ * Rien de décoratif ici : uniquement ce qui doit être vrai sur chaque écran.
+ */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    border-color: var(--color-line-faint);
+  }
+
+  html {
+    color-scheme: dark;
+    /* La navigation clavier ne doit jamais atterrir sous un en-tête collant. */
+    scroll-padding-block: 6rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    /* `clip` et non `hidden` : l'écran de retour à l'auteur sort volontairement
+       de la grille en 100vw, sans pour autant créer de défilement horizontal —
+       et `clip` ne casse pas l'en-tête `sticky`, contrairement à `hidden`. */
+    overflow-x: clip;
+    background-color: var(--color-canvas);
+    color: var(--color-bone);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Un nombre qui change ne doit jamais faire sauter la mise en page. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  figure {
+    margin: 0;
+  }
+
+  /* Le serif porte un axe de taille optique : à 56px le dessin est plus fin et
+     plus serré qu'à 22px. C'est ce qui distingue une vraie composition d'un
+     texte simplement agrandi. */
+  .font-display,
+  [class*="font-display"] {
+    font-optical-sizing: auto;
+  }
+
+  /* Le focus est le seul usage de la braise hors des deux moments narratifs
+     (DESIGN.md §3.3) — l'accessibilité n'est pas décorative. */
+  :focus-visible {
+    outline: 2px solid var(--color-ember);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::selection {
+    background-color: var(--color-ember-wash);
+    color: var(--color-bone);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+
+  button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  ::placeholder {
+    color: var(--color-bone-4);
+  }
+
+  /* Barre de défilement discrète : présente, jamais bruyante. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-line-soft);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: var(--radius-full, 999px);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-line-strong);
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* DESIGN.md §5.4 : le récit doit rester lisible sans mouvement.
+     Framer Motion est géré séparément via useReducedMotion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Mesure de lecture — DESIGN.md §3.7. Le raisonnement d'un fragment se lit,
+     il ne se scanne pas. */
+  .prose-measure {
+    max-width: var(--measure-prose);
+  }
+
+  /* Le label d'archive : seul usage de capitales du produit (DESIGN.md §4). */
+  .label-archive {
+    font-size: var(--text-micro);
+    line-height: var(--text-micro--line-height);
+    letter-spacing: var(--text-micro--letter-spacing);
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--color-bone-3);
+  }
+
+  /* Élévation par filet de lumière — DESIGN.md §3.5, jamais par ombre portée. */
+  .lift {
+    box-shadow: var(--shadow-lift);
+  }
+}

@@ -1,0 +1,21 @@
+/**
+ * Polices auto-hébergées — Product_2.0.md interdit toute dépendance Internet
+ * critique en démo. Aucun <link> vers Google Fonts.
+ */
+/* Fontsource découpe chaque famille par `unicode-range` : le navigateur ne
+   télécharge que les sous-ensembles réellement utilisés, ici le latin. */
+@import "@fontsource-variable/inter/wght.css";
+/* Newsreader est distribué par axe, pas par sous-ensemble. `opsz` porte les
+   deux axes (graisse 200–800 + taille optique) : à 56px le serif est dessiné
+   pour être grand, à 22px pour être lu. Les `unicode-range` du fichier font que
+   le navigateur ne télécharge que le latin. */
+@import "@fontsource-variable/newsreader/opsz.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
+
+@import "tailwindcss";
+
+@import "./styles/theme.css";
+@import "./styles/base.css";
+
+/* Le produit n'a qu'un thème (DESIGN.md §3) : pas de variante claire à générer. */
+@variant dark (&:where(.dark, .dark *));
