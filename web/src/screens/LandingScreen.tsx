@@ -1,21 +1,23 @@
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowUpRight,
-  Bell,
   Brain,
-  Check,
+  Calendar,
+  Flame,
   MessageCircle,
   RotateCcw,
   Search,
   Sparkles,
+  Trophy,
+  Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import type { Route } from "@/app/router";
 import { cn } from "@/lib/cn";
 import { rise, sequence } from "@/lib/motion";
 import { Button } from "@/ui/Button";
-import { Chip, ChipRow, Eyebrow, Section, SectionHead } from "@/ui/Editorial";
+import { Chip, ChipRow, Section, SectionHead } from "@/ui/Editorial";
 import { Surface } from "@/ui/Surface";
 
 /**
@@ -51,7 +53,7 @@ const PILIERS = [
     icon: RotateCcw,
     titre: "Reprise guidée",
     corps:
-      "Après une pause, SOA te rend où tu en étais, ce qui bloquait, et une seule action de dix minutes pour repartir.",
+      "Après une pause, VITA'NOW te rend où tu en étais, ce qui bloquait, et une seule action de dix minutes pour repartir.",
   },
   {
     icon: MessageCircle,
@@ -65,7 +67,7 @@ const ETAPES = [
   {
     titre: "Décris ton projet",
     corps:
-      "En une phrase. SOA structure un objectif, des étapes et une échéance réaliste.",
+      "En une phrase. VITA'NOW structure un objectif, des étapes et une échéance réaliste.",
     apercu: ["Idée", "MVP", "Design", "Dev", "Livraison"],
   },
   {
@@ -84,7 +86,7 @@ const ETAPES = [
 
 const FAQ = [
   {
-    q: "SOA est-il gratuit pour les étudiants ?",
+    q: "VITA'NOW est-il gratuit pour les étudiants ?",
     r: "Oui. L'accès étudiant est gratuit — c'est la condition pour que le corpus de l'école se remplisse.",
   },
   {
@@ -96,7 +98,7 @@ const FAQ = [
     r: "Rien de négatif. Un projet arrêté garde sa valeur : il documente une impasse, ce qui fait gagner du temps à quelqu'un d'autre. Un autre étudiant peut le reprendre.",
   },
   {
-    q: "Sur quels outils SOA se connecte-t-il ?",
+    q: "Sur quels outils VITA'NOW se connecte-t-il ?",
     r: "GitHub et GitLab sont prévus au cadrage pour synchroniser commits et branches. Cette intégration n'est pas encore développée.",
   },
 ] as const;
@@ -104,41 +106,85 @@ const FAQ = [
 /* ── Héros ──────────────────────────────────────────────────────────────── */
 
 function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: boolean }) {
+  /* La hauteur du héros est commandée par son contenu, pas par l'écran.
+     La référence est dense : le collage borde le titre, rien ne flotte au
+     milieu d'un vide. Une hauteur d'écran imposée à un contenu court produit
+     exactement l'inverse — deux bandes vides au-dessus et en dessous. Le
+     plancher `lg:min-h-[36rem]` garantit un premier écran habité sans jamais
+     étirer le contenu pour le remplir. */
   return (
-    <section className="relative overflow-hidden bg-background pt-16 pb-20 md:pt-24 md:pb-28">
-      {/* Lavis indigo très pâle, borné en haut à droite : il donne de la
-          profondeur au héros sans devenir le dégradé de fond générique que
-          DESIGN.md écarte. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-40 -right-40 size-[38rem] rounded-full bg-primary-wash blur-3xl"
-      />
+    <section className="relative flex items-center overflow-hidden bg-canvas pt-12 pb-16 md:pt-16 md:pb-20 lg:min-h-[40rem] lg:py-16">
+      {/* La trame de carrés du modèle. Décorative de bout en bout : aucun
+          contenu, aucune interaction, `aria-hidden`. */}
+      <div aria-hidden className="hero-grid pointer-events-none absolute inset-0" />
 
-      <div className="page-measure relative grid items-center gap-16 lg:grid-cols-[1.05fr_0.95fr]">
+      {/* Colonne d'image à largeur **fixe**, pas en fraction.
+          En fraction, la colonne recevait 356px pour une image de 385 : l'image
+          se centrait dedans et le reliquat s'ajoutait au vide central. En la
+          fixant à 26rem — la taille à laquelle l'illustration s'affiche sans
+          être agrandie — il ne reste plus un seul pixel de jeu de ce côté, et
+          tout l'espace disponible revient au texte, qui sait le remplir. */}
+      <div className="page-measure relative grid w-full items-center gap-12 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-12">
         <motion.div
           variants={sequence(0.06)}
           initial="hidden"
           animate="visible"
           className="flex flex-col items-start gap-7"
         >
-          <motion.div variants={rise}>
-            <Chip tone="primary">
-              <Sparkles aria-hidden className="size-3.5" />
-              Ton compagnon de projets étudiants
-            </Chip>
-          </motion.div>
+          {/* L'étiquette du modèle — « THIS IS DASH ». Elle nomme le produit
+              avant que le titre ne parle, ce qui autorise le titre à ne parler
+              que du problème. En indigo et non en gris : c'est le seul endroit
+              où la couleur d'action sert à autre chose qu'un clic, et le modèle
+              en fait son point d'entrée. */}
+          <motion.p variants={rise} className="label-eyebrow text-primary">
+            Voici VITA'NOW
+          </motion.p>
 
+          {/* Titre capitale massif, trois lignes, interlignage serré.
+              Le mot « COMMENCES » est posé sur un bloc plein plutôt que
+              surligné : c'est le geste du modèle, et il porte le verbe du
+              problème — commencer est facile, c'est finir qui ne l'est pas.
+              L'astérisque flotte au coin du bloc, comme dans le modèle, et
+              n'appelle aucune note : c'est une ponctuation graphique. */}
+          {/* Les lignes ne sont plus forcées. Trois lignes courtes — « Termine »,
+              « ce que tu », « Commences » — ne mesuraient que 450px de large
+              dans une colonne qui en fait le double : c'est de là que venait le
+              vide central, pas de la mise en page. Laissé libre, le titre
+              remplit sa ligne et se replie tout seul là où la place manque. */}
           <motion.h1
             variants={rise}
-            className="text-balance font-display text-display-1 text-ink"
+            className="font-display text-display-hero uppercase text-ink"
           >
-            Termine ce que tu <span className="mark-accent">commences</span>.
+            Termine ce que tu{" "}
+            {/* L'astérisque est dimensionné et positionné en `em`, jamais en
+                pixels : le titre est fluide entre 48 et 104px, et des décalages
+                fixes le feraient toucher le bloc au petit bout de l'échelle et
+                flotter au loin au grand. En `em`, il garde le même rapport à
+                toutes les tailles. */}
+            <span className="relative inline-block">
+              <span className="mark-block">Commences</span>
+              <span
+                aria-hidden
+                className="absolute -top-[0.08em] -right-[0.42em] font-sans text-[0.26em] leading-none text-primary"
+              >
+                *
+              </span>
+            </span>
           </motion.h1>
 
-          <motion.p variants={rise} className="prose-measure text-body-lg text-ink-muted">
-            SOA garde la mémoire de tes projets — les décisions, les blocages, les
-            raisons. Tu reprends là où tu t'étais arrêté, au lieu de recommencer
-            de zéro.
+          {/* 48 caractères, entre les 34 d'une colonne étroite et les 68 de la
+              mesure de prose. Le chapô doit rester nettement plus court que le
+              titre au-dessus, sinon les deux blocs se confondent — mais dans une
+              colonne large, 34 caractères produisaient une bande de texte trop
+              maigre sous un titre devenu massif. */}
+          <motion.p
+            variants={rise}
+            className="max-w-[58ch] text-body-lg text-ink-muted"
+          >
+            VITA'NOW garde la mémoire de tes projets
+            — les décisions, les blocages, les raisons.
+            Tu reprends là où tu t'étais arrêté, au lieu
+            de recommencer de zéro.
           </motion.p>
 
           <motion.div variants={rise} className="flex flex-wrap items-center gap-3">
@@ -147,109 +193,156 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
               size="lg"
               onClick={() => navigate({ name: "tableau" })}
             >
-              Entrer dans SOA
+              Entrer dans VITA'NOW
             </Button>
             <Button variant="secondary" size="lg" onClick={() => navigate({ name: "memoire" })}>
               Explorer le corpus
               <ArrowUpRight aria-hidden className="size-4" />
             </Button>
           </motion.div>
-
-          {/* Le template pose ici trois statistiques inventées. On pose trois
-              promesses : elles disent la même chose sans affirmer un chiffre
-              que personne ne peut vérifier. */}
-          <motion.ul variants={rise} className="grid w-full gap-4 pt-4 sm:grid-cols-3">
-            {[
-              ["Reprise", "en une page, pas en trois semaines"],
-              ["Corpus", "les mémoires de l'école, consultables"],
-              ["Retour", "l'auteur apprend que son travail a servi"],
-            ].map(([titre, corps]) => (
-              <li key={titre} className="flex flex-col gap-1 border-l-2 border-accent pl-4">
-                <span className="font-heading text-heading text-ink">{titre}</span>
-                <span className="text-caption text-ink-muted">{corps}</span>
-              </li>
-            ))}
-          </motion.ul>
         </motion.div>
 
-        <HeroDemo reduced={reduced} />
+        <HeroCollage reduced={reduced} />
       </div>
     </section>
   );
 }
 
-/** La carte de démonstration flottante du template. */
-function HeroDemo({ reduced }: { reduced: boolean }) {
+/**
+ * Le collage du héros — l'illustration de l'équipe.
+ *
+ * Elle est bornée à sa largeur native (385px, plus une marge de manœuvre) et
+ * non étirée sur sa colonne. Un PNG agrandi au-delà de sa taille d'export perd
+ * ses arêtes, et celle-ci est faite d'arêtes : des touches de clavier en
+ * isométrie, dont les biseaux sont ce qui rend le relief lisible.
+ *
+ * `width` et `height` sont les dimensions réelles du fichier : sans elles, le
+ * navigateur ne connaît pas le rapport avant le chargement et le texte du héros
+ * saute au moment où l'image arrive.
+ */
+function HeroCollage({ reduced }: { reduced: boolean }) {
   return (
-    <div className={cn("relative", !reduced && "motion-safe:animate-floaty")}>
-      <Surface tone="float" padding="none" className="overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-border px-5 py-3">
-          <span aria-hidden className="size-2.5 rounded-full bg-destructive/40" />
-          <span aria-hidden className="size-2.5 rounded-full bg-accent" />
-          <span aria-hidden className="size-2.5 rounded-full bg-success/40" />
-          <span className="ml-2 text-caption text-ink-muted">Reprise</span>
-        </div>
-
-        <div className="flex flex-col gap-5 p-6">
-          <div className="flex flex-col gap-2">
-            <Eyebrow>Projet en sommeil</Eyebrow>
-            <p className="font-heading text-heading text-ink">
-              Synchronisation hors-ligne
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 rounded-card bg-surface p-4">
-            <p className="text-caption text-ink-muted">Où tu en étais</p>
-            <p className="text-body text-ink">
-              Deux terminaux modifient la même parcelle. La règle d'arbitrage
-              n'est pas écrite.
-            </p>
-          </div>
-
-          <div className="flex items-start gap-3 rounded-card border border-accent bg-accent-soft p-4">
-            <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-on-accent" />
-            <p className="text-body text-on-accent">
-              Un mémoire de 2022 a résolu exactement ce problème.
-            </p>
-          </div>
-
-          <p className="hand-note">reprends ici →</p>
-        </div>
-      </Surface>
+    <div
+      className={cn(
+        /* Plus de `max-w` au-delà de `lg` : la colonne fait exactement 26rem,
+           l'image la remplit. En dessous, la borne redevient utile — sur une
+           seule colonne, rien ne limiterait sa largeur. */
+        "mx-auto w-full max-w-[26rem] lg:max-w-none lg:-mt-6",
+        !reduced && "motion-safe:animate-floaty",
+      )}
+    >
+      <img
+        src="/hero-section.png"
+        width={385}
+        height={506}
+        alt="Des touches de clavier en relief composent le mot VITA'NOW, entourées d'icônes de code, de message et de curseur."
+        className="h-auto w-full"
+      />
     </div>
   );
 }
 
 /* ── Bandeau ────────────────────────────────────────────────────────────── */
 
+/**
+ * Police de glyphes de la grille — 5 lignes de haut, largeur libre.
+ *
+ * `1` = case pleine, `0` = case vide. Écrire le mot déjà assemblé serait
+ * intenable : une matrice de 47 colonnes se relit à la case près, et le mot a
+ * déjà changé une fois. On pose donc les lettres, et la grille se compose.
+ */
+const GLYPHES: Record<string, readonly string[]> = {
+  V: ["10001", "10001", "10001", "01010", "00100"],
+  I: ["111", "010", "010", "010", "111"],
+  T: ["11111", "00100", "00100", "00100", "00100"],
+  A: ["01110", "10001", "11111", "10001", "10001"],
+  "-": ["000", "000", "111", "000", "000"],
+  /* Une seule colonne, deux cases hautes : à deux colonnes l'apostrophe pèse
+     autant qu'une lettre et coupe le mot en deux. */
+  "'": ["1", "1", "0", "0", "0"],
+  N: ["10001", "11001", "10101", "10011", "10001"],
+  O: ["01110", "10001", "10001", "10001", "01110"],
+  W: ["10001", "10001", "10101", "10101", "01010"],
+};
+
+const MOT = "VITA'NOW";
+
+/**
+ * Assemble les glyphes : une colonne vide entre deux lettres, deux de marge aux
+ * extrémités — la grille se lit comme un rectangle, pas comme un logo détouré.
+ */
+function tracerMot(mot: string): string[] {
+  return [0, 1, 2, 3, 4].map(
+    (y) => `00${[...mot].map((lettre) => GLYPHES[lettre]![y]).join("0")}00`,
+  );
+}
+
+const MOT_TRACE = tracerMot(MOT);
+
+/**
+ * Bandeau — grille VITA'NOW centrée + défilé des domaines.
+ *
+ * La grille pixel reproduit le nom du produit façon graphe de contributions,
+ * sans sémantique de streak : les cases ne mesurent rien, elles dessinent.
+ * En dessous, les domaines du corpus défilent en boucle seamless : la liste
+ * est dupliquée et `marquee` translate de -50%, ramenant exactement au point
+ * de départ. Le masque en dégradé adoucit les bords gauche et droite.
+ */
 function Bandeau() {
+  const intensites = ["bg-primary", "bg-primary/70", "bg-primary/45"] as const;
+
   return (
-    <div className="border-y border-border bg-surface py-6">
-      <div
-        aria-hidden
-        className="flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
-      >
-        {/* La liste est dupliquée : le keyframe `marquee` translate de -50%,
-            ce qui ramène exactement au point de départ sans saut visible. */}
-        {[0, 1].map((copie) => (
-          <ul
-            key={copie}
-            className="flex shrink-0 items-center gap-12 pr-12 motion-safe:animate-marquee"
+    <div className="border-y border-border bg-surface py-10">
+      <div className="flex flex-col items-center gap-6">
+        {/* Grille VITA'NOW — centrée */}
+        <div className="page-measure flex justify-center">
+          <div
+            role="img"
+            aria-label={MOT}
+            className="grid w-full max-w-xl gap-[2px] sm:max-w-3xl sm:gap-[3px]"
+            style={{ gridTemplateColumns: `repeat(${MOT_TRACE[0]!.length}, minmax(0, 1fr))` }}
           >
-            {DOMAINES.map((domaine) => (
-              <li
-                key={domaine}
-                className="font-heading text-heading whitespace-nowrap text-ink-muted"
-              >
-                {domaine}
-              </li>
-            ))}
-          </ul>
-        ))}
+            {MOT_TRACE.map((ligne, y) =>
+              [...ligne].map((cellule, x) => (
+                <span
+                  key={`${y}-${x}`}
+                  aria-hidden
+                  className={cn(
+                    "aspect-square rounded-[2px] sm:rounded-[3px]",
+                    cellule === "1" ? intensites[(y * 5 + x * 3) % 3] : "bg-primary/[0.07]",
+                  )}
+                />
+              )),
+            )}
+          </div>
+        </div>
+
+        {/* Défilé centré des domaines — boucle seamless via liste dupliquée */}
+        <div
+          aria-hidden
+          className="flex w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
+        >
+          {[0, 1].map((copie) => (
+            <ul
+              key={copie}
+              className="flex shrink-0 items-center gap-12 pr-12 motion-safe:animate-marquee"
+            >
+              {DOMAINES.map((domaine) => (
+                <li
+                  key={domaine}
+                  className="font-heading text-heading whitespace-nowrap text-ink-muted"
+                >
+                  {domaine}
+                </li>
+              ))}
+            </ul>
+          ))}
+        </div>
+
+        <p className="text-center text-caption text-ink-muted">
+          Les domaines du corpus de l'ENI Fianarantsoa.
+        </p>
       </div>
-      <p className="page-measure pt-6 text-center text-caption text-ink-muted">
-        Les domaines du corpus de l'ENI Fianarantsoa.
-      </p>
     </div>
   );
 }
@@ -259,24 +352,59 @@ function Bandeau() {
 function Piliers() {
   return (
     <Section id="probleme" tone="background">
+      {/* Le mot sélectionné tombe sur « abandonnées », le mot du problème. La
+          sélection désigne, elle ne célèbre pas — ce que le bloc plein du héros
+          fait, lui, sur la promesse. Les deux traitements ne se croisent jamais
+          sur le même écran de lecture, c'est ce qui les garde lisibles.
+
+          Le titre passe en monospace : c'est la police qui laisse la marque
+          être le seul accent de la phrase. Anton, grasse et condensée, se
+          disputerait la vedette avec elle. */}
       <SectionHead
-        eyebrow="Pourquoi SOA"
-        title={<>Assez d'idées abandonnées au fond d'un dossier.</>}
-        lede="Deux échecs reviennent chaque année : le projet qu'on arrête au troisième jour, et le mémoire terminé que personne ne retrouve jamais. SOA s'attaque aux deux."
+        align="center"
+        variant="mono"
+        eyebrow="Pourquoi VITA'NOW"
+        title={
+          <>
+            Assez d'idées <span className="mark-select">abandonnées</span> au fond
+            d'un dossier.
+          </>
+        }
+        lede="Deux échecs reviennent chaque année : le projet qu'on arrête au troisième jour, et le mémoire terminé que personne ne retrouve jamais. VITA'NOW s'attaque aux deux."
       />
 
-      <ul className="mt-14 grid gap-6 md:grid-cols-3">
-        {PILIERS.map(({ icon: Icon, titre, corps }) => (
-          <li key={titre}>
-            <Surface tone="card" padding="lg" className="flex h-full flex-col gap-4">
-              <span
-                aria-hidden
-                className="grid size-11 place-items-center rounded-sm bg-primary-wash text-primary"
-              >
-                <Icon className="size-5" />
-              </span>
+      {/* Les trois cartes du modèle : bord franc, ombre pleine, et surtout un
+          décalage — la carte du milieu descend, les deux autres s'inclinent en
+          sens contraires. C'est ce désalignement qui fait lire un jeu de cartes
+          posées à la main plutôt qu'une grille de composants. Les valeurs
+          restent minimes : un degré et une demi-hauteur de ligne. Au-delà, on
+          ne lit plus des cartes posées mais une grille cassée.
+
+          `md:` uniquement : empilées sur téléphone, des rotations alternées
+          donneraient une colonne qui zigzague. */}
+      <ul className="mt-14 grid gap-8 md:grid-cols-3 md:gap-6">
+        {PILIERS.map(({ icon: Icon, titre, corps }, index) => (
+          <li
+            key={titre}
+            className={cn(
+              "md:transition-transform md:duration-150",
+              index === 0 && "md:-rotate-1",
+              index === 1 && "md:mt-8",
+              index === 2 && "md:rotate-1",
+            )}
+          >
+            <Surface
+              tone="hard"
+              padding="lg"
+              className="flex h-full flex-col items-center gap-4 text-center"
+            >
               <h3 className="font-heading text-heading text-ink">{titre}</h3>
               <p className="text-body text-ink-muted">{corps}</p>
+              {/* L'icône passe sous le texte, comme l'illustration du modèle :
+                  elle referme la carte au lieu de l'annoncer. */}
+              <span aria-hidden className="mt-auto pt-2 text-primary">
+                <Icon className="size-10" />
+              </span>
             </Surface>
           </li>
         ))}
@@ -289,30 +417,79 @@ function Methode() {
   return (
     <Section id="methode" tone="surface">
       <SectionHead
+        align="split"
         eyebrow="Comment ça marche"
         title={<>Trois temps, dans cet ordre.</>}
         lede="La numérotation n'est pas décorative : c'est une séquence, et sauter une étape casse la suivante."
       />
 
       <ol className="mt-14 grid gap-6 md:grid-cols-3">
-        {ETAPES.map(({ titre, corps, apercu }, index) => (
-          <li key={titre}>
-            <Surface tone="card" padding="lg" className="flex h-full flex-col gap-5">
-              <span className="font-display text-display-3 text-primary-soft">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <div className="flex flex-col gap-2">
-                <h3 className="font-heading text-heading text-ink">{titre}</h3>
-                <p className="text-body text-ink-muted">{corps}</p>
-              </div>
-              <ChipRow className="mt-auto pt-2">
-                {apercu.map((item) => (
-                  <Chip key={item}>{item}</Chip>
-                ))}
-              </ChipRow>
-            </Surface>
-          </li>
-        ))}
+        {ETAPES.map(({ titre, corps, apercu }, index) => {
+          /* Le modèle met sa carte du milieu en vedette. Ici c'est la
+             troisième, et le déplacement n'est pas cosmétique : ces cartes
+             décrivent une séquence, pas trois offres au choix. Souligner
+             l'étape 2 dirait qu'elle compte plus que la 1 et la 3, ce que le
+             chapô de la section contredit mot pour mot. La troisième, elle,
+             est la destination — c'est le moment où le travail d'un étudiant
+             se met à servir quelqu'un d'autre, et donc le propos du produit. */
+          const vedette = index === ETAPES.length - 1;
+
+          return (
+            <li key={titre}>
+              <Surface
+                tone="hard"
+                padding="lg"
+                className={cn(
+                  "flex h-full flex-col gap-4",
+                  vedette && "bg-primary text-on-primary",
+                )}
+              >
+                {/* Titre à gauche, pastille ronde à droite : la géométrie du
+                    modèle. Sa pastille contient une flèche de lien ; la nôtre
+                    porte le numéro de l'étape. Une flèche annoncerait une
+                    destination qui n'existe pas — ces cartes ne mènent nulle
+                    part, elles décrivent. Le numéro, lui, dit la seule chose
+                    que la section demande de retenir : l'ordre. */}
+                <div className="flex items-start justify-between gap-4">
+                  <h3
+                    className={cn(
+                      "font-heading text-heading",
+                      vedette ? "text-on-primary" : "text-ink",
+                    )}
+                  >
+                    {titre}
+                  </h3>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "grid size-10 shrink-0 place-items-center rounded-full font-display text-body",
+                      vedette ? "bg-on-primary text-primary" : "bg-primary text-on-primary",
+                    )}
+                  >
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                </div>
+
+                <hr
+                  className={cn(
+                    "h-px w-full border-0",
+                    vedette ? "bg-on-primary/30" : "bg-border",
+                  )}
+                />
+
+                <p className={cn("text-body", vedette ? "text-on-primary/85" : "text-ink-muted")}>
+                  {corps}
+                </p>
+
+                <ChipRow className="mt-auto pt-2">
+                  {apercu.map((item) => (
+                    <Chip key={item}>{item}</Chip>
+                  ))}
+                </ChipRow>
+              </Surface>
+            </li>
+          );
+        })}
       </ol>
     </Section>
   );
@@ -360,119 +537,401 @@ const DOMAINES_PRODUIT = [
   },
 ] as const;
 
+/** Une cellule de la grille des domaines. */
+function CelluleDomaine({
+  rang,
+  etiquette,
+  titre,
+  corps,
+  regle = false,
+}: {
+  rang: number;
+  etiquette: string;
+  titre: string;
+  corps: string;
+  /** La contrainte du cadrage, pas un domaine : sa pastille porte le jaune. */
+  regle?: boolean;
+}) {
+  return (
+    <li className="flex flex-col gap-3 bg-background p-8">
+      <span
+        aria-hidden
+        className={cn(
+          "grid size-8 place-items-center rounded-full text-caption font-semibold",
+          regle ? "bg-accent text-on-accent" : "bg-primary text-on-primary",
+        )}
+      >
+        {rang}
+      </span>
+      <h3 className="font-heading text-heading text-ink">{titre}</h3>
+      <p className="text-body text-ink-muted">{corps}</p>
+      {/* Le modèle s'arrête à la description. On garde une ligne de plus :
+          les numéros de modules du cadrage. C'est ce qui permet à un jury de
+          vérifier que les trente et un modules annoncés existent vraiment. */}
+      <span className="label-eyebrow mt-auto pt-2">{etiquette}</span>
+    </li>
+  );
+}
+
 function Perimetre() {
   return (
     <Section tone="background">
       <SectionHead
+        align="center"
         eyebrow="Le périmètre"
         title={<>Cinq domaines, trente et un modules.</>}
-        lede="SOA n'est pas un outil de plus à ouvrir le matin. C'est l'endroit où un projet étudiant naît, avance, s'arrête, reprend — et finit par servir à quelqu'un d'autre."
+        lede="VITA'NOW n'est pas un outil de plus à ouvrir le matin. C'est l'endroit où un projet étudiant naît, avance, s'arrête, reprend — et finit par servir à quelqu'un d'autre."
       />
 
-      <ul className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {DOMAINES_PRODUIT.map(({ titre, corps, modules }) => (
-          <li key={titre}>
-            <Surface tone="card" padding="lg" className="flex h-full flex-col gap-3">
-              <span className="label-eyebrow">{modules}</span>
-              <h3 className="font-heading text-heading text-ink">{titre}</h3>
-              <p className="text-body text-ink-muted">{corps}</p>
-            </Surface>
-          </li>
+      {/* La grille de filets du modèle : pas de cartes, pas d'ombres, juste des
+          traits de 1px entre les cellules.
+
+          Ces traits sont obtenus par `gap-px` sur un fond de couleur de filet —
+          les cellules, opaques, laissent passer la couleur dans l'interstice.
+          C'est ce qui évite l'écueil des bordures par cellule : à chaque
+          intersection, deux bordures se superposent et le filet double
+          d'épaisseur. Ici il n'y en a jamais qu'un, et le tracé reste juste à
+          tous les points de rupture, sans une seule règle conditionnelle. */}
+      <ul className="mt-14 grid gap-px border-y border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+        {DOMAINES_PRODUIT.map(({ titre, corps, modules }, index) => (
+          <CelluleDomaine
+            key={titre}
+            rang={index + 1}
+            etiquette={modules}
+            titre={titre}
+            corps={corps}
+          />
         ))}
 
-        {/* La sixième carte n'est pas un module : c'est la contrainte que le
-            cadrage pose sur les cinq autres. Elle mérite le même rang. */}
-        <li>
-          <Surface
-            tone="card"
-            padding="lg"
-            className="flex h-full flex-col gap-3 border-accent bg-accent-soft"
-          >
-            <span className="label-eyebrow text-on-accent">La règle</span>
-            <h3 className="font-heading text-heading text-on-accent">
-              L'entreprise arrive après
-            </h3>
-            <p className="text-body text-on-accent/80">
-              Aucune offre, aucun recruteur, aucun score de fiabilité n'apparaît
-              dans le parcours d'un étudiant tant qu'il n'a pas terminé ou repris
-              un projet. C'est écrit dans le cadrage, et c'est appliqué.
-            </p>
-          </Surface>
-        </li>
+        {/* La sixième cellule n'est pas un module : c'est la contrainte que le
+            cadrage pose sur les cinq autres. Elle garde son rang dans la grille,
+            et seule sa pastille la distingue — dans une grille de filets, un
+            fond coloré la ferait sortir du tableau au lieu d'y appartenir. */}
+        <CelluleDomaine
+          regle
+          rang={DOMAINES_PRODUIT.length + 1}
+          etiquette="La règle du cadrage"
+          titre="L'entreprise arrive après"
+          corps="Aucune offre, aucun recruteur, aucun score de fiabilité n'apparaît dans le parcours d'un étudiant tant qu'il n'a pas terminé ou repris un projet."
+        />
       </ul>
     </Section>
   );
 }
 
+/**
+ * La citation de la lettre — la bande sombre du modèle : une marque à gauche,
+ * le texte à côté, une frise de pastilles en bas.
+ *
+ * **Le nom à gauche est celui de Soa, pas la marque du produit.** Le modèle
+ * place là le logo de l'émetteur, et c'est exactement la règle qu'on applique :
+ * ces mots ne sont pas ceux de VITA'NOW. Poser notre logo devant eux
+ * transformerait la phrase en slogan de marque — or c'est une citation, et la
+ * distinction est le sujet même de cette section.
+ *
+ * **Les pastilles de la frise sont vides.** Le modèle y découpe des portraits
+ * parce qu'il vend une communauté déjà constituée. VITA'NOW n'en a pas : le
+ * corpus de démonstration compte cinq mémoires et huit étudiants fictifs. Y
+ * coller des visages de banque d'images afficherait une foule qui n'existe pas,
+ * sur la page même qui prend soin de dire qu'elle ne montre pas un témoignage
+ * client. C'est le motif pour lequel les « 12k+ étudiants » du template
+ * d'origine ont été retirés.
+ */
 function Lettre() {
   return (
-    <Section tone="ink">
-      <figure className="flex flex-col gap-8">
-        <blockquote className="max-w-[24ch] text-balance font-display text-display-2">
-          Pas de streak à casser, pas de score, pas de niveau suivant.
-        </blockquote>
-        <figcaption className="flex flex-col gap-1 text-body text-background/70">
-          <span className="font-heading text-heading text-accent">Soa</span>
-          <span>
-            Extrait de la lettre fictive qui sert de sujet au hackathon — le
-            point de départ du produit, pas un témoignage client.
-          </span>
-        </figcaption>
+    <Section tone="background">
+      <figure className="overflow-hidden rounded-card bg-ink text-background">
+        <div className="flex flex-col gap-10 px-8 pt-14 pb-12 md:flex-row md:items-start md:gap-14 md:px-14">
+          <figcaption className="flex shrink-0 flex-col gap-1 md:w-48">
+            <span className="font-heading text-heading text-accent">Soa</span>
+            <span className="text-caption text-background/60">
+              Extrait de la lettre fictive qui sert de sujet au hackathon — le
+              point de départ du produit, pas un témoignage client.
+            </span>
+          </figcaption>
+
+          <blockquote className="max-w-[20ch] text-balance font-display text-display-2 uppercase">
+            Pas de streak à casser, pas de score, pas de niveau suivant.
+          </blockquote>
+        </div>
+
+        <div aria-hidden className="dot-band h-28 w-full text-background/20" />
       </figure>
     </Section>
   );
 }
 
-function Dashboard({ navigate }: { navigate: (to: Route) => void }) {
-  return (
-    <Section id="communaute" tone="background">
-      <div className="grid items-center gap-14 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="flex flex-col items-start gap-6">
-          <SectionHead
-            eyebrow="Le corpus"
-            title={<>Ce qui a déjà été compris, ici.</>}
-            lede="Les mémoires et les projets de l'école — terminés comme arrêtés — deviennent consultables. Pas le code brut : le raisonnement, les choix, les impasses."
-          />
-          <Button variant="primary" onClick={() => navigate({ name: "memoire" })}>
-            <Search aria-hidden className="size-4" />
-            Ouvrir la recherche
-          </Button>
-        </div>
+/** La trame du heatmap — 5 rangées, intensités déterministes. */
+const HEATMAP_RANGEES = 5;
+const HEATMAP_COLONNES = 24;
 
-        <Surface tone="float" padding="none" className="overflow-hidden">
-          <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-            <Search aria-hidden className="size-4 text-ink-muted" />
-            <span className="flex-1 text-body text-ink-muted">
-              Deux terminaux modifient la même donnée…
+function Heatmap() {
+  const niveaux = ["bg-primary", "bg-primary/70", "bg-primary/40", "bg-primary/15"] as const;
+
+  return (
+    <div className="flex flex-col gap-1">
+      {Array.from({ length: HEATMAP_RANGEES }, (_, y) => (
+        <div key={y} className="flex gap-1">
+          {Array.from({ length: HEATMAP_COLONNES }, (_, x) => (
+            <span
+              key={x}
+              className={cn(
+                "size-2 rounded-[2px]",
+                /* Déterministe, jamais aléatoire : la même page doit donner la
+                   même image à chaque rendu et à chaque répétition de la
+                   démonstration. */
+                niveaux[(y * 3 + x * 5) % niveaux.length],
+              )}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** L'anneau de progression — un cercle SVG, pas une image. */
+function Anneau({ pourcentage }: { pourcentage: number }) {
+  const rayon = 26;
+  const circonference = 2 * Math.PI * rayon;
+
+  return (
+    <svg aria-hidden viewBox="0 0 64 64" className="size-16 -rotate-90">
+      <circle
+        cx="32"
+        cy="32"
+        r={rayon}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="7"
+        className="text-primary/15"
+      />
+      <circle
+        cx="32"
+        cy="32"
+        r={rayon}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeDasharray={`${(circonference * pourcentage) / 100} ${circonference}`}
+        className="text-primary"
+      />
+    </svg>
+  );
+}
+
+/** Un panneau du mockup — étiquette capitale, contenu libre. */
+function PanneauMock({
+  titre,
+  extra,
+  children,
+  className,
+}: {
+  titre: string;
+  extra?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("rounded-card border border-border bg-card p-4", className)}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="label-eyebrow">{titre}</span>
+        {extra}
+      </div>
+      <div className="mt-4">{children}</div>
+    </div>
+  );
+}
+
+const KANBAN = [
+  { colonne: "À faire", cartes: ["Wireframe", "Brief"] },
+  { colonne: "En cours", cartes: ["API auth"] },
+  { colonne: "Fini", cartes: ["Landing", "Logo"] },
+] as const;
+
+/**
+ * L'aperçu du tableau de bord.
+ *
+ * Tout ce bloc est une **image**, pas une interface : aucun `button`, aucun
+ * `a`, aucun champ. Un mockup qui emploie de vrais éléments interactifs se fait
+ * atteindre au clavier et annoncer comme cliquable, puis ne répond pas — c'est
+ * la façon la plus sûre de faire échouer une démonstration au moment où
+ * quelqu'un tabule dans la page.
+ */
+function Dashboard() {
+  return (
+    <Section id="communaute" tone="primary">
+      {/* En-tête : titre à gauche, chapô à droite et plus bas, comme la
+          maquette. L'étiquette est manuscrite — c'est le seul emploi de la
+          cursive sur la page.
+
+          Sur l'aplat indigo, la seconde ligne du titre passe au jaune : elle
+          était en indigo sur fond clair, ce qui la rendait ici invisible. Le
+          jaune est la seule autre couleur du produit, et c'est le seul endroit
+          de la page où il porte autre chose qu'une réussite — un fond d'action
+          ne laisse pas d'autre choix. */}
+      <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:gap-16">
+        <div className="flex flex-col gap-3">
+          <p className="font-hand text-title font-semibold text-on-primary/80">
+            Le dashboard
+          </p>
+          <h2 className="font-display text-display-2 leading-[0.88] text-on-primary">
+            <span className="block">Ton QG créatif,</span>
+            <span className="block text-accent">
+              tous les jours<span className="text-on-primary">.</span>
             </span>
-            <Chip tone="primary">3 résultats</Chip>
+          </h2>
+        </div>
+        <p className="text-body text-on-primary/80">
+          Un espace calme et puissant — inspiré de Linear, Notion et Raycast —
+          pour piloter tous tes projets sans t'y perdre.
+        </p>
+      </div>
+
+      <div className="relative mt-14">
+        {/* Le liseré seul — plus de halo flouté.
+            Le dégradé conique sert de fond au conteneur, et son rembourrage de
+            2px est tout ce que le panneau opaque laisse dépasser : le trait
+            coloré est donc un reste, pas une bordure. C'est ce qui permet à un
+            dégradé de cerner un cadre — `border-image` ne suit pas les coins
+            arrondis, et quatre bordures colorées se croiseraient aux angles.
+
+            2px et non 1 : à un pixel, le dégradé se lit comme un défaut
+            d'antialiasing sur un écran ordinaire. */}
+        <div className="frame-aura relative rounded-card p-0.5">
+        {/* `bare` et non `float` : le panneau ne porte plus ni ombre ni bordure.
+            L'ombre portée simule une source de lumière venue d'en haut et
+            projetterait une zone grise par-dessus le halo, qui rayonne dans
+            toutes les directions — les deux se contredisent, et c'est le halo
+            qui doit gagner. La bordure grise, elle, doublait le liseré en
+            dégradé d'un trait terne juste à l'intérieur. */}
+        <Surface tone="bare" padding="none" className="overflow-hidden bg-card">
+          {/* Barre de fenêtre : pastilles de trafic et champ de recherche. */}
+          <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+            <span aria-hidden className="flex gap-2">
+              <span className="size-3 rounded-full bg-destructive/70" />
+              <span className="size-3 rounded-full bg-accent" />
+              <span className="size-3 rounded-full bg-success/70" />
+            </span>
+            <span className="mx-auto flex items-center gap-2 rounded-full border border-border px-4 py-1.5">
+              <Search aria-hidden className="size-3.5 text-ink-muted" />
+              <span className="text-caption text-ink-muted">
+                Rechercher un projet, une tâche…
+              </span>
+              <span className="rounded-sm bg-surface px-1.5 py-0.5 font-mono text-micro text-ink-muted">
+                ⌘K
+              </span>
+            </span>
           </div>
 
-          <ul className="divide-y divide-border">
-            {[
-              ["Arbitrage de conflits hors-ligne", "Mémoire · 2022 · Terminé"],
-              ["File d'attente de synchronisation", "Projet · 2023 · Arrêté"],
-              ["Horloges vectorielles en pratique", "Mémoire · 2021 · Terminé"],
-            ].map(([titre, meta]) => (
-              <li key={titre} className="flex items-center gap-4 px-5 py-4">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-body font-medium text-ink">
-                    {titre}
-                  </span>
-                  <span className="block text-caption text-ink-muted">{meta}</span>
-                </span>
-                <ArrowUpRight aria-hidden className="size-4 shrink-0 text-ink-muted" />
-              </li>
-            ))}
-          </ul>
+          <div className="grid md:grid-cols-[15rem_1fr]">
+            {/* Rail latéral */}
+            <div className="flex flex-col gap-2 border-b border-border p-4 md:border-r md:border-b-0">
+              <span aria-hidden className="h-9 rounded-full bg-primary-wash" />
+              <span aria-hidden className="h-9" />
 
-          <div className="flex items-center gap-3 border-t border-border bg-surface px-5 py-4">
-            <Bell aria-hidden className="size-4 text-primary" />
-            <p className="text-caption text-ink-muted">
-              L'auteur du premier résultat apprendra que son travail a servi.
-            </p>
+              {[
+                { icone: Calendar, label: "Planning" },
+                { icone: MessageCircle, label: "Communauté" },
+                { icone: Trophy, label: "Réussites" },
+              ].map(({ icone: Icone, label }) => (
+                <span key={label} className="flex items-center gap-3 px-2 py-2">
+                  <Icone aria-hidden className="size-4 text-ink-muted" />
+                  <span className="text-body text-ink">{label}</span>
+                </span>
+              ))}
+
+              <span className="mt-4 flex flex-col gap-1 rounded-card border border-accent bg-accent-soft p-4">
+                <span className="flex items-center gap-2 text-body font-semibold text-on-accent">
+                  <Flame aria-hidden className="size-4" />
+                  Série 12 jours
+                </span>
+                <span className="text-caption text-on-accent/80">
+                  Continue demain pour battre ton record.
+                </span>
+              </span>
+            </div>
+
+            {/* Zone principale */}
+            <div className="flex flex-col gap-4 bg-surface p-4">
+              <div className="grid gap-4 lg:grid-cols-[1.9fr_1fr]">
+                <div className="flex flex-col items-start gap-4 rounded-card bg-primary p-6 text-on-primary">
+                  <span className="flex items-center gap-2 text-caption text-on-primary/80">
+                    <Sparkles aria-hidden className="size-4" />
+                    Résumé du jour
+                  </span>
+                  <p className="text-balance font-display text-display-3">
+                    3 tâches, 45 min pour finir ta page d'accueil.
+                  </p>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-caption font-semibold text-on-accent">
+                    Démarrer
+                    <Zap aria-hidden className="size-3.5" />
+                  </span>
+                </div>
+
+                <PanneauMock titre="Progression">
+                  <div className="flex items-center gap-4">
+                    <Anneau pourcentage={72} />
+                    <span className="flex flex-col">
+                      <span className="font-display text-display-3 text-ink">72%</span>
+                      <span className="text-caption text-ink-muted">Objectifs semaine</span>
+                    </span>
+                  </div>
+                </PanneauMock>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <PanneauMock
+                  titre="Heatmap"
+                  extra={<span className="text-caption text-ink-muted">Cette année</span>}
+                >
+                  <Heatmap />
+                </PanneauMock>
+
+                <PanneauMock
+                  titre="Kanban"
+                  extra={<span className="text-caption text-primary">+ Nouvelle</span>}
+                >
+                  <div className="grid grid-cols-3 gap-2">
+                    {KANBAN.map(({ colonne, cartes }) => (
+                      <div key={colonne} className="flex flex-col gap-2">
+                        <span className="text-caption text-ink-muted">{colonne}</span>
+                        {cartes.map((carte) => (
+                          <span
+                            key={carte}
+                            className="rounded-sm border border-border bg-card px-3 py-2 text-caption text-ink"
+                          >
+                            {carte}
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </PanneauMock>
+              </div>
+            </div>
           </div>
         </Surface>
+        </div>
+
+        {/* Les deux cartes flottantes de la maquette, posées à cheval sur le
+            cadre. Masquées sous `md` : à cette largeur elles couvriraient le
+            contenu qu'elles sont censées commenter. */}
+        <span className="absolute -top-6 left-4 z-10 hidden max-w-[16rem] -rotate-3 flex-col gap-1 rounded-card border border-border bg-card p-4 shadow-float md:flex">
+          <span className="label-eyebrow">Notifications</span>
+          <span className="text-body text-ink">Marc a commenté ton projet ✨</span>
+        </span>
+
+        <span className="absolute -bottom-6 right-4 z-10 hidden max-w-[18rem] rotate-2 flex-col gap-1 rounded-card border border-border bg-card p-4 shadow-float md:flex">
+          <span className="flex items-center gap-2 text-body font-semibold text-ink">
+            <Trophy aria-hidden className="size-4 text-accent" />
+            Badge débloqué
+          </span>
+          <span className="text-caption text-ink-muted">
+            « Finisher » — 5 projets livrés
+          </span>
+        </span>
       </div>
     </Section>
   );
@@ -531,28 +990,47 @@ function Faq() {
 function AppelFinal({ navigate }: { navigate: (to: Route) => void }) {
   return (
     <Section tone="background">
-      <Surface
-        tone="card"
-        padding="none"
-        className="flex flex-col items-start gap-8 overflow-hidden bg-primary px-8 py-16 text-on-primary md:px-16"
-      >
-        <Eyebrow className="text-on-primary/70">Rejoins l'aventure</Eyebrow>
-        <h2 className="max-w-[16ch] text-balance font-display text-display-2">
-          Ce projet que tu repousses ? Finis-le.
-        </h2>
-        <p className="prose-measure text-body-lg text-on-primary/80">
-          Commence par chercher ton blocage dans ce que l'école a déjà produit.
-          Quelqu'un est probablement déjà passé par là.
-        </p>
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={() => navigate({ name: "memoire" })}
-        >
-          Commencer
-          <ArrowUpRight aria-hidden className="size-4" />
-        </Button>
-      </Surface>
+      {/* Le panneau plein du modèle. Le jaune y remplace le vert acide : c'est
+          la seule couleur vive du produit, et elle tient le même rôle — un
+          aplat franc qui arrête la page avant le pied. Le bouton, lui, reste
+          un contour et non un aplat : un bouton jaune viderait le jaune de son
+          sens, qui est de dire « c'est acquis », jamais « c'est cliquable ». */}
+      <div className="rounded-card bg-accent px-8 py-12 text-on-accent md:px-12">
+        <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr_auto] lg:items-center lg:gap-12">
+          <h2 className="max-w-[14ch] text-balance font-display text-display-2">
+            Ce projet que tu repousses ? Finis-le.
+          </h2>
+
+          {/* Le bloc secondaire du modèle : une ligne grasse, un paragraphe
+              court. Il porte ce que le titre ne peut pas dire — par où
+              commencer, concrètement. */}
+          <div className="flex flex-col gap-2">
+            <p className="text-body font-semibold">Rejoins l'aventure</p>
+            <p className="text-caption text-on-accent/80">
+              Commence par chercher ton blocage dans ce que l'école a déjà
+              produit. Quelqu'un est probablement déjà passé par là.
+            </p>
+          </div>
+
+          {/* Le grand carré fléché. `aria-label` est obligatoire : sans lui, un
+              lecteur d'écran annonce « bouton » et rien d'autre — une flèche
+              n'a pas de nom accessible. */}
+          <button
+            type="button"
+            aria-label="Ouvrir la recherche dans le corpus"
+            onClick={() => navigate({ name: "memoire" })}
+            className={cn(
+              "grid size-24 shrink-0 place-items-center rounded-card md:size-28",
+              "border-2 border-on-accent text-on-accent",
+              "transition-colors duration-150 ease-out",
+              "hover:bg-on-accent hover:text-accent",
+              "active:translate-y-px",
+            )}
+          >
+            <ArrowUpRight aria-hidden className="size-10" />
+          </button>
+        </div>
+      </div>
     </Section>
   );
 }
@@ -562,14 +1040,14 @@ function PiedDePage() {
     <footer className="border-t border-border bg-surface py-14">
       <div className="page-measure flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
         <div className="flex max-w-sm flex-col gap-3">
-          <span className="font-display text-heading text-ink">SOA</span>
+          <span className="font-display text-heading text-ink">VITA'NOW</span>
           <p className="text-caption text-ink-muted">
             Pour que les efforts des étudiants ne disparaissent pas dans le
             silence. ENI Fianarantsoa.
           </p>
         </div>
         <p className="text-caption text-ink-muted">
-          © 2026 SOA — prototype de hackathon, sans backend.
+          © 2026 VITA'NOW — prototype de hackathon, sans backend.
         </p>
       </div>
     </footer>
@@ -589,7 +1067,7 @@ export function LandingScreen({ navigate }: { navigate: (to: Route) => void }) {
       <Methode />
       <Perimetre />
       <Lettre />
-      <Dashboard navigate={navigate} />
+      <Dashboard />
       <Faq />
       <AppelFinal navigate={navigate} />
       <PiedDePage />

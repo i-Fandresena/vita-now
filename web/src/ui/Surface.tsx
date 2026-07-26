@@ -25,6 +25,14 @@ const surface = cva("rounded-card", {
       outline: "border border-border",
       /** Zone de réussite — le seul emploi du jaune sur une surface. */
       accent: "bg-accent-soft border border-accent",
+      /**
+       * Carte à bord franc — le vocabulaire brutaliste de la landing publique.
+       * Contour d'encre de 2px et ombre pleine sans flou : la carte est un objet
+       * découpé et posé, pas une surface qui lévite. Réservée aux écrans
+       * publics ; dans l'application, une carte par ligne de tableau avec ce
+       * contour rendrait la lecture bruyante.
+       */
+      hard: "bg-card border-2 border-ink shadow-hard",
       /** Aucun contenant visible — pour composer sans hériter d'un style. */
       bare: "",
     },

@@ -131,11 +131,16 @@ export function Section({
   tone = "background",
   className,
   ...props
-}: HTMLAttributes<HTMLElement> & { tone?: "background" | "surface" | "ink" }) {
+}: HTMLAttributes<HTMLElement> & {
+  tone?: "background" | "surface" | "ink" | "primary";
+}) {
   const tones = {
     background: "bg-background",
     surface: "bg-surface",
     ink: "bg-ink text-background",
+    /** Aplat d'action pleine page. Une section au plus par écran : l'indigo
+        cesse de désigner ce sur quoi on clique s'il devient un fond courant. */
+    primary: "bg-primary text-on-primary",
   } as const;
 
   return (
@@ -145,25 +150,96 @@ export function Section({
   );
 }
 
-/** En-tête de section : étiquette, titre display, chapô. */
+/**
+ * En-tête de section : étiquette, titre display, chapô.
+ *
+ * `align="center"` ne centre pas seulement le texte, il recentre aussi les
+ * mesures : sans les marges automatiques, le titre resterait bloqué à gauche
+ * de son bloc de 18 caractères et seules les lignes internes se centreraient.
+ * C'est l'erreur classique de `text-center` sur un élément à largeur bornée.
+ */
 export function SectionHead({
   eyebrow,
   title,
   lede,
+  align = "start",
+  variant = "display",
   className,
 }: {
   eyebrow?: string;
   title: ReactNode;
   lede?: ReactNode;
+  /**
+   * `split` renvoie le chapô à droite du titre plutôt qu'en dessous. Le titre
+   * gagne alors la pleine hauteur de la ligne et le chapô cesse de le
+   * prolonger : ils se lisent comme deux blocs, pas comme un paragraphe qui
+   * commence gros. En dessous de `md`, la disposition retombe en colonne — deux
+   * colonnes de texte sur un téléphone donnent deux colonnes trop étroites.
+   */
+  align?: "start" | "center" | "split";
+  /**
+   * `mono` pose le titre en JetBrains Mono, en graisse normale. Anton est
+   * grasse et condensée : elle assène. La monospace, à chasse fixe et sans
+   * emphase, énonce — et laisse au mot marqué le soin d'être le seul accent de
+   * la phrase. Réservé aux titres qui portent une marque de mot.
+   */
+  variant?: "display" | "mono";
   className?: string;
 }) {
+  const centre = align === "center";
+  const scinde = align === "split";
+  const mono = variant === "mono";
+
+  const titre = (
+    <h2
+      className={cn(
+        "text-balance text-ink",
+        /* La mesure change avec la police : la monospace est nettement plus
+           large à taille égale, 18 caractères y donneraient deux mots par
+           ligne. L'interlignage s'ouvre aussi — une chasse fixe serrée
+           devient un pavé illisible. */
+        mono
+          ? "max-w-[30ch] font-mono text-display-3 font-normal leading-[1.4] tracking-[-0.01em]"
+          : "max-w-[18ch] font-display text-display-2",
+        centre && "mx-auto",
+      )}
+    >
+      {title}
+    </h2>
+  );
+
+  if (scinde) {
+    return (
+      <header
+        className={cn(
+          "flex flex-col gap-6 md:flex-row md:items-end md:justify-between md:gap-16",
+          className,
+        )}
+      >
+        <div className="flex flex-col gap-4">
+          {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+          {titre}
+        </div>
+        {lede && (
+          <p className="max-w-[46ch] text-body text-ink-muted md:shrink-0 md:text-right">
+            {lede}
+          </p>
+        )}
+      </header>
+    );
+  }
+
   return (
-    <header className={cn("flex flex-col gap-4", className)}>
+    <header
+      className={cn("flex flex-col gap-4", centre && "items-center text-center", className)}
+    >
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <h2 className="max-w-[18ch] text-balance font-display text-display-2 text-ink">
-        {title}
-      </h2>
-      {lede && <p className="prose-measure text-body-lg text-ink-muted">{lede}</p>}
+      {titre}
+      {lede && (
+        <p className={cn("prose-measure text-body-lg text-ink-muted", centre && "mx-auto")}>
+          {lede}
+        </p>
+      )}
     </header>
   );
 }

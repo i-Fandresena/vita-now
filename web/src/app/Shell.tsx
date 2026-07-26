@@ -2,10 +2,8 @@ import {
   Bell,
   Building2,
   FolderKanban,
-  GraduationCap,
   LayoutDashboard,
   LibraryBig,
-  LogOut,
   UserRound,
   Users,
 } from "lucide-react";
@@ -20,7 +18,7 @@ import { activeTab, hrefFor, spaceOf, type Route } from "./router";
  * Shell.tsx — la navigation, en trois chromes distincts.
  *
  * Le cadrage décrit trois publics qui ne se ressemblent pas : un visiteur qui
- * ne connaît pas SOA, un étudiant qui a un projet en cours, une entreprise qui
+ * ne connaît pas VITA'NOW, un étudiant qui a un projet en cours, une entreprise qui
  * cherche des profils. Leur imposer une même barre forcerait deux d'entre eux
  * à porter la navigation du troisième.
  *
@@ -79,15 +77,6 @@ const COMPANY_NAV: NavItem[] = [
   },
 ];
 
-const UNIVERSITY_NAV: NavItem[] = [
-  {
-    label: "Suivi",
-    name: "univ-accueil",
-    route: { name: "univ-accueil" },
-    icon: GraduationCap,
-  },
-];
-
 const LANDING_LINKS = [
   { label: "Le problème", href: "#probleme" },
   { label: "Comment ça marche", href: "#methode" },
@@ -95,24 +84,30 @@ const LANDING_LINKS = [
   { label: "FAQ", href: "#faq" },
 ];
 
-function Wordmark({ onClick, sousTitre }: { onClick?: () => void; sousTitre?: string }) {
+function Wordmark({
+  onClick,
+  sousTitre,
+}: {
+  onClick?: () => void;
+  sousTitre?: string;
+}) {
   return (
     <a
       href={hrefFor({ name: "accueil" })}
       onClick={onClick}
       className="flex shrink-0 items-center gap-2.5 rounded-sm"
     >
-      <span
-        aria-hidden
-        className="grid size-9 place-items-center rounded-sm bg-primary font-display text-body text-on-primary"
-      >
-        S
-      </span>
+      {/* L'emblème est déjà détouré sur fond transparent : ni cadre, ni fond, ni
+          recadrage. Il est contraint en hauteur et non en carré — la source fait
+          755×699, donc un `size-*` l'écraserait de 8 %. */}
+      <img
+        src="/logo-vita-now.png"
+        alt=""
+        className="h-8 w-auto shrink-0"
+      />
       <span className="flex flex-col leading-none">
-        <span className="font-display text-heading text-ink">SOA</span>
-        {sousTitre && (
-          <span className="text-caption text-ink-muted">{sousTitre}</span>
-        )}
+        <span className="font-display text-heading text-ink">VITA'NOW</span>
+        {sousTitre && <span className="text-caption text-ink-muted">{sousTitre}</span>}
       </span>
     </a>
   );
@@ -307,10 +302,21 @@ export function Shell({ route, navigate, children }: ShellProps) {
     return (
       <div className="flex min-h-dvh flex-col">
         {skip}
-        <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md">
-          <div className="page-measure flex h-16 items-center justify-between gap-6">
+        {/* Barre publique — posée à même la page, sans conteneur.
+            La référence ne met ni pilule, ni fond contrasté, ni filet : la
+            marque, les liens et les deux actions flottent directement sur
+            l'aplat de la page. Le seul habillage est le fond translucide, et il
+            n'est là que pour une raison fonctionnelle — au défilement, du texte
+            passe dessous et une barre réellement transparente deviendrait
+            illisible. En haut de page, où la référence se juge, le rendu est
+            identique à un fond nu. */}
+        <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md">
+          <div className="page-measure flex h-18 items-center gap-6">
             <Wordmark onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
-            <nav aria-label="Sections" className="hidden items-center gap-1 md:flex">
+
+            {/* Les liens se rangent contre la marque, pas au centre : c'est ce
+                qui laisse le vide de la référence entre eux et les actions. */}
+            <nav aria-label="Sections" className="hidden flex-1 items-center gap-1 md:flex">
               {LANDING_LINKS.map((lien) => (
                 <a
                   key={lien.href}
@@ -321,19 +327,24 @@ export function Shell({ route, navigate, children }: ShellProps) {
                 </a>
               ))}
             </nav>
-            <div className="flex items-center gap-2">
+
+            {/* Les deux boutons de la référence : le premier en pilule claire
+                bordée, le second plein. C'est le seul endroit de la barre où la
+                hiérarchie se lit — d'où deux boutons, et non un bouton et un
+                lien nu. */}
+            <div className="ml-auto flex items-center gap-2">
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="sm"
                 className="hidden sm:inline-flex"
-                onClick={() => navigate({ name: "connexion" })}
+                onClick={() => navigate({ name: "ent-accueil" })}
               >
-                Se connecter
+                Espace entreprise
               </Button>
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => navigate({ name: "inscription" })}
+                onClick={() => navigate({ name: "tableau" })}
               >
                 Commencer
               </Button>
@@ -348,13 +359,7 @@ export function Shell({ route, navigate, children }: ShellProps) {
   }
 
   const entreprise = espace === "entreprise";
-  const universite = espace === "universite";
-  const items = entreprise ? COMPANY_NAV : universite ? UNIVERSITY_NAV : STUDENT_NAV;
-  const sousTitre = entreprise
-    ? "Espace entreprise"
-    : universite
-      ? "Espace universitaire"
-      : "ENI Fianarantsoa";
+  const items = entreprise ? COMPANY_NAV : STUDENT_NAV;
 
   return (
     <div className="flex min-h-dvh">
@@ -364,9 +369,9 @@ export function Shell({ route, navigate, children }: ShellProps) {
         items={items}
         route={route}
         navigate={navigate}
-        sousTitre={sousTitre}
+        sousTitre={entreprise ? "Espace entreprise" : "ENI Fianarantsoa"}
         bas={
-          entreprise || universite ? (
+          entreprise ? (
             <Button
               variant="ghost"
               size="sm"
@@ -402,28 +407,6 @@ export function Shell({ route, navigate, children }: ShellProps) {
               >
                 Espace entreprise →
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="justify-start"
-                onClick={() => navigate({ name: "univ-accueil" })}
-              >
-                Espace universitaire →
-              </Button>
-              {/* `destructive-nav-separation` : la déconnexion est séparée du
-                  reste de la navigation, jamais collée à un onglet. */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2 justify-start border-t border-border pt-4"
-                onClick={() => {
-                  logout();
-                  navigate({ name: "accueil" });
-                }}
-              >
-                <LogOut aria-hidden className="size-4" />
-                Se déconnecter
-              </Button>
             </div>
           )
         }
@@ -434,10 +417,10 @@ export function Shell({ route, navigate, children }: ShellProps) {
           <AppTopBar
             navigate={navigate}
             unread={unread}
-            titre={TITRES[activeTab(route) ?? route.name] ?? "SOA"}
+            titre={TITRES[activeTab(route) ?? route.name] ?? "VITA'NOW"}
           />
         )}
-        {(entreprise || universite) && (
+        {entreprise && (
           <header className="sticky top-0 z-30 border-b border-border bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur-md lg:hidden">
             <div className="flex h-14 items-center justify-between px-4">
               <Wordmark />

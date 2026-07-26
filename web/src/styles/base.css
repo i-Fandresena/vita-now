@@ -136,12 +136,20 @@
     max-width: var(--measure-prose);
   }
 
-  /* Largeur de page commune à la landing et au chrome applicatif. */
+  /* Largeur de page commune à la landing et à la barre publique.
+     La marge latérale s'ouvre avec l'écran : à 1.5rem sur un grand moniteur, le
+     contenu paraîtrait collé au bord plutôt que posé dedans. */
   .page-measure {
     width: 100%;
     max-width: var(--measure-page);
     margin-inline: auto;
     padding-inline: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .page-measure {
+      padding-inline: 2.5rem;
+    }
   }
 
   /* L'étiquette capitale : Bebas Neue, seul usage systématique de capitales. */
@@ -161,6 +169,129 @@
     line-height: 1.3;
     font-weight: 600;
     color: var(--color-primary);
+  }
+
+  /* Trame de carrés du héros — deux jeux de filets de 1px qui se croisent.
+     Un fond répété plutôt que des éléments : une grille de 200 carrés en DOM
+     coûterait 200 nœuds pour une décoration, et il n'y a rien à y accrocher.
+
+     Le masque radial est ce qui distingue cette trame d'un papier millimétré :
+     elle est pleine au centre et s'efface vers les bords, ce qui donne les
+     carrés isolés du modèle au lieu d'un quadrillage uniforme. */
+  .hero-grid {
+    background-image:
+      linear-gradient(to right, var(--color-primary) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-primary) 1px, transparent 1px);
+    background-size: 4.5rem 4.5rem;
+    opacity: 0.13;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 55% 45%, black 20%, transparent 75%);
+    mask-image: radial-gradient(ellipse 70% 60% at 55% 45%, black 20%, transparent 75%);
+  }
+
+  /* Le mot posé sur un bloc plein — le geste central du modèle. La rotation
+     est infime : à un degré on lit un bloc posé à la main, à trois on lit un
+     accident de mise en page.
+
+     `line-height` est remis à 1 ici, et c'est la ligne qui compte. Le titre du
+     héros descend à 0,86 pour serrer ses trois lignes ; or la hauteur d'un
+     `inline-block` est celle de sa ligne, pas celle de ses lettres. À 0,86, le
+     fond mesurait donc moins haut que les capitales d'Anton — qui occupent
+     près d'un cadratin — et les rognait en haut comme en bas. Le rembourrage
+     vertical rend au bloc la marge que le modèle lui donne. */
+  .mark-block {
+    display: inline-block;
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+    line-height: 1;
+    padding-block: 0.06em;
+    padding-inline: 0.12em;
+    transform: rotate(-1deg);
+  }
+
+  /* L'aura du modèle Raycast — le dégradé qui cerne un panneau.
+     L'utilitaire ne porte **que** le dégradé : ni flou, ni opacité, ni
+     position. C'est ce qui lui permet de servir deux fois sur le même cadre —
+     une fois flouté et débordant pour le halo, une fois net et épais d'un pixel
+     pour le liseré. Poser le flou ici obligerait à l'annuler pour le liseré, et
+     une utilitaire qu'on doit défaire est une utilitaire mal découpée.
+
+     Le dégradé est conique : les teintes tournent autour du cadre. Un dégradé
+     linéaire les ferait défiler d'un bord à l'autre, et deux côtés sur quatre
+     resteraient de la même couleur.
+
+     Les teintes sont écrites ici et nulle part ailleurs. Elles ne passent pas
+     par un token de couleur : un token deviendrait `bg-*` et `text-*`, et cette
+     palette élargie n'a rien à faire sur un bouton ou un libellé. Elle est
+     décorative, elle reste enfermée dans cet utilitaire. */
+  .frame-aura {
+    background: conic-gradient(
+      from 210deg at 50% 50%,
+      oklch(55% 0.22 262),
+      oklch(58% 0.2 300),
+      oklch(87% 0.17 95),
+      oklch(70% 0.15 200),
+      oklch(55% 0.22 262)
+    );
+  }
+
+  /* Le bandeau de pastilles — la frise du modèle de l'appel final.
+     Un seul dégradé radial répété : à 22px de pas sur 7rem de haut, cela fait
+     près de six cents cercles, qui ne coûtent ni un nœud du DOM ni une requête.
+     Le modèle y découpe des portraits ; ici les pastilles sont vides, et c'est
+     délibéré — voir le commentaire de `AppelFinal`.
+
+     `currentColor` plutôt qu'un token en dur : le bandeau prend la couleur du
+     texte de son conteneur, donc il suit l'inversion de la bande sombre sans
+     seconde définition. Le masque efface les deux extrémités, sans quoi la
+     frise se termine sur une rangée coupée net. */
+  .dot-band {
+    background-image: radial-gradient(circle at center, currentColor 42%, transparent 44%);
+    background-size: 1.375rem 1.375rem;
+    -webkit-mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
+  }
+
+  /* Le mot sélectionné — troisième et dernier traitement de mot du produit,
+     après le surlignage jaune et le bloc plein.
+     Là où le bloc affirme, celui-ci désigne : le fond pâle, les deux barres et
+     les poignées rondes citent une sélection de texte, donc un mot qu'on vient
+     de pointer. C'est pour cela qu'il va sur le mot du problème, pas sur celui
+     de la promesse.
+
+     Répartition des rôles, parce qu'il n'y a que deux pseudo-éléments : les
+     barres verticales sont les bordures de l'élément lui-même, et `::before` /
+     `::after` ne servent qu'aux deux poignées. L'inverse — des barres en
+     pseudo-éléments — ne laissait plus rien pour les poignées. */
+  .mark-select {
+    position: relative;
+    display: inline-block;
+    padding-inline: 0.18em;
+    border-left: 2px solid var(--color-primary);
+    border-right: 2px solid var(--color-primary);
+    background-color: color-mix(in oklch, var(--color-primary) 16%, transparent);
+    line-height: 1.1;
+  }
+
+  /* En diagonale — poignée haute à gauche, basse à droite — comme une sélection
+     réelle. Les poser en vis-à-vis casserait la citation. */
+  .mark-select::before,
+  .mark-select::after {
+    content: "";
+    position: absolute;
+    width: 0.42em;
+    height: 0.42em;
+    border-radius: 999px;
+    background-color: var(--color-primary);
+  }
+
+  .mark-select::before {
+    top: -0.16em;
+    left: -0.21em;
+  }
+
+  .mark-select::after {
+    bottom: -0.16em;
+    right: -0.21em;
   }
 
   /* Surlignage jaune : la réussite, jamais l'action (DESIGN.md §2.1). */

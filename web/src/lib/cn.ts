@@ -15,6 +15,7 @@ const COLORS = [
   "background",
   "surface",
   "card",
+  "canvas",
   "ink",
   "ink-muted",
   "primary",
@@ -32,6 +33,7 @@ const COLORS = [
 ];
 
 const FONT_SIZES = [
+  "display-hero",
   "display-1",
   "display-2",
   "display-3",
