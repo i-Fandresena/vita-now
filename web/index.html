@@ -2,7 +2,24 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!--
+      Icônes dérivées de /logo-vita-now.png. Trois formats, et chacun sert :
+
+      · favicon.ico — 16/32/48 en un fichier. Certains agrégateurs et lecteurs
+        de flux le cherchent à la racine sans jamais lire ce HTML ; sans lui,
+        ils affichent une page blanche à la place de l'icône.
+      · Les PNG 16 et 32 — ce que les navigateurs modernes préfèrent, et ce qui
+        évite le rééchantillonnage flou d'une grande image réduite à la volée.
+      · apple-touch-icon 180 — l'icône d'un raccourci ajouté à l'écran d'accueil
+        sur iOS. Sans elle, Safari fabrique une vignette de la page.
+
+      Le logo d'origine fait 847×711 : il a été rogné puis recentré dans un
+      carré avant redimensionnement, sinon le navigateur l'écrase sur un axe.
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <meta
