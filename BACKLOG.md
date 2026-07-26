@@ -3,51 +3,53 @@
 > Dérivé de [`AURA_cadrage.md`](AURA_cadrage.md) via [`SPEC.md`](SPEC.md).
 > État au **26 juillet 2026**. Estimations en heures-agent, pas en heures-humain.
 
-**Point de départ réel :** 5 écrans en ligne couvrant 5 des 31 modules du cadrage
-(dont 3 partiellement), aucun backend, aucune authentification, aucune persistance.
+**Point de départ réel :** 33 routes en ligne couvrant les 31 modules du cadrage
+(20 complets, 10 partiels), aucun backend, aucune authentification, aucune
+persistance.
+
+---
+
+## Fait le 26 juillet 2026
+
+L'écart de périmètre est résorbé **côté interface**. Les 31 modules du cadrage
+ont une route, un écran et des données de démonstration ; 20 sont complets,
+10 partiels, 0 absent. Détail par module dans [SPEC.md §4](SPEC.md).
+
+Réalisé dans cette passe :
+
+- Couche domaine complète (`domain/soa.ts`), calquée module par module sur le cadrage
+- Corpus de démonstration cohérent : 8 étudiants, 10 projets, 12 entrées de journal,
+  6 sujets de forum, 3 challenges, 3 idées, 3 entreprises, 3 opportunités
+- État applicatif avec **mutations réelles** (`app/soa-store.tsx`)
+- Navigation **mobile d'abord** : barre d'onglets basse (5 entrées) sous 1024px,
+  rail latéral au-delà, zones de sécurité respectées, cibles ≥ 44px
+- 33 routes, aller-retour URL vérifié sur chacune
+- Scène 3D refaite : feuillets à coins arrondis, ombre de contact réelle,
+  irrégularité déterministe, dérive de caméra
+
+**Le périmètre restant est presque entièrement du backend.**
 
 ---
 
 ## P0 — Bloquants immédiats
 
-Sans ces points, rien d'autre ne peut être décidé correctement.
-
 | # | Travail | Dépend de | Est. |
 |---|---|---|---|
-| 0.1 | **Publier le template Lovable** et fournir l'URL publique (`*.lovable.app`, sans `id-preview--`). L'URL actuelle redirige vers `lovable.dev/auth-bridge` : le modèle UI/UX est inaccessible, donc la refonte visuelle est bloquée. | équipe | — |
-| 0.2 | **Arbitrer le périmètre démo.** 31 modules ne sont pas réalisables. Choisir les 6 à 8 modules qui seront réellement cliquables devant le jury ; les autres passent en slide. | équipe | — |
-| 0.3 | **Refonte du domaine : `Fragment` → `Projet`.** Le cadrage travaille au niveau du projet ; le code au niveau du fragment de mémoire. Introduire `Project`, `JournalEntry`, `StudentProfile` et rattacher `Fragment` comme source. Élargir le port `FragmentRepository` en `SoaRepository`. | 0.2 | 3–4 h |
-
-**Pourquoi 0.3 est P0 :** tout écran de M1, M2, M3, M19 construit avant cette refonte
-sera à réécrire. C'est la seule dette qui grossit avec chaque écran ajouté.
+| 0.1 | **Arbitrer le scénario de soutenance.** 31 modules sont parcourables ; une démonstration de 5 minutes en montre 6 à 8. Choisir lesquels, dans quel ordre, et l'écrire. | équipe | — |
+| 0.2 | **Trancher les écarts au template** consignés dans [DESIGN.md §3](DESIGN.md) : statistiques et témoignage inventés (non publiés), bandeau d'écoles, intégrations annoncées. | équipe | — |
+| 0.3 | **Contrôle visuel réel** sur téléphone et sur le projecteur de soutenance. Le développement s'est fait sans navigateur : la vérification est protocolaire (typecheck, build, CSS généré, aller-retour de routes), pas visuelle. | équipe | 1 h |
 
 ---
 
-## P1 — Le produit du cadrage devient visible
-
-### Landing page publique
+## P1 — Ce qui manque encore à l'interface
 
 | # | Travail | Dépend de | Est. |
 |---|---|---|---|
-| 1.1 | Landing `/` publique — modelée sur le template Lovable : proposition de valeur, les deux échecs (abandon / disparition), la boucle SOA, appel à l'action inscription. Aujourd'hui le domaine ouvre directement sur un champ de recherche, sans aucune explication du produit. | 0.1 | 4–6 h |
-| 1.2 | Séparer le chrome public du chrome applicatif (`Shell` actuel unique) : en-tête public avec navigation marketing vs. en-tête applicatif avec profil et notifications. | 1.1 | 1–2 h |
-
-### Socle étudiant (M1, M2, M3, M19)
-
-| # | Travail | Dépend de | Est. |
-|---|---|---|---|
-| 1.3 | **M1 — Auth + profil.** Inscription / connexion (mock suffisant pour la démo), `/profil/:id`, édition. Champs du cadrage : université, niveau L1–M2, filière, technos, centres d'intérêt, disponibilités, objectifs. | 0.3 | 4–5 h |
-| 1.4 | **M2 — Projets.** Liste, création, détail. 5 statuts imposés (`Idée`, `En cours`, `En pause`, `Abandonné`, `Terminé`), types, technos, dates, difficulté. | 0.3 | 5–6 h |
-| 1.5 | **M3 — Journal de progression.** Timeline horodatée par projet : décisions, erreurs, solutions, changements d'architecture, apprentissages. Reprend et remplace l'écran `#/deposer` actuel. | 1.4 | 3–4 h |
-| 1.6 | **M19 — Tableau de bord.** Projets commencés / terminés, progression moyenne, techno la plus utilisée. | 1.4 | 2–3 h |
-
-### Mémoire IA (M5, M6, M15)
-
-| # | Travail | Dépend de | Est. |
-|---|---|---|---|
-| 1.7 | **M6 — Reprise, élargie au projet.** L'écran `#/reprise` existe mais est câblé sur une capsule unique en dur. Le brancher sur un projet réel et son journal. | 1.5 | 2 h |
-| 1.8 | **M15 — Renaissance.** Galerie des projets abandonnés avec état et raison d'abandon, et parcours « je reprends ce projet ». C'est le module qui répond le plus directement au 2ᵉ échec de la lettre. | 1.4 | 3–4 h |
-| 1.9 | **M5 — Résumé IA.** Bloc sur le détail de projet : objectif / fait / reste à faire / dernière activité / risque d'abandon. Nécessite le backend (P2). | 2.3 | 2 h front |
+| 1.1 | **M1 — Écrans d'inscription et de connexion.** Le profil existe, l'entrée dans le produit non. Mock suffisant pour la démo. | — | 2–3 h |
+| 1.2 | **M1 — Édition de profil.** Aujourd'hui en lecture seule. | 1.1 | 2 h |
+| 1.3 | **M17 — Envoi de captures** sur la présentation de projet (emplacements réservés aujourd'hui). | — | 2 h |
+| 1.4 | **E2 / E8 — Câbler les actions entreprise** : publier une offre, proposer un entretien, valider une compétence. Les boutons existent, ils ne font rien. | 2.3 | 3 h |
+| 1.5 | **M20 — Notifications déclenchées par les mutations** : reprendre un projet doit réellement notifier son auteur. Aujourd'hui la liste est statique. | — | 2 h |
 
 ---
 
@@ -69,52 +71,15 @@ Sans cela, le produit reste une maquette : c'est le cœur technique risqué et i
 
 ---
 
-## P3 — Collectif (M8, M9, M10, M14, M18)
+## P3 à P5 — Collectif, Reconnaissance, Entreprise
 
-Aucun de ces modules n'a de code. Ils supposent tous l'authentification (1.3 / 2.7).
+**Faits côté interface.** Ces trois blocs étaient l'essentiel du backlog
+précédent ; ils sont désormais construits et parcourables. Ce qui reste pour
+chacun est **le même travail** : brancher les écrans sur l'API de P2, et
+persister. Détail des 10 modules encore partiels dans [SPEC.md §4](SPEC.md).
 
-| # | Travail | Est. |
-|---|---|---|
-| 3.1 | **M8 — Forum** par catégorie (Java, PHP, React, IA, BDD, Réseau) : liste, sujet, réponses. | 5–6 h |
-| 3.2 | **M9 — Compagnons** : recherche de coéquipiers par niveau / techno / objectif / disponibilité + matching. | 4–5 h |
-| 3.3 | **M10 — Challenges** : liste, détail, participants, suivi hebdomadaire. | 4–5 h |
-| 3.4 | **M14 — Validation d'idée** : soumission, vote, commentaires avant démarrage. | 3–4 h |
-| 3.5 | **M18 — Mentorat** : rôle mentor (L3/M1/M2/alumni), mise en relation, fil de conseils. | 4–5 h |
-
----
-
-## P4 — Reconnaissance (M11, M12, M16, M17)
-
-⚠️ **Modules sous tension.** Le cadrage note lui-même que M11 et M12 réintroduisent les
-mécaniques (score, niveau, classement) que la lettre de Soa décrit comme déjà testées et
-inefficaces. Décision prise : les conserver, mais **secondaires et hors du chemin de
-reprise** — voir [SPEC.md §2bis](SPEC.md). À implémenter **après** P1 à P3, jamais avant.
-
-| # | Travail | Est. |
-|---|---|---|
-| 4.1 | **M12 — Badges et points SOA** : onglet de profil, jamais un bandeau global. | 3 h |
-| 4.2 | **M11 — Classements** : écran dédié `/classements`, désactivable par un réglage. | 2–3 h |
-| 4.3 | **M16 — Portfolio automatique** : page publique générée à partir des projets terminés, technos, contributions. | 4–5 h |
-| 4.4 | **M17 — Présentation de projet** : screenshots, vidéo, documentation, architecture, lien Git. | 3–4 h |
-| 4.5 | **M20 — Notifications** : centre de notifications web + types (rappel projet, réponse forum, challenge, opportunité). Le canal e-mail/push est hors périmètre hackathon. | 3–4 h |
-
----
-
-## P5 — Module Entreprise (E1–E10, M13)
-
-Espace séparé, avec sa propre navigation. Garde-fou du cadrage : *« l'entreprise arrive
-après l'apprentissage, pas avant »* — aucun écran étudiant n'expose d'entreprise tant
-qu'un projet n'est pas terminé ou repris.
-
-| # | Travail | Est. |
-|---|---|---|
-| 5.1 | **E1 + E2** — profil entreprise, publication d'opportunités. | 4–5 h |
-| 5.2 | **M13** — appels à projets côté étudiant. | 2–3 h |
-| 5.3 | **E3 + E4** — fiche talent basée sur les preuves + Project Reliability Score (régularité, projets terminés, documentation, collaboration). | 4–5 h |
-| 5.4 | **E5** — Talent Discovery : recherche multicritère avec matching en %. | 4–5 h |
-| 5.5 | **E6 + E7** — Entreprise Mentor et challenges sponsorisés. | 4–5 h |
-| 5.6 | **E8 + E9** — mise en relation stage/recrutement, validation formelle d'un rôle tenu sur un projet. | 3–4 h |
-| 5.7 | **E10** — marketplace de prototypes étudiants. | 4–5 h |
+Le seul reliquat d'interface est listé en P1 (inscription, édition de profil,
+envoi de captures, actions entreprise, notifications déclenchées).
 
 ---
 
@@ -145,15 +110,17 @@ qu'un projet n'est pas terminé ou repris.
 
 | Priorité | Portée | Estimation |
 |---|---|---|
-| P0 | Déblocage + refonte du domaine | 3–4 h + arbitrages équipe |
-| P1 | Landing + socle étudiant + mémoire IA côté front | 26–35 h |
-| P2 | Backend, pgvector, API Claude, auth | 18–23 h |
-| P3 | Collectif | 20–25 h |
-| P4 | Reconnaissance | 15–19 h |
-| P5 | Entreprise | 25–32 h |
-| P6 | Solidité | 9–13 h |
-| **Total** | **le cadrage complet** | **≈ 116–151 h** |
+| P0 | Arbitrages équipe + contrôle visuel réel | 1 h + décisions |
+| P1 | Reliquat d'interface (auth, édition, captures, actions) | 11–12 h |
+| P2 | Backend, pgvector, API Claude, persistance, auth | 18–23 h |
+| P3–P5 | Branchement des écrans existants sur l'API | 10–14 h |
+| P6 | Solidité (tests, CI, Lighthouse, audits) | 9–13 h |
+| **Total** | **du prototype au produit** | **≈ 49–63 h** |
 
-**À dire clairement à l'équipe :** le cadrage complet ne tient pas dans un hackathon de
-24 h. La décision 0.2 (choisir 6 à 8 modules réellement cliquables) n'est pas une
-préférence — c'est la seule façon d'avoir une démo qui se tient debout.
+À comparer aux ≈116–151 h estimées le matin même : l'écart est ce que la passe
+d'interface a absorbé.
+
+**Ce qu'il faut dire à l'équipe :** le produit est parcourable de bout en bout,
+il n'est pas opérationnel. La différence tient en une phrase — un rechargement
+de page efface tout. C'est le seul point sur lequel une démonstration peut se
+faire prendre en défaut, et il vaut mieux l'annoncer que le subir.

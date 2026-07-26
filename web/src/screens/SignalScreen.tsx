@@ -76,7 +76,7 @@ export function SignalScreen({
         title="Aucun signal à afficher"
         body="Ce fragment n’a encore servi à personne, ou il a été retiré du corpus."
         action={
-          <Button variant="secondary" onClick={() => navigate({ name: "recherche" })}>
+          <Button variant="secondary" onClick={() => navigate({ name: "memoire" })}>
             Revenir à la recherche
           </Button>
         }
@@ -174,7 +174,7 @@ export function SignalScreen({
       {/* `-ml-4` compense le rembourrage horizontal du bouton fantôme : son
           libellé doit tomber sur la même verticale que le texte au-dessus. */}
       <motion.div {...step(1.7)} className="-ml-4 mt-10">
-        <Button variant="ghost" onClick={() => navigate({ name: "recherche" })}>
+        <Button variant="ghost" onClick={() => navigate({ name: "memoire" })}>
           Revenir
         </Button>
       </motion.div>

@@ -145,12 +145,12 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
             <Button
               variant="primary"
               size="lg"
-              onClick={() => navigate({ name: "recherche" })}
+              onClick={() => navigate({ name: "tableau" })}
             >
-              Chercher dans le corpus
+              Entrer dans SOA
             </Button>
-            <Button variant="secondary" size="lg" onClick={() => navigate({ name: "reprise" })}>
-              Voir une reprise
+            <Button variant="secondary" size="lg" onClick={() => navigate({ name: "memoire" })}>
+              Explorer le corpus
               <ArrowUpRight aria-hidden className="size-4" />
             </Button>
           </motion.div>
@@ -258,7 +258,7 @@ function Bandeau() {
 
 function Piliers() {
   return (
-    <Section id="fonctionnalites" tone="background">
+    <Section id="probleme" tone="background">
       <SectionHead
         eyebrow="Pourquoi SOA"
         title={<>Assez d'idées abandonnées au fond d'un dossier.</>}
@@ -318,6 +318,92 @@ function Methode() {
   );
 }
 
+/**
+ * Le périmètre réel du produit.
+ *
+ * Le template de référence n'avait pas cette section, et c'est précisément ce
+ * qui lui manquait : il vendait « un copilote » sans jamais dire ce qu'on
+ * trouve dedans. Les cinq domaines ci-dessous sont ceux de AURA_cadrage.md,
+ * dans son ordre, avec le nombre de modules réels. Un visiteur doit pouvoir
+ * mesurer l'étendue du produit avant d'entrer.
+ */
+const DOMAINES_PRODUIT = [
+  {
+    titre: "Projets",
+    corps:
+      "Idée, en cours, en pause, abandonné, terminé. Avec le journal horodaté des décisions, des erreurs et des solutions.",
+    modules: "M1 – M3 · M19",
+  },
+  {
+    titre: "Mémoire IA",
+    corps:
+      "Le corpus de l'école, cherchable par problème résolu. Résumé de projet, capsule de reprise, renaissance des projets arrêtés.",
+    modules: "M4 – M7 · M15",
+  },
+  {
+    titre: "Communauté",
+    corps:
+      "Forum par domaine, compagnons de progression, challenges, validation d'idée, mentorat par les alumni.",
+    modules: "M8 – M10 · M14 · M18",
+  },
+  {
+    titre: "Reconnaissance",
+    corps:
+      "Portfolio généré à partir des projets livrés, présentation de projet, badges et classements — volontairement à l'écart du chemin de travail.",
+    modules: "M11 · M12 · M16 · M17 · M20",
+  },
+  {
+    titre: "Entreprises",
+    corps:
+      "Recrutement sur preuves, fiabilité projet, talent discovery, challenges sponsorisés, marketplace de prototypes.",
+    modules: "M13 · E1 – E10",
+  },
+] as const;
+
+function Perimetre() {
+  return (
+    <Section tone="background">
+      <SectionHead
+        eyebrow="Le périmètre"
+        title={<>Cinq domaines, trente et un modules.</>}
+        lede="SOA n'est pas un outil de plus à ouvrir le matin. C'est l'endroit où un projet étudiant naît, avance, s'arrête, reprend — et finit par servir à quelqu'un d'autre."
+      />
+
+      <ul className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {DOMAINES_PRODUIT.map(({ titre, corps, modules }) => (
+          <li key={titre}>
+            <Surface tone="card" padding="lg" className="flex h-full flex-col gap-3">
+              <span className="label-eyebrow">{modules}</span>
+              <h3 className="font-heading text-heading text-ink">{titre}</h3>
+              <p className="text-body text-ink-muted">{corps}</p>
+            </Surface>
+          </li>
+        ))}
+
+        {/* La sixième carte n'est pas un module : c'est la contrainte que le
+            cadrage pose sur les cinq autres. Elle mérite le même rang. */}
+        <li>
+          <Surface
+            tone="card"
+            padding="lg"
+            className="flex h-full flex-col gap-3 border-accent bg-accent-soft"
+          >
+            <span className="label-eyebrow text-on-accent">La règle</span>
+            <h3 className="font-heading text-heading text-on-accent">
+              L'entreprise arrive après
+            </h3>
+            <p className="text-body text-on-accent/80">
+              Aucune offre, aucun recruteur, aucun score de fiabilité n'apparaît
+              dans le parcours d'un étudiant tant qu'il n'a pas terminé ou repris
+              un projet. C'est écrit dans le cadrage, et c'est appliqué.
+            </p>
+          </Surface>
+        </li>
+      </ul>
+    </Section>
+  );
+}
+
 function Lettre() {
   return (
     <Section tone="ink">
@@ -347,7 +433,7 @@ function Dashboard({ navigate }: { navigate: (to: Route) => void }) {
             title={<>Ce qui a déjà été compris, ici.</>}
             lede="Les mémoires et les projets de l'école — terminés comme arrêtés — deviennent consultables. Pas le code brut : le raisonnement, les choix, les impasses."
           />
-          <Button variant="primary" onClick={() => navigate({ name: "recherche" })}>
+          <Button variant="primary" onClick={() => navigate({ name: "memoire" })}>
             <Search aria-hidden className="size-4" />
             Ouvrir la recherche
           </Button>
@@ -461,7 +547,7 @@ function AppelFinal({ navigate }: { navigate: (to: Route) => void }) {
         <Button
           variant="secondary"
           size="lg"
-          onClick={() => navigate({ name: "recherche" })}
+          onClick={() => navigate({ name: "memoire" })}
         >
           Commencer
           <ArrowUpRight aria-hidden className="size-4" />
@@ -501,6 +587,7 @@ export function LandingScreen({ navigate }: { navigate: (to: Route) => void }) {
       <Bandeau />
       <Piliers />
       <Methode />
+      <Perimetre />
       <Lettre />
       <Dashboard navigate={navigate} />
       <Faq />

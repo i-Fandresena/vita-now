@@ -1,159 +1,137 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { Clock, Search } from "lucide-react";
 
-import { useRepository } from "@/app/repository";
 import type { Route } from "@/app/router";
 import { useSearch } from "@/app/search-store";
-import type { ResumptionCapsule } from "@/domain/types";
+import { useSoa } from "@/app/soa-store";
+import { joursDepuis } from "@/domain/soa";
 import { EASE } from "@/lib/motion";
 import { Button } from "@/ui/Button";
-import { ArchiveLabel, EditorialLayout, Rail, RailItem, Rule } from "@/ui/Editorial";
-import { Surface } from "@/ui/Surface";
-import { EmptyState, FragmentSkeleton } from "@/ui/states";
+import { Screen, ScreenHead } from "@/ui/layout";
+import { EmptyState } from "@/ui/states";
 
 /**
- * Écran 3 — Capsule de reprise.
+ * M6 — Capsule de reprise.
  *
- * Raisonnement UX
- * ───────────────
- * C'est l'écran le plus facile à rater, parce que tout l'instinct produit pousse
- * à motiver. SPEC.md §2 l'interdit : la capsule est « silencieuse, non
- * culpabilisante, sans notion de streak ».
+ * C'est l'écran le plus facile à rater, parce que tout l'instinct produit
+ * pousse à motiver. Le cadrage l'interdit dans les termes de la lettre : « pas
+ * de streak à casser, pas de score, pas de niveau suivant ». Ce que cela
+ * impose concrètement :
  *
- * Ce que cela impose concrètement :
+ *   · La durée d'absence est écrite **une fois**, au même rang qu'une date de
+ *     publication. « 4 jours » est un fait ; « déjà 4 jours ! » est un reproche.
+ *   · Aucune phrase ne s'adresse à la volonté du lecteur. L'écran décrit l'état
+ *     d'un projet, pas l'état d'une personne.
+ *   · Une seule action, minuscule par construction : 5 à 10 minutes. Proposer
+ *     « reprendre le projet » remettrait devant les yeux la montagne qui a fait
+ *     abandonner.
  *
- * · La durée d'absence est écrite une fois, en petit, dans le rail — au même
- *   niveau qu'une date de publication. Elle n'est ni en gros caractères, ni
- *   accompagnée d'un adverbe. « 4 jours » est un fait ; « déjà 4 jours ! » est
- *   un reproche.
- * · Aucune phrase ne s'adresse à la volonté du lecteur. L'écran décrit un état
- *   du projet, pas un état de la personne.
- * · Une seule action, et elle est minuscule par construction : 5 à 10 minutes
- *   (SPEC.md §4). Proposer « reprendre le projet » remettrait devant les
- *   yeux la montagne qui a fait abandonner.
- *
- * Le second bouton renvoie le blocage vers le corpus. C'est la jonction des deux
- * mécaniques du produit : ce qui bloque ici a déjà été résolu ailleurs.
+ * La capsule vient du store, qui la **dérive du journal** — la dernière
+ * solution dit où on en était, la dernière erreur dit ce qui bloquait. Rien
+ * n'est demandé à l'étudiant : s'il fallait remplir un formulaire pour obtenir
+ * sa capsule, personne ne l'aurait.
  */
 
-const DAY = 86_400_000;
-
-function formatAbsence(iso: string): string {
-  const days = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / DAY));
-  if (days === 0) return "aujourd’hui";
-  if (days === 1) return "il y a 1 jour";
-  return `il y a ${days} jours`;
-}
-
 export function CapsuleScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const repository = useRepository();
+  const { capsule } = useSoa();
   const { run } = useSearch();
   const reduced = useReducedMotion() ?? false;
-  const [capsule, setCapsule] = useState<ResumptionCapsule | null | "chargement">(
-    "chargement",
-  );
-
-  useEffect(() => {
-    let alive = true;
-    repository.capsuleForCurrentProject().then((found) => {
-      if (alive) setCapsule(found);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [repository]);
-
-  if (capsule === "chargement") {
-    return (
-      <div className="py-16">
-        <FragmentSkeleton />
-      </div>
-    );
-  }
 
   if (!capsule) {
     return (
-      <EmptyState
-        title="Aucun projet en sommeil"
-        body="SOA ne génère une capsule que lorsqu’un travail s’est arrêté. Rien à reprendre pour le moment."
-      />
+      <Screen>
+        <EmptyState
+          title="Aucun projet en sommeil"
+          body="SOA ne génère une capsule que lorsqu'un travail s'est arrêté. Rien à reprendre pour le moment."
+          action={
+            <Button variant="secondary" onClick={() => navigate({ name: "projets" })}>
+              Voir mes projets
+            </Button>
+          }
+        />
+      </Screen>
     );
   }
 
-  const stage = (index: number) => ({
+  const jours = joursDepuis(capsule.lastActivity);
+
+  const etape = (index: number) => ({
     initial: reduced ? { opacity: 0 } : { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     transition: reduced
       ? { duration: 0.2 }
-      : { duration: 0.45, delay: index * 0.06, ease: EASE.outExpo },
+      : { duration: 0.45, delay: index * 0.07, ease: EASE.outExpo },
   });
 
   return (
-    <div className="pb-24 pt-14">
-      <motion.h1
-        {...stage(0)}
-        className="max-w-[20ch] font-display text-display-2 text-ink"
+    <Screen>
+      <ScreenHead
+        eyebrow="Reprise"
+        titre={capsule.projectTitle}
+        retour={{ name: "tableau" }}
+        onRetour={navigate}
+      />
+
+      <motion.p
+        {...etape(0)}
+        className="mt-4 flex items-center gap-2 text-caption text-ink-muted"
       >
-        {capsule.projectTitle}
-      </motion.h1>
+        <Clock aria-hidden className="size-3.5" />
+        Dernière activité il y a {jours} jour{jours > 1 ? "s" : ""}
+      </motion.p>
 
-      <motion.div {...stage(1)} className="mt-12">
-        <EditorialLayout
-          rail={
-            <Rail>
-              <RailItem label="Dernière activité">
-                {formatAbsence(capsule.lastActivity)}
-              </RailItem>
-              <RailItem label="Capsule">générée automatiquement</RailItem>
-            </Rail>
-          }
+      <div className="mt-10 flex flex-col gap-8">
+        <motion.section {...etape(1)}>
+          <h2 className="label-eyebrow">Où tu en étais</h2>
+          <p className="prose-measure mt-3 text-body-lg text-ink">{capsule.where}</p>
+        </motion.section>
+
+        <motion.section {...etape(2)}>
+          <h2 className="label-eyebrow">Ce qui bloquait</h2>
+          <p className="prose-measure mt-3 text-body-lg text-ink">{capsule.blocking}</p>
+        </motion.section>
+
+        {/* Le micro-pas est le seul élément en relief de l'écran : c'est la
+            seule chose qu'on demande, et elle tient en sept minutes. */}
+        <motion.section
+          {...etape(3)}
+          className="rounded-card border border-primary/25 bg-primary-wash p-5 sm:p-6"
         >
-          <div className="flex flex-col gap-12">
-            <section>
-              <ArchiveLabel>Où tu en étais</ArchiveLabel>
-              <p className="mt-4 text-body-lg text-ink-muted">{capsule.where}</p>
-            </section>
+          <h2 className="label-eyebrow text-primary">
+            Le prochain pas — {capsule.nextStep.minutes} minutes
+          </h2>
+          <p className="prose-measure mt-3 text-body-lg text-ink">
+            {capsule.nextStep.action}
+          </p>
+          <p className="mt-3 text-caption text-ink-muted">
+            Rien de plus n'est attendu aujourd'hui.
+          </p>
+        </motion.section>
 
-            <section>
-              <ArchiveLabel>Ce qui bloquait</ArchiveLabel>
-              <p className="mt-4 text-body-lg text-ink-muted">{capsule.blocking}</p>
-            </section>
-
-            <Rule />
-
-            <section>
-              <ArchiveLabel>Le prochain pas</ArchiveLabel>
-              {/* Le micro-pas est le seul élément en relief de l'écran : c'est
-                  la seule chose qu'on demande, et elle tient en 7 minutes.
-                  `sunken` et non `card` : sur fond blanc, une carte blanche à
-                  ombre douce ne se détacherait pas — le creux, si. */}
-              <Surface tone="sunken" className="mt-4">
-                <p className="text-body-lg text-ink">{capsule.nextStep.action}</p>
-                <p className="mt-3 text-caption text-ink-muted">
-                  {capsule.nextStep.minutes} minutes. Rien de plus n’est attendu.
-                </p>
-              </Surface>
-            </section>
-
-            <section className="flex flex-col gap-4">
-              <p className="text-body text-ink-muted">
-                Ce blocage a peut-être déjà été résolu dans l’école.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    run(capsule.blocking);
-                    navigate({ name: "recherche" });
-                  }}
-                >
-                  Chercher ce blocage dans le corpus
-                </Button>
-              </div>
-            </section>
+        <motion.section {...etape(4)} className="flex flex-col gap-4">
+          <p className="text-body text-ink-muted">
+            Ce blocage a peut-être déjà été résolu dans l'école.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="primary"
+              onClick={() => {
+                run(capsule.blocking);
+                navigate({ name: "memoire" });
+              }}
+            >
+              <Search aria-hidden className="size-4" />
+              Chercher ce blocage dans le corpus
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => navigate({ name: "projet-journal", id: capsule.projectId })}
+            >
+              Ouvrir le journal
+            </Button>
           </div>
-        </EditorialLayout>
-      </motion.div>
-    </div>
+        </motion.section>
+      </div>
+    </Screen>
   );
 }

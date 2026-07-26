@@ -77,7 +77,7 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
         title="Ce fragment n’est plus dans le corpus"
         body="Le lien pointe vers un travail qui a été retiré de l’index."
         action={
-          <Button variant="secondary" onClick={() => navigate({ name: "recherche" })}>
+          <Button variant="secondary" onClick={() => navigate({ name: "memoire" })}>
             Revenir à la recherche
           </Button>
         }
@@ -106,10 +106,10 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
   return (
     <article className="pb-24 pt-10">
       <a
-        href={hrefFor({ name: "recherche" })}
+        href={hrefFor({ name: "memoire" })}
         onClick={(event) => {
           event.preventDefault();
-          navigate({ name: "recherche" });
+          navigate({ name: "memoire" });
         }}
         className="inline-flex items-center gap-2 rounded-sm text-caption text-ink-muted transition-colors duration-90 hover:text-ink"
       >

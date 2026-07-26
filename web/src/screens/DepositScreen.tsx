@@ -118,7 +118,7 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
           arrive.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Button variant="primary" onClick={() => navigate({ name: "recherche" })}>
+          <Button variant="primary" onClick={() => navigate({ name: "memoire" })}>
             Revenir à la recherche
           </Button>
           <Button
@@ -230,7 +230,7 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
           <Button type="submit" variant="primary" disabled={saving}>
             {saving ? "Dépôt en cours…" : "Déposer"}
           </Button>
-          <Button variant="ghost" onClick={() => navigate({ name: "recherche" })}>
+          <Button variant="ghost" onClick={() => navigate({ name: "memoire" })}>
             Annuler
           </Button>
         </div>
