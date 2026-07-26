@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+
+# Une nouvelle poussée annule la vérification en cours sur la même branche :
+# valider un commit déjà remplacé ne renseigne sur rien et occupe la file.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  front:
+    name: Front — typecheck et build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      # `npm run build` enchaîne `tsc` puis `vite build` : le typage strict est
+      # donc couvert, et l'échec de l'un fait échouer l'étape.
+      - run: npm run build
+        working-directory: web
+
+  api:
+    name: API — typecheck et schéma
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vitanow_ci
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports: ['5432:5432']
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+        working-directory: server
+      - run: npm run typecheck
+        working-directory: server
+
+      # Le schéma est joué pour de vrai. C'est ce qui a déjà rattrapé une
+      # colonne générée non immuable que le typage ne pouvait pas voir.
+      - name: Schéma et corpus sur PostgreSQL 16
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d vitanow_ci -v ON_ERROR_STOP=1 \
+               -f server/migrations/001_schema.sql
+          psql -h localhost -U postgres -d vitanow_ci -v ON_ERROR_STOP=1 \
+               -f server/migrations/002_seed.sql
+
+      - name: L'API démarre et répond
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/vitanow_ci
+          COOKIE_SECRET: secret-de-ci-non-destine-a-la-production
+          PORT: '3000'
+        working-directory: server
+        run: |
+          npm run build
+          node dist/index.js &
+          for i in $(seq 1 15); do
+            curl -fsS http://127.0.0.1:3000/api/sante && break
+            sleep 2
+          done
+          echo
+          # La recherche est vérifiée sans accents : c'est le cas qui casse
+          # si la configuration `fr` perd `unaccent`.
+          curl -fsS --get --data-urlencode 'q=deux appareils modifient la meme donnee' \
+               http://127.0.0.1:3000/api/fiches/recherche | head -c 200

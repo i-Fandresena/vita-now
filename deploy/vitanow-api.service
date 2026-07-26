@@ -1,0 +1,60 @@
+[Unit]
+Description=VITA'NOW — API
+Documentation=https://github.com/i-Fandresena/AuraPlusPlus
+# `Wants` et non `Requires` : si PostgreSQL tombe, l'API doit rester debout et
+# répondre 503 sur /api/sante. Avec `Requires`, systemd l'arrêterait aussi, et
+# le contrôle de santé ne répondrait plus du tout — on perdrait l'information
+# au moment précis où elle sert.
+Wants=postgresql.service
+After=network-online.target postgresql.service
+
+[Service]
+Type=simple
+User=vitanow
+Group=vitanow
+WorkingDirectory=/opt/vitanow/server
+
+Environment=NODE_ENV=production
+# Le fichier contient DATABASE_URL, COOKIE_SECRET et ANTHROPIC_API_KEY.
+# Droits attendus : 0600, propriétaire vitanow. Il n'est jamais versionné.
+EnvironmentFile=/opt/vitanow/server/.env
+
+ExecStart=/usr/bin/node dist/index.js
+
+# Redémarrage systématique, avec une temporisation : sans `RestartSec`, un
+# plantage au démarrage (base injoignable, .env absent) produirait une boucle
+# de redémarrage qui sature le journal et masque la cause réelle.
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Arrêt ordonné : index.ts intercepte SIGTERM, ferme Fastify puis le pool
+# PostgreSQL. Dix secondes suffisent largement ; au-delà, SIGKILL.
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# ── Confinement ──────────────────────────────────────────────────────────
+# L'API n'écrit aucun fichier : tout son état est en base. Le système de
+# fichiers peut donc lui être présenté en lecture seule intégrale.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+# Le service écoute sur 127.0.0.1 uniquement — nginx est son seul client.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vitanow-api
+
+[Install]
+WantedBy=multi-user.target
