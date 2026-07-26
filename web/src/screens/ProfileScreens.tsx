@@ -8,6 +8,8 @@ import {
   ListOrdered,
   Lock,
   RotateCcw,
+  Sparkles,
+  Trophy,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -391,68 +393,82 @@ export function ProfileScreen({
 
 /* ── M11 — Classements ──────────────────────────────────────────────────── */
 
-/** Les trois classements nommés par le cadrage, dans son ordre. */
+/** Les classements applicatifs. */
 const CLASSEMENTS: { cle: LeaderboardKind; libelle: string }[] = [
-  { cle: "academique", libelle: "Par catégorie" },
+  { cle: "meilleur-annee", libelle: "🏆 Meilleur de l'année" },
+  { cle: "academique", libelle: "Par domaine & secteur" },
   { cle: "progression", libelle: "Régularité" },
   { cle: "contribution", libelle: "Entraide" },
 ];
 
 export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { projects, journalFor } = useSoa();
-  const [type, setType] = useState<LeaderboardKind>("academique");
+  const { projects, journalFor, students } = useSoa();
+  const [type, setType] = useState<LeaderboardKind>("meilleur-annee");
 
   /**
-   * « Classements académiques (meilleur projet par catégorie) » — le premier
-   * des trois que nomme le cadrage, et le seul qui ne classe pas des personnes.
-   *
-   * C'est ce qui le rend acceptable : comparer des projets sur ce qu'ils ont
-   * produit (jalons franchis, décisions écrites) reste un fait vérifiable.
-   * Comparer des étudiants entre eux ne l'est jamais.
+   * Calcul automatique du score de performance d'un projet :
+   * - Projets terminés prioritaires (50 pts)
+   * - Jalons franchis (15 pts par jalon)
+   * - Volume et rigueur des entrées de journal (5 pts par entrée)
+   * - Nombre de technos maîtrisées associées (3 pts par techno)
    */
-  const parCategorie = useMemo(() => {
+  const calculScoreProjet = (p: (typeof projects)[0]) => {
+    const entrees = journalFor(p.id);
+    const jalons = entrees.filter((e) => e.jalon).length;
+    const estTermine = p.status === "Terminé" ? 50 : 0;
+    return estTermine + jalons * 15 + entrees.length * 5 + (p.technos?.length ?? 0) * 3;
+  };
+
+  /** Projets évalués et classés avec score global. */
+  const projetsEvalues = useMemo(() => {
+    return projects
+      .filter((p) => p.public)
+      .map((p) => {
+        const score = calculScoreProjet(p);
+        const entrees = journalFor(p.id);
+        const auteur = students.find((s) => s.id === p.ownerId) ?? studentById(p.ownerId);
+        return {
+          projet: p,
+          auteur,
+          score,
+          jalons: entrees.filter((e) => e.jalon).length,
+          entrees: entrees.length,
+          termine: p.status === "Terminé",
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [projects, journalFor, students]);
+
+  /** Meilleur projet de l'année (Le #1 absolu de la plateforme). */
+  const meilleurDeLannee = projetsEvalues[0];
+
+  /** Classement par Domaine / Secteur académique. */
+  const parDomaine = useMemo(() => {
     const categories = [...new Set(projects.map((p) => p.type))];
     return categories
       .map((categorie) => {
-        const classes = projects
-          .filter((p) => p.type === categorie && p.public)
-          .map((p) => {
-            const entrees = journalFor(p.id);
-            return {
-              projet: p,
-              auteur: studentById(p.ownerId),
-              jalons: entrees.filter((e) => e.jalon).length,
-              entrees: entrees.length,
-              termine: p.status === "Terminé",
-            };
-          })
-          .sort(
-            (a, b) =>
-              Number(b.termine) - Number(a.termine) ||
-              b.jalons - a.jalons ||
-              b.entrees - a.entrees,
-          );
-        return { categorie, classes };
+        const classes = projetsEvalues.filter((item) => item.projet.type === categorie);
+        return { categorie, classes, topProjet: classes[0] };
       })
       .filter((g) => g.classes.length > 0);
-  }, [projects, journalFor]);
+  }, [projects, projetsEvalues]);
 
   const lignes = [...RELIABILITY]
     .map((r) => ({
-      student: studentById(r.studentId)!,
+      student: students.find((s) => s.id === r.studentId) ?? studentById(r.studentId)!,
       valeur: type === "progression" ? r.regularite : r.entraide,
     }))
     .filter((l) => l.student)
     .sort((a, b) => b.valeur - a.valeur);
 
-  const actif = CLASSEMENTS.find((c) => c.cle === type)!;
+  const actif = CLASSEMENTS.find((c) => c.cle === type) ?? CLASSEMENTS[0]!;
 
   return (
     <Screen>
       <ScreenHead
-        eyebrow="M11"
-        titre="Classements"
-        lede="Le cadrage les demande. La lettre de Soa dit qu'ils n'ont jamais suffi. Ils sont donc ici, et seulement ici."
+        eyebrow="M11 — Talent & Innovation"
+        titre="Classements & Prix"
+        lede="Sélection automatique du meilleur projet par domaine, par secteur et du grand lauréat de l'année."
         retour={{ name: "profil" }}
         onRetour={navigate}
       />
@@ -464,12 +480,106 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
         className="mt-6"
       />
 
-      {type === "academique" ? (
+      {/* ── Vue : Meilleur de l'année ─────────────────────────────────────── */}
+      {type === "meilleur-annee" && meilleurDeLannee && (
+        <div className="mt-6 flex flex-col gap-6">
+          <div className="relative overflow-hidden rounded-card border-2 border-primary bg-primary-wash p-6 sm:p-8">
+            <div className="absolute -right-6 -top-6 grid size-32 place-items-center rounded-full bg-primary/10 text-primary">
+              <Trophy className="size-20 opacity-30" />
+            </div>
+
+            <div className="relative z-10 flex flex-col gap-4">
+              <div className="flex items-center gap-2 text-primary font-semibold text-caption uppercase tracking-wider">
+                <Sparkles className="size-4" />
+                Lauréat du Grand Prix VITA'NOW 2026
+              </div>
+
+              <div>
+                <h2 className="font-display text-display-3 text-ink sm:text-display-2">
+                  {meilleurDeLannee.projet.nom}
+                </h2>
+                <p className="mt-2 text-body text-ink-muted max-w-2xl">
+                  {meilleurDeLannee.projet.description}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Avatar
+                  initiales={meilleurDeLannee.auteur?.initiales ?? "??"}
+                  nom={meilleurDeLannee.auteur?.nom ?? "Étudiant"}
+                  taille="sm"
+                />
+                <div>
+                  <p className="text-body font-medium text-ink">
+                    {meilleurDeLannee.auteur?.nom}
+                  </p>
+                  <p className="text-caption text-ink-muted">
+                    {meilleurDeLannee.auteur?.niveau} · {meilleurDeLannee.auteur?.filiere}
+                  </p>
+                </div>
+                <div className="ml-auto flex items-center gap-3">
+                  <Chip tone="primary">{meilleurDeLannee.projet.type}</Chip>
+                  <span className="font-display text-title text-primary">
+                    {meilleurDeLannee.score} pts
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                variant="primary"
+                className="mt-2 w-fit"
+                onClick={() => navigate({ name: "projet", id: meilleurDeLannee.projet.id })}
+              >
+                Consulter le projet lauréat
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-card border border-border bg-card p-5">
+            <h3 className="font-heading text-heading text-ink mb-4">
+              Top 3 du classement général
+            </h3>
+            <ol className="flex flex-col gap-3">
+              {projetsEvalues.slice(0, 3).map((item, idx) => (
+                <li
+                  key={item.projet.id}
+                  className="flex items-center gap-4 rounded-sm border border-border bg-surface p-4"
+                >
+                  <span className="grid size-8 place-items-center rounded-full bg-primary-wash font-display text-heading text-primary shrink-0">
+                    #{idx + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-body text-ink truncate">
+                      {item.projet.nom}
+                    </p>
+                    <p className="text-caption text-ink-muted">
+                      Par {item.auteur?.nom} · {item.jalons} jalons · {item.entrees} entrées
+                    </p>
+                  </div>
+                  <span className="font-semibold text-body text-ink">
+                    {item.score} pts
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      )}
+
+      {/* ── Vue : Par domaine & secteur ───────────────────────────────────── */}
+      {type === "academique" && (
         <div className="mt-6 flex flex-col gap-8">
-          {parCategorie.map(({ categorie, classes }) => (
-            <section key={categorie}>
-              <h2 className="font-heading text-heading text-ink">{categorie}</h2>
-              <ol className="mt-3 flex flex-col gap-2">
+          {parDomaine.map(({ categorie, classes, topProjet }) => (
+            <section key={categorie} className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between">
+                <h2 className="font-heading text-heading text-ink">{categorie}</h2>
+                {topProjet && (
+                  <span className="text-caption text-primary font-medium flex items-center gap-1">
+                    <Trophy className="size-3.5" /> Top Secteur : {topProjet.projet.nom}
+                  </span>
+                )}
+              </div>
+              <ol className="flex flex-col gap-2">
                 {classes.map((c, index) => (
                   <li key={c.projet.id}>
                     <a
@@ -478,20 +588,40 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
                         e.preventDefault();
                         navigate({ name: "projet", id: c.projet.id });
                       }}
-                      className="flex items-center gap-4 rounded-card border border-border bg-card p-4 transition-colors duration-150 hover:border-border-strong"
+                      className={cn(
+                        "flex items-center gap-4 rounded-card border p-4 transition-colors duration-150",
+                        index === 0
+                          ? "border-primary/40 bg-primary-wash/50 hover:border-primary"
+                          : "border-border bg-card hover:border-border-strong",
+                      )}
                     >
-                      <span className="w-6 shrink-0 text-right font-display text-title tabular-nums text-ink-muted">
+                      <span
+                        className={cn(
+                          "grid size-7 place-items-center rounded-full text-caption font-bold tabular-nums shrink-0",
+                          index === 0
+                            ? "bg-primary text-on-primary"
+                            : "bg-surface text-ink-muted",
+                        )}
+                      >
                         {index + 1}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-body font-medium text-ink">
+                        <p className="truncate text-body font-medium text-ink flex items-center gap-2">
                           {c.projet.nom}
+                          {index === 0 && (
+                            <span className="text-caption text-primary font-semibold">
+                              🏆 N°1 {categorie}
+                            </span>
+                          )}
                         </p>
                         <p className="text-caption text-ink-muted">
                           {c.auteur?.nom} · {c.jalons} jalon{c.jalons > 1 ? "s" : ""} ·{" "}
                           {c.entrees} entrée{c.entrees > 1 ? "s" : ""}
                         </p>
                       </div>
+                      <span className="text-caption font-semibold text-ink shrink-0">
+                        {c.score} pts
+                      </span>
                       {c.termine && <Chip tone="success">Terminé</Chip>}
                     </a>
                   </li>
@@ -499,13 +629,11 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
               </ol>
             </section>
           ))}
-          <p className="rounded-card border border-border bg-surface p-4 text-caption text-ink-muted">
-            Ce classement compare des <strong className="text-ink">projets</strong>,
-            pas des personnes : jalons franchis et décisions écrites, deux faits
-            vérifiables dans le journal.
-          </p>
         </div>
-      ) : (
+      )}
+
+      {/* ── Vues : Régularité & Entraide ─────────────────────────────────── */}
+      {(type === "progression" || type === "contribution") && (
         <ol className="mt-6 flex flex-col gap-2">
           {lignes.map((l, index) => {
             const moi = l.student.id === CURRENT_STUDENT_ID;
@@ -524,8 +652,6 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
                       : "border-border bg-card hover:border-border-strong",
                   )}
                 >
-                  {/* Pas de podium, pas de médaille : un rang numéroté et rien
-                      de plus. Le premier n'a pas de couronne. */}
                   <span className="w-6 shrink-0 text-right font-display text-title tabular-nums text-ink-muted">
                     {index + 1}
                   </span>
@@ -540,7 +666,7 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
                     </p>
                   </div>
                   <span className="shrink-0 tabular-nums text-body font-semibold text-ink">
-                    {l.valeur}
+                    {l.valeur} pts
                   </span>
                 </a>
               </li>

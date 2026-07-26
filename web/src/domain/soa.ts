@@ -393,8 +393,8 @@ export interface PointEntry {
   date: string;
 }
 
-/** Les trois classements nommés par le cadrage. */
-export type LeaderboardKind = "academique" | "progression" | "contribution";
+/** Les classements de la plateforme. */
+export type LeaderboardKind = "academique" | "progression" | "contribution" | "meilleur-annee";
 
 export interface LeaderboardRow {
   studentId: string;
