@@ -121,12 +121,12 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
       </aside>
 
       {/* Colonne du formulaire */}
-      <div className="flex h-full flex-col justify-center overflow-y-auto px-6 py-4 sm:px-10 sm:py-6">
+      <div className="flex h-full flex-col items-center justify-center overflow-y-auto px-6 py-4 sm:px-10 sm:py-6">
         <motion.div
           variants={sequence(0.05)}
           initial="hidden"
           animate="visible"
-          className="my-auto flex w-full max-w-sm flex-col items-center gap-3 sm:gap-4 text-center"
+          className="my-auto mx-auto flex w-full max-w-sm flex-col items-center gap-3 sm:gap-4 text-center"
         >
           <motion.div variants={rise} className="flex items-center">
             {TROMBINOSCOPE.map((source, rang) => (

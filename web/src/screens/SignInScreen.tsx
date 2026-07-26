@@ -178,13 +178,13 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
 
   return (
     <div className="grid h-dvh min-h-dvh max-h-dvh overflow-hidden lg:grid-cols-2">
-      {/* Colonne du formulaire. Centré verticalement sans défilement */}
-      <div className="flex h-full flex-col justify-center overflow-y-auto px-6 py-6 sm:px-10">
+      {/* Colonne du formulaire. Centré verticalement et horizontalement sans défilement */}
+      <div className="flex h-full flex-col items-center justify-center overflow-y-auto px-6 py-6 sm:px-10">
         <motion.div
           variants={sequence(0.05)}
           initial="hidden"
           animate="visible"
-          className="my-auto flex w-full max-w-sm flex-col gap-5 sm:gap-6"
+          className="my-auto mx-auto flex w-full max-w-sm flex-col items-center gap-5 sm:gap-6 text-center"
         >
           <motion.a
             variants={rise}
@@ -193,12 +193,12 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
               event.preventDefault();
               navigate({ name: "accueil" });
             }}
-            className="flex items-center gap-2.5 self-start rounded-sm"
+            className="flex items-center gap-2.5 self-center rounded-sm"
           >
             <MascotteTournante />
           </motion.a>
 
-          <motion.div variants={rise} className="flex flex-col gap-1">
+          <motion.div variants={rise} className="flex flex-col gap-1 text-center">
             <h1 className="font-display text-display-3 text-ink">
               Connexion à VITA'NOW.
             </h1>
@@ -217,7 +217,7 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
             </p>
           </motion.div>
 
-          <motion.form variants={rise} onSubmit={soumettre} className="flex flex-col gap-4">
+          <motion.form variants={rise} onSubmit={soumettre} className="flex w-full flex-col gap-4 text-left">
             <Input
               label="Adresse e-mail"
               type="email"
@@ -255,13 +255,13 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
             </Button>
           </motion.form>
 
-          <motion.div variants={rise} className="flex items-center gap-4">
+          <motion.div variants={rise} className="flex w-full items-center gap-4">
             <span aria-hidden className="h-px flex-1 bg-border" />
             <span className="text-caption text-ink-muted">Ou continuer avec</span>
             <span aria-hidden className="h-px flex-1 bg-border" />
           </motion.div>
 
-          <motion.div variants={rise} className="grid grid-cols-2 gap-3">
+          <motion.div variants={rise} className="grid w-full grid-cols-2 gap-3">
             {FOURNISSEURS.map(({ nom, tracés }) => (
               <Button
                 key={nom}
