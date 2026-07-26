@@ -35,6 +35,23 @@ ALTER TEXT SEARCH CONFIGURATION fr
   ALTER MAPPING FOR hword, hword_part, word
   WITH unaccent, french_stem;
 
+-- Enveloppe immuable autour de `array_to_string`.
+--
+-- Une colonne générée exige une expression IMMUTABLE, et `array_to_string`
+-- est déclarée STABLE — non pas parce qu'elle dépend de quoi que ce soit,
+-- mais parce que sa signature est polymorphe (`anyarray`) : pour un type
+-- d'élément quelconque, la fonction de sortie pourrait ne pas être immuable.
+--
+-- Ici l'argument est concrètement `text[]`, et concaténer du texte avec un
+-- séparateur ne dépend d'aucun réglage de session. La déclarer IMMUTABLE est
+-- donc exact, et non un contournement : c'est la restriction du type qui
+-- rétablit la propriété que le polymorphisme avait fait perdre.
+CREATE OR REPLACE FUNCTION texte_liste(text[])
+  RETURNS text
+  LANGUAGE sql
+  IMMUTABLE STRICT PARALLEL SAFE
+AS $$ SELECT array_to_string($1, ' ') $$;
+
 -- ---------------------------------------------------------------------
 -- Domaines énumérés — repris à la lettre du cadrage
 -- ---------------------------------------------------------------------
@@ -245,7 +262,7 @@ CREATE TABLE fiches (
     setweight(to_tsvector('fr', coalesce(promesse, '')),     'B') ||
     setweight(to_tsvector('fr', coalesce(oeuvre, '')),       'C') ||
     setweight(to_tsvector('fr', coalesce(raisonnement, '')), 'D') ||
-    setweight(to_tsvector('fr', array_to_string(impasses, ' ')), 'D')
+    setweight(to_tsvector('fr', texte_liste(impasses)), 'D')
   ) STORED
 );
 CREATE INDEX fiches_recherche_idx ON fiches USING gin (recherche);
