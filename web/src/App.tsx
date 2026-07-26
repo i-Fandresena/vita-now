@@ -1,12 +1,12 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import type { ReactElement } from "react";
+import { useRef, type ReactElement } from "react";
 
 import { RepositoryProvider } from "./app/repository";
-import { routeKey, useRoute, type Route } from "./app/router";
+import { depthOf, routeKey, spaceOf, useRoute, type Route } from "./app/router";
 import { SearchProvider } from "./app/search-store";
 import { Shell } from "./app/Shell";
 import { SoaProvider } from "./app/soa-store";
-import { fade, reduceVariants } from "./lib/motion";
+import { EASE, fade, reduceVariants } from "./lib/motion";
 import {
   LoginScreen,
   ProfileEditScreen,
@@ -162,7 +162,43 @@ function CurrentScreen({
 function Screens() {
   const { route, navigate } = useRoute();
   const reduced = useReducedMotion() ?? false;
-  const variants = reduceVariants(fade, reduced);
+
+  /* La profondeur précédente donne sa **direction** à la transition : on entre
+     par la droite en s'enfonçant dans la hiérarchie, on sort vers la droite en
+     revenant. Sans elle, chaque changement de route est un fondu identique et
+     l'utilisateur perd le sens de son déplacement — un projet ouvert depuis la
+     liste et la liste retrouvée depuis le projet se ressemblent alors trait
+     pour trait.
+
+     La landing est exclue : elle occupe toute la page, et 22px de décalage
+     horizontal sur un héros pleine largeur se lisent comme un défaut de rendu,
+     pas comme une navigation. */
+  const profondeur = depthOf(route);
+  const precedente = useRef(profondeur);
+  const sens = profondeur >= precedente.current ? 1 : -1;
+  precedente.current = profondeur;
+  const marketing = spaceOf(route) === "public";
+
+  const variants =
+    reduced || marketing
+      ? reduceVariants(fade, true)
+      : {
+          hidden: { opacity: 0, x: sens * 22, filter: "blur(4px)" },
+          visible: {
+            opacity: 1,
+            x: 0,
+            filter: "blur(0px)",
+            transition: { duration: 0.28, ease: EASE.outExpo },
+          },
+          /* La sortie est plus courte que l'entrée : le système répond vite,
+             l'utilisateur décide lentement. */
+          exit: {
+            opacity: 0,
+            x: sens * -18,
+            filter: "blur(4px)",
+            transition: { duration: 0.18, ease: "linear" as const },
+          },
+        };
 
   return (
     <Shell route={route} navigate={navigate}>

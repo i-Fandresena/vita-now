@@ -1,5 +1,5 @@
 import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
-import type { HTMLAttributes, ReactNode } from "react";
+import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 import { REVEAL_VIEWPORT, reveal } from "@/lib/motion";
@@ -139,14 +139,12 @@ export function EditorialLayout({
  * observateur d'intersection, ce qui est la seule version dont on est certain
  * qu'elle s'affiche.
  */
-export function Section({
-  children,
-  tone = "background",
-  className,
-  ...props
-}: HTMLAttributes<HTMLElement> & {
-  tone?: "background" | "surface" | "ink" | "primary";
-}) {
+export const Section = forwardRef<
+  HTMLElement,
+  HTMLAttributes<HTMLElement> & {
+    tone?: "background" | "surface" | "ink" | "primary";
+  }
+>(function Section({ children, tone = "background", className, ...props }, ref) {
   const reduced = useReducedMotion() ?? false;
   const tones = {
     background: "bg-background",
@@ -161,7 +159,7 @@ export function Section({
 
   if (reduced) {
     return (
-      <section className={classes} {...props}>
+      <section ref={ref} className={classes} {...props}>
         <div className="page-measure">{children}</div>
       </section>
     );
@@ -169,6 +167,7 @@ export function Section({
 
   return (
     <motion.section
+      ref={ref}
       className={classes}
       variants={reveal}
       initial="hidden"
@@ -179,7 +178,7 @@ export function Section({
       <div className="page-measure">{children}</div>
     </motion.section>
   );
-}
+});
 
 /**
  * En-tête de section : étiquette, titre display, chapô.

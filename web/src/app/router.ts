@@ -270,6 +270,57 @@ export function routeKey(route: Route): string {
   return "id" in route && route.id ? `${route.name}:${route.id}` : route.name;
 }
 
+/**
+ * Profondeur d'un écran dans la hiérarchie.
+ *
+ * Elle sert à donner une **direction** à la transition : aller vers un écran
+ * plus profond entre par la droite, revenir sort vers la droite. Sans cette
+ * notion, chaque changement de route est un fondu identique, et l'utilisateur
+ * perd le sens du déplacement (`hierarchy-motion`, `navigation-direction`).
+ */
+const PROFONDEUR: Partial<Record<Route["name"], number>> = {
+  accueil: 0,
+  connexion: 1,
+  inscription: 2,
+  tableau: 1,
+  projets: 1,
+  memoire: 1,
+  communaute: 1,
+  profil: 1,
+  "ent-accueil": 1,
+  "univ-accueil": 1,
+  projet: 2,
+  "projet-nouveau": 2,
+  reprise: 2,
+  renaissance: 2,
+  fragment: 2,
+  depot: 2,
+  sujet: 2,
+  compagnons: 2,
+  challenges: 2,
+  idees: 2,
+  mentorat: 2,
+  notifications: 2,
+  classements: 2,
+  portfolio: 2,
+  opportunites: 2,
+  "profil-edition": 2,
+  "ent-talents": 2,
+  "ent-opportunites": 2,
+  "ent-challenges": 2,
+  "ent-marketplace": 2,
+  "projet-journal": 3,
+  "projet-presentation": 3,
+  "projet-depot": 3,
+  signal: 3,
+  challenge: 3,
+  "ent-talent": 3,
+};
+
+export function depthOf(route: Route): number {
+  return PROFONDEUR[route.name] ?? 1;
+}
+
 function subscribe(onChange: () => void): () => void {
   window.addEventListener("hashchange", onChange);
   return () => window.removeEventListener("hashchange", onChange);
