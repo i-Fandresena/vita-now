@@ -6,7 +6,7 @@ import { SealFallback } from "./SealFallback";
 /**
  * Seal — le portier de la 3D.
  *
- * PRODUCT.md:92 : « le produit ne doit jamais dépendre du 3D pour fonctionner
+ * SPEC.md §2 : « le produit ne doit jamais dépendre du 3D pour fonctionner
  * en démo — c'est un bonus, pas une fondation. » Ce composant applique cette
  * règle littéralement. Il y a quatre chemins vers le repli SVG :
  *

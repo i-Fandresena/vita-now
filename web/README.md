@@ -1,8 +1,18 @@
 # Aura++ — application web
 
-Interface du produit décrit par [PRODUCT.md](../PRODUCT.md) et
-[Product_2.0.md](../Product_2.0.md). Les décisions visuelles sont dans
-[DESIGN.md](../DESIGN.md) ; aucune n'est prise dans un composant.
+Interface du produit décrit par [AURA_cadrage.md](../AURA_cadrage.md), traduit en
+écrans par [SPEC.md](../SPEC.md).
+
+> **⚠️ Périmètre.** Ces 5 écrans ont été construits contre un cadrage antérieur
+> (archivé dans [docs/archive/](../docs/archive/)) et ne couvrent que 5 des 31
+> modules du cadrage — dont 3 partiellement. Voir [SPEC.md §4](../SPEC.md) pour la
+> couverture réelle et [BACKLOG.md](../BACKLOG.md) pour la suite.
+>
+> Les décisions visuelles actuelles sont documentées dans
+> [docs/archive/DESIGN.md](../docs/archive/DESIGN.md) : ce document ne fait plus
+> autorité, mais il reste la seule description exacte de ce qui tourne en ligne.
+> Les mêmes références apparaissent encore dans les commentaires des composants ;
+> elles seront réécrites lors de la refonte visuelle.
 
 ```bash
 npm install
@@ -65,7 +75,8 @@ une ligne de composant.
 ## La 3D
 
 Une seule scène, sur le seul écran « fragment retrouvé »
-([PRODUCT.md §5](../PRODUCT.md)). Chargée en `React.lazy`, préchargée dès qu'un
+([docs/archive/PRODUCT.md §5](../docs/archive/PRODUCT.md)). Chargée en
+`React.lazy`, préchargée dès qu'un
 résultat existe, et arrêtée (`frameloop="demand"`) sitôt le geste terminé.
 
 Repli SVG automatique dans quatre cas : WebGL absent,

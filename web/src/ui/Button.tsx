@@ -4,32 +4,38 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
 /**
- * Le bouton primaire est **os sur encre**, jamais braise.
- * La braise ne peut pas servir d'accent d'interface — DESIGN.md §3.3 la réserve
- * aux deux moments narratifs et au focus clavier. Un bouton coloré viderait
- * ce signal de son sens.
+ * DESIGN.md — l'indigo porte l'action, le jaune porte la réussite.
+ *
+ * Conséquence directe : **aucune variante de bouton n'est jaune.** Un bouton
+ * accent existerait au prix du signal : le jaune ne voudrait plus dire « c'est
+ * fait », il voudrait dire « c'est cliquable », et l'écran perdrait sa lecture
+ * immédiate. La célébration se fait avec des pastilles et des surlignages
+ * (`.mark-accent`), jamais avec une action.
  */
 const button = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
-    "rounded-control font-medium",
-    "transition-[background-color,border-color,color,opacity] duration-90 ease-out",
+    "rounded-full font-medium",
+    "transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out",
     "disabled:pointer-events-none disabled:opacity-40",
+    // Le template appuie ses boutons : un enfoncement de 1px au clic suffit à
+    // rendre la pression physique sans animer quoi que ce soit d'autre.
+    "active:translate-y-px",
   ],
   {
     variants: {
       variant: {
-        primary: "bg-bone text-canvas hover:bg-bone-2",
+        primary: "bg-primary text-on-primary shadow-card hover:bg-primary/90 hover:shadow-lift",
         secondary:
-          "bg-raised text-bone border border-line-soft lift hover:bg-hover hover:border-line-strong",
-        ghost: "text-bone-2 hover:bg-raised hover:text-bone",
-        quiet: "text-bone-3 hover:text-bone",
+          "bg-card text-ink border border-border shadow-card hover:border-border-strong hover:shadow-lift",
+        ghost: "text-ink-muted hover:bg-surface hover:text-ink",
+        quiet: "text-ink-muted underline-offset-4 hover:text-ink hover:underline",
       },
       size: {
-        sm: "h-8 px-3 text-caption",
-        md: "h-11 px-4 text-body",
-        lg: "h-12 px-6 text-body",
-        icon: "size-11",
+        sm: "h-9 px-4 text-caption",
+        md: "h-11 px-5 text-body",
+        lg: "h-13 px-7 text-body-lg",
+        icon: "size-11 rounded-full px-0",
       },
     },
     defaultVariants: { variant: "secondary", size: "md" },

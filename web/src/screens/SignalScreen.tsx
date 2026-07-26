@@ -14,8 +14,8 @@ import { ErrorState } from "@/ui/states";
  *
  * Raisonnement UX
  * ───────────────
- * PRODUCT.md:76 : « c'est l'instant émotionnel central de toute la démo ».
- * PRODUCT.md:27 : c'est aussi le seul signal de progression du produit, et il
+ * SPEC.md §2 : « c'est l'instant émotionnel central de toute la démo ».
+ * SPEC.md §2 : c'est aussi le seul signal de progression du produit, et il
  * n'est « ni un score ni une compétition ».
  *
  * Ces deux phrases sont en tension apparente : comment rendre mémorable
@@ -100,9 +100,9 @@ export function SignalScreen({
 
       <motion.h1
         {...step(0.4)}
-        className="mt-8 max-w-[16ch] text-balance font-display text-display-1 font-light text-bone"
+        className="mt-8 max-w-[16ch] text-balance font-display text-display-1 text-ink"
       >
-        Ce que vous aviez compris vient de débloquer quelqu’un.
+        Ce que tu avais compris vient de débloquer quelqu’un.
       </motion.h1>
 
       {/* Pleine largeur : le seul élément du produit qui sort de la mesure de
@@ -111,9 +111,9 @@ export function SignalScreen({
         aria-hidden
         className="relative left-1/2 my-16 w-screen -translate-x-1/2 overflow-hidden"
       >
-        <div className="h-px w-full bg-line-faint" />
+        <div className="h-px w-full bg-border" />
         <motion.div
-          className="absolute inset-x-0 top-0 h-px origin-left bg-ember"
+          className="absolute inset-x-0 top-0 h-px origin-left bg-primary"
           initial={{ scaleX: 0, opacity: 0 }}
           animate={
             reduced
@@ -143,7 +143,7 @@ export function SignalScreen({
           <dt>
             <ArchiveLabel>Le fragment</ArchiveLabel>
           </dt>
-          <dd className="max-w-[36ch] text-body-lg text-bone-2">
+          <dd className="max-w-[36ch] text-body-lg text-ink-muted">
             {signal.fragmentTitle}
           </dd>
         </div>
@@ -152,22 +152,22 @@ export function SignalScreen({
           <dt>
             <ArchiveLabel>A servi sur</ArchiveLabel>
           </dt>
-          <dd className="max-w-[36ch] text-body-lg text-bone-2">{signal.helpedWith}</dd>
+          <dd className="max-w-[36ch] text-body-lg text-ink-muted">{signal.helpedWith}</dd>
         </div>
 
         <div className="flex flex-col gap-2">
           <dt>
             <ArchiveLabel>Le</ArchiveLabel>
           </dt>
-          <dd className="text-body text-bone-3">{formatMoment(signal.helpedAt)}</dd>
+          <dd className="text-body text-ink-muted">{formatMoment(signal.helpedAt)}</dd>
         </div>
       </motion.dl>
 
       <motion.p
         {...step(1.5)}
-        className="prose-measure mt-20 text-body text-bone-3"
+        className="prose-measure mt-20 text-body text-ink-muted"
       >
-        Aura++ ne dira ni combien de fois, ni à quel rang, ni comparé à qui.
+        SOA ne dira ni combien de fois, ni à quel rang, ni comparé à qui.
         Seulement que c’est arrivé.
       </motion.p>
 

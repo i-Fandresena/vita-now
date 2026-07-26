@@ -1,7 +1,7 @@
 import type { Transition, Variants } from "framer-motion";
 
 /**
- * motion.ts — le vocabulaire de mouvement du produit (DESIGN.md §5).
+ * motion.ts — le vocabulaire de mouvement du produit (DESIGN.md).
  *
  * Système à deux niveaux :
  *
@@ -25,7 +25,7 @@ export const EASE = {
 } as const;
 
 export const DURATION = {
-  /** Niveau fonctionnel — plafonné à 200 ms par DESIGN.md §5.2. */
+  /** Niveau fonctionnel — plafonné à 200 ms par DESIGN.md. */
   enter: 0.14,
   exit: 0.1,
   hover: 0.09,
@@ -86,7 +86,7 @@ export const sequence = (stagger = 0.035): Variants => ({
 /* ── Accessibilité ──────────────────────────────────────────────────────── */
 
 /**
- * DESIGN.md §5.4 : sous `prefers-reduced-motion`, le niveau fonctionnel tombe
+ * DESIGN.md : sous `prefers-reduced-motion`, le niveau fonctionnel tombe
  * à zéro et le niveau narratif se dégrade en fondu. Le récit reste lisible
  * sans mouvement — il ne disparaît pas.
  */

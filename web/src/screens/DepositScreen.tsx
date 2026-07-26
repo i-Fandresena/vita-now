@@ -15,8 +15,8 @@ import { ArchiveLabel, Rule } from "@/ui/Editorial";
  *
  * Raisonnement UX
  * ───────────────
- * C'est ici que Aura++ se sépare le plus nettement d'un GitHub ou d'un Notion,
- * refusés par Product_2.0.md:12. Ces outils demandent un livrable. Cet écran
+ * C'est ici que SOA se sépare le plus nettement d'un GitHub ou d'un Notion,
+ * refusés par SPEC.md §4. Ces outils demandent un livrable. Cet écran
  * demande autre chose : **ce qui a été compris**, et surtout **ce qui a été
  * essayé pour rien**.
  *
@@ -45,7 +45,7 @@ function ChoiceGroup<T extends string>({
 }) {
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="label-archive mb-2">{label}</legend>
+      <legend className="label-eyebrow mb-2">{label}</legend>
       <div className="flex gap-2" role="radiogroup" aria-label={label}>
         {options.map((option) => {
           const active = option === value;
@@ -57,10 +57,10 @@ function ChoiceGroup<T extends string>({
               aria-checked={active}
               onClick={() => onChange(option)}
               className={cn(
-                "h-11 rounded-control border px-4 text-body transition-colors duration-90",
+                "h-11 rounded-full border px-5 text-body transition-colors duration-150",
                 active
-                  ? "border-line-strong bg-raised text-bone lift"
-                  : "border-line-soft text-bone-3 hover:text-bone",
+                  ? "border-primary bg-primary-wash font-medium text-primary"
+                  : "border-border text-ink-muted hover:border-border-strong hover:text-ink",
               )}
             >
               {option}
@@ -109,12 +109,12 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
         className="prose-measure flex flex-col gap-6 py-24"
       >
         <Rule />
-        <h1 className="font-display text-display-2 font-normal text-bone">
+        <h1 className="font-display text-display-2 text-ink">
           C’est dans le corpus.
         </h1>
-        <p className="text-body-lg text-bone-2">
-          Ce que vous venez d’écrire est désormais atteignable par quelqu’un qui
-          posera la bonne question. Vous ne saurez pas quand — seulement si cela
+        <p className="text-body-lg text-ink-muted">
+          Ce que tu viens d’écrire est désormais atteignable par quelqu’un qui
+          posera la bonne question. Tu ne sauras pas quand — seulement si cela
           arrive.
         </p>
         <div className="flex flex-wrap gap-3">
@@ -141,10 +141,10 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
   return (
     <div className="pb-24 pt-14">
       <div className="prose-measure">
-        <h1 className="font-display text-display-2 font-normal text-bone">
-          Déposer ce que vous avez compris
+        <h1 className="font-display text-display-2 text-ink">
+          Déposer ce que tu as compris
         </h1>
-        <p className="mt-5 text-body-lg text-bone-2">
+        <p className="mt-5 text-body-lg text-ink-muted">
           Pas le livrable. Le raisonnement, les décisions, et les chemins qui
           n’ont mené nulle part — c’est cette dernière partie qui fait gagner du
           temps à celui qui suivra.
@@ -178,8 +178,8 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
           value={reasoning}
           onChange={(event) => setReasoning(event.target.value)}
           rows={8}
-          placeholder="Quel était le vrai problème ? Qu’avez-vous décidé, et pourquoi ?"
-          hint="Écrivez comme vous l’expliqueriez à quelqu’un de votre promotion."
+          placeholder="Quel était le vrai problème ? Qu’as-tu décidé, et pourquoi ?"
+          hint="Écris comme tu l’expliquerais à quelqu’un de ta promotion."
           required
         />
 
@@ -187,8 +187,8 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
           <legend className="mb-1">
             <ArchiveLabel>Les impasses</ArchiveLabel>
           </legend>
-          <p className="mb-2 text-caption text-bone-3">
-            Ce que vous avez essayé et qui n’a pas marché. La partie la plus utile.
+          <p className="mb-2 text-caption text-ink-muted">
+            Ce que tu as essayé et qui n’a pas marché. La partie la plus utile.
           </p>
 
           {deadEnds.map((entry, index) => (
@@ -202,7 +202,7 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
               }}
               aria-label={`Impasse ${index + 1}`}
               placeholder="Trois semaines sur une piste qui ne pouvait pas aboutir parce que…"
-              className="h-11 w-full rounded-control border border-line-soft bg-raised px-3 text-body text-bone placeholder:text-bone-4 lift transition-colors duration-90 hover:border-line-strong"
+              className="h-11 w-full rounded-sm border border-border bg-surface px-3 text-body text-ink placeholder:text-ink-muted transition-colors duration-90 hover:border-border-strong"
             />
           ))}
 
@@ -219,7 +219,7 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
         </fieldset>
 
         {error && (
-          <p role="alert" className="border-l border-line-rule pl-3 text-caption text-bone">
+          <p role="alert" className="border-l border-border pl-3 text-caption text-ink">
             {error}
           </p>
         )}

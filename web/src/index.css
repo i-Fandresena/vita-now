@@ -1,15 +1,17 @@
 /**
- * Polices auto-hébergées — Product_2.0.md interdit toute dépendance Internet
- * critique en démo. Aucun <link> vers Google Fonts.
+ * Polices auto-hébergées — la démo ne doit dépendre d'aucune requête réseau.
+ * Aucun <link> vers Google Fonts, contrairement au template de référence.
+ *
+ * Les quatre familles de DESIGN.md §2.2. Fontsource découpe chaque famille par
+ * `unicode-range` : le navigateur ne télécharge que le latin réellement utilisé.
  */
-/* Fontsource découpe chaque famille par `unicode-range` : le navigateur ne
-   télécharge que les sous-ensembles réellement utilisés, ici le latin. */
-@import "@fontsource-variable/inter/wght.css";
-/* Newsreader est distribué par axe, pas par sous-ensemble. `opsz` porte les
-   deux axes (graisse 200–800 + taille optique) : à 56px le serif est dessiné
-   pour être grand, à 22px pour être lu. Les `unicode-range` du fichier font que
-   le navigateur ne télécharge que le latin. */
-@import "@fontsource-variable/newsreader/opsz.css";
+
+/* Display — une seule graisse existe pour Anton, c'est le propos de la fonte. */
+@import "@fontsource/anton/latin-400.css";
+@import "@fontsource/bebas-neue/latin-400.css";
+@import "@fontsource-variable/dm-sans/wght.css";
+@import "@fontsource-variable/caveat/wght.css";
+/* Conservée pour les métadonnées techniques (identifiants, extraits cités). */
 @import "@fontsource-variable/jetbrains-mono/wght.css";
 
 @import "tailwindcss";
@@ -17,5 +19,4 @@
 @import "./styles/theme.css";
 @import "./styles/base.css";
 
-/* Le produit n'a qu'un thème (DESIGN.md §3) : pas de variante claire à générer. */
 @variant dark (&:where(.dark, .dark *));

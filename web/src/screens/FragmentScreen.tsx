@@ -30,7 +30,7 @@ import { ErrorState, FragmentSkeleton } from "@/ui/states";
  *   et c'est délibéré : ce qui fait gagner du temps à celui qui suit, ce n'est
  *   pas ce qui a marché, c'est ce qui a été essayé pour rien.
  *
- * · L'extrait de code est en dernier, en creux, sous-titré. PRODUCT.md:25
+ * · L'extrait de code est en dernier, en creux, sous-titré. SPEC.md §2
  *   interdit de mettre le code brut en avant. Il illustre le raisonnement,
  *   il ne le remplace pas — et rien n'invite à le copier.
  *
@@ -111,7 +111,7 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
           event.preventDefault();
           navigate({ name: "recherche" });
         }}
-        className="inline-flex items-center gap-2 rounded-control text-caption text-bone-3 transition-colors duration-90 hover:text-bone"
+        className="inline-flex items-center gap-2 rounded-sm text-caption text-ink-muted transition-colors duration-90 hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-3.5" strokeWidth={1.5} />
         Résultats
@@ -128,7 +128,7 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
 
       <motion.h1
         {...stage(0)}
-        className="mt-8 max-w-[22ch] text-balance font-display text-display-2 font-normal text-bone lg:max-w-[26ch]"
+        className="mt-8 max-w-[22ch] text-balance font-display text-display-2 text-ink lg:max-w-[26ch]"
       >
         {fragment.title}
       </motion.h1>
@@ -144,7 +144,7 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
               <RailItem label="État">{fragment.origin.status}</RailItem>
               <RailItem label="Auteur">
                 {fragment.author.name}
-                <span className="block text-bone-4">
+                <span className="block text-ink-muted">
                   promotion {fragment.author.cohort}
                 </span>
               </RailItem>
@@ -156,7 +156,7 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
               <ArchiveLabel>Le raisonnement</ArchiveLabel>
               <div className="mt-4 flex flex-col gap-5">
                 {fragment.reasoning.split("\n\n").map((paragraph, index) => (
-                  <p key={index} className="text-body-lg text-bone-2">
+                  <p key={index} className="text-body-lg text-ink-muted">
                     {paragraph}
                   </p>
                 ))}
@@ -169,8 +169,8 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
                 <ul className="mt-4 flex flex-col gap-6">
                   {fragment.choices.map((choice) => (
                     <li key={choice.decision}>
-                      <p className="text-body font-medium text-bone">{choice.decision}</p>
-                      <p className="mt-1.5 text-body text-bone-3">{choice.rationale}</p>
+                      <p className="text-body font-medium text-ink">{choice.decision}</p>
+                      <p className="mt-1.5 text-body text-ink-muted">{choice.rationale}</p>
                     </li>
                   ))}
                 </ul>
@@ -182,9 +182,9 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
                 <ArchiveLabel>Les impasses</ArchiveLabel>
                 {/* Filet vertical : ce bloc est une mise en garde adressée à
                     celui qui lit, pas un inventaire. */}
-                <ul className="mt-4 flex flex-col gap-5 border-l border-line-soft pl-6">
+                <ul className="mt-4 flex flex-col gap-5 border-l border-border pl-6">
                   {fragment.deadEnds.map((entry) => (
-                    <li key={entry} className="text-body text-bone-2">
+                    <li key={entry} className="text-body text-ink-muted">
                       {entry}
                     </li>
                   ))}
@@ -197,7 +197,7 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
                 <ArchiveLabel>Les pistes</ArchiveLabel>
                 <ul className="mt-4 flex flex-col gap-4">
                   {fragment.leads.map((lead) => (
-                    <li key={lead} className="text-body text-bone-2">
+                    <li key={lead} className="text-body text-ink-muted">
                       {lead}
                     </li>
                   ))}
@@ -209,11 +209,11 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
               <section>
                 <ArchiveLabel>Extrait cité</ArchiveLabel>
                 <Surface tone="sunken" padding="sm" className="mt-4 overflow-x-auto">
-                  <pre className="font-mono text-caption leading-relaxed text-bone-2">
+                  <pre className="font-mono text-caption leading-relaxed text-ink-muted">
                     <code>{fragment.excerpt.code}</code>
                   </pre>
                 </Surface>
-                <p className="mt-3 text-caption text-bone-4">
+                <p className="mt-3 text-caption text-ink-muted">
                   {fragment.excerpt.caption}
                 </p>
               </section>
@@ -222,9 +222,9 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
             <Rule />
 
             <section className="flex flex-col gap-4">
-              <p className="text-body text-bone-2">
-                Si ce raisonnement vous a débloqué, {fragment.author.name} peut
-                l’apprendre. C’est la seule chose que Aura++ renvoie à un auteur.
+              <p className="text-body text-ink-muted">
+                Si ce raisonnement t’a débloqué, {fragment.author.name} peut
+                l’apprendre. C’est la seule chose que SOA renvoie à un auteur.
               </p>
               <div>
                 <Button variant="primary" onClick={() => setDeclaring(true)}>
@@ -239,19 +239,19 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
       <Dialog
         open={declaring}
         onOpenChange={setDeclaring}
-        title="Sur quoi cela vous a-t-il débloqué ?"
+        title="Sur quoi cela t’a-t-il débloqué ?"
         description="Cette phrase est la seule chose que l’auteur recevra. Elle doit être vraie et concrète."
       >
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <label htmlFor="contexte" className="label-archive">
-              Votre travail en cours
+            <label htmlFor="contexte" className="label-eyebrow">
+              Ton travail en cours
             </label>
             <input
               id="contexte"
               value={context}
               onChange={(event) => setContext(event.target.value)}
-              className="h-11 w-full rounded-control border border-line-soft bg-raised px-3 text-body text-bone lift transition-colors duration-90 hover:border-line-strong"
+              className="h-11 w-full rounded-sm border border-border bg-surface px-3 text-body text-ink transition-colors duration-90 hover:border-border-strong"
             />
           </div>
           <div className="flex justify-end gap-3">

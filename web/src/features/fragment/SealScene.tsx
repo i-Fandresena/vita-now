@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import * as THREE from "three";
 
 /**
- * L'unique scène 3D du produit (PRODUCT.md §5, DESIGN.md §6).
+ * L'unique scène 3D du produit (SPEC.md §4, DESIGN.md).
  *
  * Ce qu'elle raconte : un travail relié, resté fermé, qui s'entrouvre. Les
  * feuillets étaient superposés, comprimés, indistincts — comme un mémoire au
@@ -87,7 +87,7 @@ function Sheets({ onSettled }: { onSettled: () => void }) {
           {/* Alternance de valeurs : sans elle, sept plans identiques éclairés
               par la même lumière se confondent en un seul volume. */}
           <meshStandardMaterial
-            color={i % 2 === 0 ? "#454e63" : "#333b4a"}
+            color={i % 2 === 0 ? "#c9cfe0" : "#dfe3ee"}
             roughness={0.82}
             metalness={0}
           />
@@ -98,7 +98,7 @@ function Sheets({ onSettled }: { onSettled: () => void }) {
           rien — elle indique. */}
       <mesh ref={ember} position={[0, 0.012, 0.86]}>
         <boxGeometry args={[2.6, 0.005, 0.01]} />
-        <meshBasicMaterial color="#f0a35c" transparent opacity={0} toneMapped={false} />
+        <meshBasicMaterial color="#4b5cf0" transparent opacity={0} toneMapped={false} />
       </mesh>
     </group>
   );

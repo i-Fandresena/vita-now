@@ -3,7 +3,7 @@ import type { Author, Fragment, ResumptionCapsule } from "@/domain/types";
 /**
  * corpus.ts — le corpus de démonstration.
  *
- * Product_2.0.md « Demo Mode » : données préchargées, réponses déterministes,
+ * SPEC.md « Demo Mode » : données préchargées, réponses déterministes,
  * aucun écran vide. Ce fichier remplace temporairement l'index pgvector.
  *
  * Le contenu n'est pas du remplissage. Chaque fragment porte un raisonnement

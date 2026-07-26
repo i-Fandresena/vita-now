@@ -11,7 +11,7 @@ import { enterTransition, exitTransition, reduceVariants, rise } from "@/lib/mot
  * défilement, ARIA), Framer pour l'entrée et la sortie.
  *
  * Le mouvement reste au niveau fonctionnel : 140 ms, 4px de montée, rien de
- * plus (DESIGN.md §5.2). Un dialogue qui rebondit est un dialogue qu'on
+ * plus (DESIGN.md). Un dialogue qui rebondit est un dialogue qu'on
  * remarque — or celui-ci doit seulement apparaître.
  */
 
@@ -45,7 +45,7 @@ export function Dialog({
           <Primitive.Portal forceMount>
             <Primitive.Overlay asChild forceMount>
               <motion.div
-                className="fixed inset-0 z-40 bg-canvas/80 backdrop-blur-[2px]"
+                className="fixed inset-0 z-40 bg-background/80 backdrop-blur-[2px]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1, transition: enterTransition }}
                 exit={{ opacity: 0, transition: exitTransition }}
@@ -61,7 +61,7 @@ export function Dialog({
                 className={cn(
                   "fixed left-1/2 top-1/2 z-50 w-[min(34rem,calc(100vw-2rem))]",
                   "-translate-x-1/2 -translate-y-1/2",
-                  "rounded-surface border border-line-soft bg-surface p-8",
+                  "rounded-card border border-border bg-surface p-8",
                   "shadow-float",
                   className,
                 )}
@@ -69,7 +69,7 @@ export function Dialog({
                 <div className="flex items-start justify-between gap-8">
                   <Primitive.Title
                     className={cn(
-                      "font-display text-title font-normal text-bone",
+                      "font-heading text-heading text-ink",
                       hideTitle && "sr-only",
                     )}
                   >
@@ -77,14 +77,14 @@ export function Dialog({
                   </Primitive.Title>
                   <Primitive.Close
                     aria-label="Fermer"
-                    className="-m-2 rounded-control p-2 text-bone-3 transition-colors duration-90 hover:text-bone"
+                    className="-m-2 rounded-sm p-2 text-ink-muted transition-colors duration-90 hover:text-ink"
                   >
                     <X aria-hidden className="size-4" strokeWidth={1.5} />
                   </Primitive.Close>
                 </div>
 
                 {description && (
-                  <Primitive.Description className="mt-3 text-body text-bone-3">
+                  <Primitive.Description className="mt-3 text-body text-ink-muted">
                     {description}
                   </Primitive.Description>
                 )}

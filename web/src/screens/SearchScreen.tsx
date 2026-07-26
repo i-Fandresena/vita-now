@@ -18,7 +18,7 @@ import { EmptyState, ErrorState, FragmentSkeleton, Pending } from "@/ui/states";
  *
  * Raisonnement UX
  * ───────────────
- * PRODUCT.md:74 impose un accueil « presque vide ». Le réflexe serait de
+ * SPEC.md §2 impose un accueil « presque vide ». Le réflexe serait de
  * remplir ce vide de suggestions, de recherches récentes, de chiffres. Ce
  * serait une erreur de lecture : le vide n'est pas un manque à combler, c'est
  * la promesse du produit. Ici on ne gère rien, on demande une chose.
@@ -29,7 +29,7 @@ import { EmptyState, ErrorState, FragmentSkeleton, Pending } from "@/ui/states";
  *   · Un champ — l'unique action possible.
  *   · Une ligne de reprise — le seul rappel du projet en sommeil. Factuelle,
  *     sans culpabilisation, sans compteur de jours en gros caractères
- *     (PRODUCT.md:26). Elle disparaît dès qu'une recherche est lancée.
+ *     (SPEC.md §2). Elle disparaît dès qu'une recherche est lancée.
  *
  * Quand les résultats arrivent, le champ ne disparaît pas et ne réapparaît pas
  * ailleurs : il **monte**. C'est une animation de layout, donc un geste de
@@ -73,14 +73,14 @@ export function SearchScreen({ navigate }: { navigate: (to: Route) => void }) {
             exit="exit"
             className="prose-measure mb-14"
           >
-            {/* `text-balance` : sans lui, la phrase se brisait sur un « là. »
-                orphelin en seconde ligne — un défaut de composition que le
-                serif rend impardonnable à cette taille. */}
-            <h1 className="text-balance font-display text-display-1 font-light text-bone">
+            {/* `text-balance` : sans lui, la phrase se brise sur un « là. »
+                orphelin en seconde ligne — à cette taille, une veuve est une
+                faute de composition. */}
+            <h1 className="text-balance font-display text-display-1 text-ink">
               Quelqu’un est déjà passé par là.
             </h1>
-            <p className="mt-6 text-body-lg text-bone-2">
-              Décrivez ce qui vous bloque. Aura++ cherche, dans les mémoires et les
+            <p className="mt-6 text-body-lg text-ink-muted">
+              Décris ce qui te bloque. SOA cherche, dans les mémoires et les
               projets de l’école, ce qui a déjà été compris — le raisonnement, les
               choix, les impasses. Pas le code.
             </p>
@@ -108,7 +108,7 @@ export function SearchScreen({ navigate }: { navigate: (to: Route) => void }) {
             className="mt-16 flex flex-col gap-4"
           >
             <Rule />
-            <p className="text-caption text-bone-3">
+            <p className="text-caption text-ink-muted">
               Un projet est en sommeil depuis {daysSince(DEMO_CAPSULE.lastActivity)}{" "}
               jours —{" "}
               <a
@@ -117,7 +117,7 @@ export function SearchScreen({ navigate }: { navigate: (to: Route) => void }) {
                   event.preventDefault();
                   navigate({ name: "reprise" });
                 }}
-                className="rounded-control text-bone underline decoration-line-strong underline-offset-4 transition-colors duration-90 hover:decoration-bone"
+                className="rounded-sm text-ink underline decoration-border underline-offset-4 transition-colors duration-90 hover:decoration-ink"
               >
                 {DEMO_CAPSULE.projectTitle}
               </a>
@@ -131,7 +131,7 @@ export function SearchScreen({ navigate }: { navigate: (to: Route) => void }) {
         {status === "en-cours" && (
           <>
             <Pending label="Lecture du corpus" />
-            <div aria-hidden className="mt-4 divide-y divide-line-faint">
+            <div aria-hidden className="mt-4 flex flex-col gap-4">
               <FragmentSkeleton />
               <FragmentSkeleton />
             </div>
@@ -153,7 +153,7 @@ export function SearchScreen({ navigate }: { navigate: (to: Route) => void }) {
         {status === "abouti" && hits.length === 0 && (
           <EmptyState
             title="Rien dans le corpus ne répond à cette question"
-            body="C’est une information en soi : personne n’a encore documenté ce blocage ici. Ce que vous allez comprendre en le résolvant vaut d’être déposé."
+            body="C’est une information en soi : personne n’a encore documenté ce blocage ici. Ce que tu vas comprendre en le résolvant vaut d’être déposé."
             action={
               <Button variant="secondary" onClick={() => navigate({ name: "depot" })}>
                 Déposer ce que j’aurai compris
@@ -170,11 +170,11 @@ export function SearchScreen({ navigate }: { navigate: (to: Route) => void }) {
             exit={{ opacity: 0, transition: exitTransition }}
             aria-label="Résultats"
           >
-            <p className="label-archive mb-2">
+            <p className="label-eyebrow mb-2">
               {hits.length} fragment{hits.length > 1 ? "s" : ""} retrouvé
               {hits.length > 1 ? "s" : ""}
             </p>
-            <ul className="divide-y divide-line-faint">
+            <ul className="flex flex-col gap-4">
               {hits.map((hit) => (
                 <HitRow
                   key={hit.fragment.id}

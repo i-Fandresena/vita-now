@@ -8,6 +8,7 @@ import { fade, reduceVariants } from "./lib/motion";
 import { CapsuleScreen } from "./screens/CapsuleScreen";
 import { DepositScreen } from "./screens/DepositScreen";
 import { FragmentScreen } from "./screens/FragmentScreen";
+import { LandingScreen } from "./screens/LandingScreen";
 import { SearchScreen } from "./screens/SearchScreen";
 import { SignalScreen } from "./screens/SignalScreen";
 
@@ -26,6 +27,8 @@ function CurrentScreen({
   navigate: (to: Route) => void;
 }) {
   switch (route.name) {
+    case "accueil":
+      return <LandingScreen navigate={navigate} />;
     case "recherche":
       return <SearchScreen navigate={navigate} />;
     case "fragment":

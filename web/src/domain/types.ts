@@ -7,7 +7,7 @@
  *
  * Contrainte produit inscrite dans le type lui-même : un fragment expose un
  * raisonnement, des choix, des impasses et des pistes — jamais un livrable de
- * code prêt à copier (PRODUCT.md:25).
+ * code prêt à copier (SPEC.md §2).
  */
 
 export interface Author {
@@ -39,7 +39,7 @@ export interface ArchitectureChoice {
 
 /**
  * Un extrait est **cité**, pas fourni. Il illustre le raisonnement et reste
- * secondaire dans la mise en page (DESIGN.md §7.2).
+ * secondaire dans la mise en page (DESIGN.md).
  */
 export interface Excerpt {
   caption: string;
@@ -90,14 +90,14 @@ export interface ResumptionCapsule {
   blocking: string;
   nextStep: {
     action: string;
-    /** 5 à 10 minutes — Product_2.0.md:36. Au-delà, ce n'est plus un micro-pas. */
+    /** 5 à 10 minutes — SPEC.md §4. Au-delà, ce n'est plus un micro-pas. */
     minutes: number;
   };
 }
 
 /**
  * Le signal de retour — l'unique « signal de progression » du produit
- * (PRODUCT.md:27). Factuel, non comparatif, non quantifié dans le temps.
+ * (SPEC.md §2). Factuel, non comparatif, non quantifié dans le temps.
  */
 export interface AuthorSignal {
   id: string;

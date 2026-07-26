@@ -1,20 +1,21 @@
 import { motion } from "framer-motion";
+import { ArrowUpRight } from "lucide-react";
 
 import { hrefFor } from "@/app/router";
 import type { SearchHit } from "@/domain/types";
 import { rise } from "@/lib/motion";
-import { ArchiveLabel } from "@/ui/Editorial";
+import { Chip, ChipRow } from "@/ui/Editorial";
 
 /**
  * Un résultat de recherche.
  *
  * La correspondance est exprimée en mots, jamais en pourcentage ni en jauge :
- * un chiffre inviterait à comparer les fragments entre eux, ce qui est
- * exactement la mécanique de classement que le produit refuse.
+ * un chiffre inviterait à comparer les résultats entre eux, ce qui rendrait la
+ * recherche compétitive alors qu'elle est documentaire.
  *
- * Ce qui est mis en avant n'est pas le titre mais la **promesse** — ce que le
- * fragment fait gagner. Un étudiant bloqué ne choisit pas un document, il
- * choisit une sortie de blocage.
+ * Ce qui est mis en avant n'est pas le titre mais le **pourquoi** — ce que ce
+ * travail fait gagner sur cette question précise. Un étudiant bloqué ne
+ * choisit pas un document, il choisit une sortie de blocage.
  */
 
 function matchLabel(relevance: number): string {
@@ -31,6 +32,7 @@ export function HitRow({
   onOpen: (id: string) => void;
 }) {
   const { fragment, relevance, why, matchedOn } = hit;
+  const direct = relevance >= 0.85;
 
   return (
     <motion.li variants={rise}>
@@ -40,34 +42,38 @@ export function HitRow({
           event.preventDefault();
           onOpen(fragment.id);
         }}
-        className="group -mx-4 block rounded-surface px-4 py-8 transition-colors duration-90 hover:bg-surface"
+        className="group block rounded-card border border-border bg-card p-6 shadow-card transition-[border-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-lift"
       >
-        <div className="flex flex-col gap-6 lg:flex-row lg:gap-16">
-          <div className="flex flex-wrap gap-x-8 gap-y-3 lg:w-(--measure-rail) lg:shrink-0 lg:flex-col lg:gap-5">
-            <div className="flex flex-col gap-1.5">
-              <ArchiveLabel>{matchLabel(relevance)}</ArchiveLabel>
-              <span className="text-caption text-bone-3">
-                {fragment.origin.kind} · {fragment.origin.year}
-              </span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <ArchiveLabel>Auteur</ArchiveLabel>
-              <span className="text-caption text-bone-2">{fragment.author.name}</span>
-            </div>
-          </div>
+        <div className="flex items-start justify-between gap-4">
+          <ChipRow>
+            {/* Le jaune dit « c'est acquis » (DESIGN.md) : une
+                correspondance directe est le seul cas où le résultat ne
+                demande pas d'arbitrage à celui qui cherche. */}
+            <Chip tone={direct ? "accent" : "neutral"}>{matchLabel(relevance)}</Chip>
+            <Chip>
+              {fragment.origin.kind} · {fragment.origin.year}
+            </Chip>
+            <Chip tone={fragment.origin.status === "terminé" ? "success" : "neutral"}>
+              {fragment.origin.status}
+            </Chip>
+          </ChipRow>
 
-          <div className="prose-measure min-w-0 flex-1">
-            <h3 className="font-display text-[1.5rem] font-normal leading-snug text-bone transition-colors duration-90 group-hover:text-bone">
-              {fragment.title}
-            </h3>
-            <p className="mt-3 text-body text-bone-2">{why}</p>
+          <ArrowUpRight
+            aria-hidden
+            className="mt-1 size-5 shrink-0 text-ink-muted transition-transform duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+          />
+        </div>
 
-            {matchedOn.length > 0 && (
-              <p className="mt-4 font-mono text-caption text-bone-4">
-                {matchedOn.slice(0, 4).join(" · ")}
-              </p>
-            )}
-          </div>
+        <h3 className="mt-5 text-title font-semibold text-ink">{fragment.title}</h3>
+        <p className="prose-measure mt-2 text-body text-ink-muted">{why}</p>
+
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4">
+          <span className="text-caption text-ink-muted">{fragment.author.name}</span>
+          {matchedOn.length > 0 && (
+            <span className="font-mono text-caption text-ink-muted">
+              {matchedOn.slice(0, 4).join(" · ")}
+            </span>
+          )}
         </div>
       </a>
     </motion.li>

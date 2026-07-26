@@ -17,7 +17,7 @@ import { EmptyState, FragmentSkeleton } from "@/ui/states";
  * Raisonnement UX
  * ───────────────
  * C'est l'écran le plus facile à rater, parce que tout l'instinct produit pousse
- * à motiver. PRODUCT.md:26 l'interdit : la capsule est « silencieuse, non
+ * à motiver. SPEC.md §2 l'interdit : la capsule est « silencieuse, non
  * culpabilisante, sans notion de streak ».
  *
  * Ce que cela impose concrètement :
@@ -29,7 +29,7 @@ import { EmptyState, FragmentSkeleton } from "@/ui/states";
  * · Aucune phrase ne s'adresse à la volonté du lecteur. L'écran décrit un état
  *   du projet, pas un état de la personne.
  * · Une seule action, et elle est minuscule par construction : 5 à 10 minutes
- *   (Product_2.0.md:36). Proposer « reprendre le projet » remettrait devant les
+ *   (SPEC.md §4). Proposer « reprendre le projet » remettrait devant les
  *   yeux la montagne qui a fait abandonner.
  *
  * Le second bouton renvoie le blocage vers le corpus. C'est la jonction des deux
@@ -75,7 +75,7 @@ export function CapsuleScreen({ navigate }: { navigate: (to: Route) => void }) {
     return (
       <EmptyState
         title="Aucun projet en sommeil"
-        body="Aura++ ne génère une capsule que lorsqu’un travail s’est arrêté. Rien à reprendre pour le moment."
+        body="SOA ne génère une capsule que lorsqu’un travail s’est arrêté. Rien à reprendre pour le moment."
       />
     );
   }
@@ -92,7 +92,7 @@ export function CapsuleScreen({ navigate }: { navigate: (to: Route) => void }) {
     <div className="pb-24 pt-14">
       <motion.h1
         {...stage(0)}
-        className="max-w-[20ch] font-display text-display-2 font-normal text-bone"
+        className="max-w-[20ch] font-display text-display-2 text-ink"
       >
         {capsule.projectTitle}
       </motion.h1>
@@ -110,13 +110,13 @@ export function CapsuleScreen({ navigate }: { navigate: (to: Route) => void }) {
         >
           <div className="flex flex-col gap-12">
             <section>
-              <ArchiveLabel>Où vous en étiez</ArchiveLabel>
-              <p className="mt-4 text-body-lg text-bone-2">{capsule.where}</p>
+              <ArchiveLabel>Où tu en étais</ArchiveLabel>
+              <p className="mt-4 text-body-lg text-ink-muted">{capsule.where}</p>
             </section>
 
             <section>
               <ArchiveLabel>Ce qui bloquait</ArchiveLabel>
-              <p className="mt-4 text-body-lg text-bone-2">{capsule.blocking}</p>
+              <p className="mt-4 text-body-lg text-ink-muted">{capsule.blocking}</p>
             </section>
 
             <Rule />
@@ -124,17 +124,19 @@ export function CapsuleScreen({ navigate }: { navigate: (to: Route) => void }) {
             <section>
               <ArchiveLabel>Le prochain pas</ArchiveLabel>
               {/* Le micro-pas est le seul élément en relief de l'écran : c'est
-                  la seule chose qu'on demande, et elle tient en 7 minutes. */}
-              <Surface className="mt-4">
-                <p className="text-body-lg text-bone">{capsule.nextStep.action}</p>
-                <p className="mt-3 text-caption text-bone-3">
+                  la seule chose qu'on demande, et elle tient en 7 minutes.
+                  `sunken` et non `card` : sur fond blanc, une carte blanche à
+                  ombre douce ne se détacherait pas — le creux, si. */}
+              <Surface tone="sunken" className="mt-4">
+                <p className="text-body-lg text-ink">{capsule.nextStep.action}</p>
+                <p className="mt-3 text-caption text-ink-muted">
                   {capsule.nextStep.minutes} minutes. Rien de plus n’est attendu.
                 </p>
               </Surface>
             </section>
 
             <section className="flex flex-col gap-4">
-              <p className="text-body text-bone-3">
+              <p className="text-body text-ink-muted">
                 Ce blocage a peut-être déjà été résolu dans l’école.
               </p>
               <div className="flex flex-wrap gap-3">

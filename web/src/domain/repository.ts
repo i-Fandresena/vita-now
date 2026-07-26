@@ -11,7 +11,7 @@ import type {
  *
  * L'interface est le contrat entre l'UI et tout ce qui produit des fragments.
  * En démo, l'implémentation est un corpus déterministe en mémoire
- * (Product_2.0.md « Demo Mode » : aucune dépendance Internet critique).
+ * (SPEC.md « Demo Mode » : aucune dépendance Internet critique).
  * En production, la même interface sera servie par PostgreSQL + pgvector et
  * l'API Claude — sans qu'une ligne de composant change.
  *
@@ -32,7 +32,7 @@ export interface FragmentRepository {
    *
    * Doit rester résolvable même sans déclaration préalable : un rechargement
    * de page en pleine soutenance ne doit pas vider l'écran le plus important
-   * du produit (Product_2.0.md « Demo Mode » : aucun écran vide).
+   * du produit (SPEC.md « Demo Mode » : aucun écran vide).
    */
   latestSignal(fragmentId: string): Promise<AuthorSignal | null>;
   deposit(draft: FragmentDraft): Promise<Fragment>;

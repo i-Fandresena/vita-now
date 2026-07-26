@@ -8,25 +8,28 @@
   *::before,
   *::after {
     box-sizing: border-box;
-    border-color: var(--color-line-faint);
+    border-color: var(--color-border);
   }
 
   html {
-    color-scheme: dark;
+    /* Le produit est clair par défaut ; `.dark` sur <html> bascule les 6 tokens
+       de surface de DESIGN.md §2.1. */
+    color-scheme: light dark;
     /* La navigation clavier ne doit jamais atterrir sous un en-tête collant. */
     scroll-padding-block: 6rem;
+    scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
   }
 
   body {
     margin: 0;
     min-height: 100dvh;
-    /* `clip` et non `hidden` : l'écran de retour à l'auteur sort volontairement
-       de la grille en 100vw, sans pour autant créer de défilement horizontal —
-       et `clip` ne casse pas l'en-tête `sticky`, contrairement à `hidden`. */
+    /* `clip` et non `hidden` : certaines sections sortent volontairement de la
+       grille en 100vw sans créer de défilement horizontal — et `clip` ne casse
+       pas l'en-tête `sticky`, contrairement à `hidden`. */
     overflow-x: clip;
-    background-color: var(--color-canvas);
-    color: var(--color-bone);
+    background-color: var(--color-background);
+    color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: var(--text-body);
     line-height: 1.6;
@@ -46,20 +49,18 @@
     margin: 0;
   }
 
-  /* Le serif porte un axe de taille optique : à 56px le dessin est plus fin et
-     plus serré qu'à 22px. C'est ce qui distingue une vraie composition d'un
-     texte simplement agrandi. */
+  /* Anton et Bebas Neue sont des capitales optiques : elles se composent en
+     capitales, jamais en casse mixte à petite taille. */
   .font-display,
-  [class*="font-display"] {
-    font-optical-sizing: auto;
+  .font-heading {
+    text-transform: uppercase;
   }
 
-  /* Le focus est le seul usage de la braise hors des deux moments narratifs
-     (DESIGN.md §3.3) — l'accessibilité n'est pas décorative. */
+  /* L'indigo porte l'action — le focus en fait partie (DESIGN.md §2.1). */
   :focus-visible {
-    outline: 2px solid var(--color-ember);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-sm);
   }
 
   :focus:not(:focus-visible) {
@@ -67,8 +68,8 @@
   }
 
   ::selection {
-    background-color: var(--color-ember-wash);
-    color: var(--color-bone);
+    background-color: var(--color-accent-soft);
+    color: var(--color-ink);
   }
 
   button,
@@ -88,13 +89,14 @@
   }
 
   ::placeholder {
-    color: var(--color-bone-4);
+    color: var(--color-ink-muted);
+    opacity: 1;
   }
 
   /* Barre de défilement discrète : présente, jamais bruyante. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-border-strong) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -103,28 +105,25 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: var(--color-line-soft);
+    background-color: var(--color-border-strong);
     border: 3px solid transparent;
     background-clip: content-box;
-    border-radius: var(--radius-full, 999px);
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-line-strong);
+    border-radius: var(--radius-full);
   }
 
   ::-webkit-scrollbar-track {
     background: transparent;
   }
 
-  /* DESIGN.md §5.4 : le récit doit rester lisible sans mouvement.
+  /* DESIGN.md §2.4 : les trois ambiances du template tournent en boucle. Sous
+     mouvement réduit elles ne ralentissent pas, elles s'arrêtent — un marquee
+     à 0,01 ms se traduirait par un saut permanent.
      Framer Motion est géré séparément via useReducedMotion. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
+      animation: none !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
@@ -132,24 +131,45 @@
 }
 
 @layer utilities {
-  /* Mesure de lecture — DESIGN.md §3.7. Le raisonnement d'un fragment se lit,
-     il ne se scanne pas. */
+  /* Mesure de lecture — DESIGN.md. La prose se lit, elle ne se scanne pas. */
   .prose-measure {
     max-width: var(--measure-prose);
   }
 
-  /* Le label d'archive : seul usage de capitales du produit (DESIGN.md §4). */
-  .label-archive {
+  /* Largeur de page commune à la landing et au chrome applicatif. */
+  .page-measure {
+    width: 100%;
+    max-width: var(--measure-page);
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+
+  /* L'étiquette capitale : Bebas Neue, seul usage systématique de capitales. */
+  .label-eyebrow {
+    font-family: var(--font-heading);
     font-size: var(--text-micro);
     line-height: var(--text-micro--line-height);
     letter-spacing: var(--text-micro--letter-spacing);
     text-transform: uppercase;
-    font-weight: 500;
-    color: var(--color-bone-3);
+    color: var(--color-ink-muted);
   }
 
-  /* Élévation par filet de lumière — DESIGN.md §3.5, jamais par ombre portée. */
-  .lift {
-    box-shadow: var(--shadow-lift);
+  /* La note manuscrite — signature du produit, une par écran au maximum. */
+  .hand-note {
+    font-family: var(--font-hand);
+    font-size: 1.375rem;
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+
+  /* Surlignage jaune : la réussite, jamais l'action (DESIGN.md §2.1). */
+  .mark-accent {
+    background-image: linear-gradient(
+      to bottom,
+      transparent 62%,
+      var(--color-accent) 62%
+    );
+    padding-inline: 0.1em;
   }
 }

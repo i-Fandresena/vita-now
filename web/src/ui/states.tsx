@@ -1,20 +1,20 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
-import { Rule } from "./Editorial";
 
 /**
  * states.tsx — vide, chargement, erreur.
  *
- * Aucun de ces états n'utilise d'illustration ni d'icône décorative
- * (DESIGN.md §2). Le produit parle en phrases, pas en pictogrammes.
- * Aucun ne s'excuse et aucun n'encourage : ce sont des constats.
+ * Le registre du template est encourageant, pas neutre : un écran vide y est
+ * une invitation à agir. Ce qui reste interdit (SPEC.md §2bis), c'est la
+ * culpabilisation — « déjà 4 jours sans rien faire ». Un état vide propose une
+ * action ; il ne compte pas les jours perdus.
  */
 
 /* ── Chargement ─────────────────────────────────────────────────────────── */
 
 /**
- * Skeleton — opacité seule (DESIGN.md §5.4).
+ * Skeleton — opacité seule.
  * Volontairement lent : une pulsation rapide crée de l'anxiété, or le produit
  * doit rester calme même quand il attend.
  */
@@ -23,22 +23,22 @@ export function Skeleton({ className }: { className?: string }) {
     <div
       aria-hidden
       className={cn(
-        "animate-pulse rounded-control bg-line-faint [animation-duration:1.8s]",
+        "animate-pulse rounded-sm bg-surface [animation-duration:1.8s]",
         className,
       )}
     />
   );
 }
 
-/** Silhouette d'un résultat de recherche : rail court + trois lignes de prose. */
+/** Silhouette d'un résultat de recherche : métadonnées courtes + trois lignes. */
 export function FragmentSkeleton() {
   return (
-    <div className="flex flex-col gap-10 py-8 lg:flex-row lg:gap-16">
-      <div className="flex gap-8 lg:w-(--measure-rail) lg:shrink-0 lg:flex-col lg:gap-6">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-3 w-20" />
+    <div className="flex flex-col gap-6 rounded-card border border-border p-6">
+      <div className="flex gap-3">
+        <Skeleton className="h-5 w-24 rounded-full" />
+        <Skeleton className="h-5 w-20 rounded-full" />
       </div>
-      <div className="prose-measure flex flex-1 flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <Skeleton className="h-6 w-2/3" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-11/12" />
@@ -48,18 +48,15 @@ export function FragmentSkeleton() {
   );
 }
 
-/**
- * Indicateur d'attente en ligne. Trois points dont l'opacité respire —
- * seule animation en boucle autorisée par DESIGN.md §5.4.
- */
+/** Indicateur d'attente en ligne. Trois points dont l'opacité respire. */
 export function Pending({ label }: { label: string }) {
   return (
-    <p role="status" className="flex items-center gap-2 text-caption text-bone-3">
+    <p role="status" className="flex items-center gap-2 text-caption text-ink-muted">
       <span aria-hidden className="flex gap-1">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="size-1 animate-pulse rounded-full bg-bone-4 [animation-duration:1.4s]"
+            className="size-1.5 animate-pulse rounded-full bg-primary-soft [animation-duration:1.4s]"
             style={{ animationDelay: `${i * 0.16}s` }}
           />
         ))}
@@ -73,7 +70,7 @@ export function Pending({ label }: { label: string }) {
 
 interface StateProps {
   title: string;
-  /** Un constat factuel. Jamais une formule d'encouragement. */
+  /** Ce qui s'est passé, et quoi faire ensuite. Jamais un reproche. */
   body: string;
   action?: ReactNode;
   className?: string;
@@ -81,11 +78,15 @@ interface StateProps {
 
 export function EmptyState({ title, body, action, className }: StateProps) {
   return (
-    <section className={cn("prose-measure flex flex-col gap-6 py-16", className)}>
-      <Rule />
-      <div className="flex flex-col gap-3">
-        <h2 className="font-display text-title font-normal text-bone">{title}</h2>
-        <p className="text-body text-bone-3">{body}</p>
+    <section
+      className={cn(
+        "flex flex-col items-start gap-5 rounded-card border border-border bg-surface p-8",
+        className,
+      )}
+    >
+      <div className="prose-measure flex flex-col gap-3">
+        <h2 className="font-heading text-heading text-ink">{title}</h2>
+        <p className="text-body text-ink-muted">{body}</p>
       </div>
       {action}
     </section>
@@ -96,14 +97,14 @@ export function ErrorState({ title, body, action, className }: StateProps) {
   return (
     <section
       role="alert"
-      className={cn("prose-measure flex flex-col gap-6 py-16", className)}
+      className={cn(
+        "flex flex-col items-start gap-5 rounded-card border border-destructive/30 bg-destructive/5 p-8",
+        className,
+      )}
     >
-      {/* L'erreur est le seul état qui se signale par un filet plus marqué —
-          pas par de la couleur, qui appartient à la braise. */}
-      <div className="h-px w-full bg-line-rule" />
-      <div className="flex flex-col gap-3">
-        <h2 className="font-display text-title font-normal text-bone">{title}</h2>
-        <p className="text-body text-bone-3">{body}</p>
+      <div className="prose-measure flex flex-col gap-3">
+        <h2 className="font-heading text-heading text-ink">{title}</h2>
+        <p className="text-body text-ink-muted">{body}</p>
       </div>
       {action}
     </section>

@@ -1,89 +1,163 @@
 /**
- * theme.css — traduction stricte de DESIGN.md §3 et §4 en tokens Tailwind v4.
+ * theme.css — traduction stricte de DESIGN.md §2 en tokens Tailwind v4.
  *
- * Toute valeur de couleur, de rayon, de typographie ou d'easing du produit
- * vient d'ici. Une valeur littérale dans un composant est un bug de design.
+ * Les valeurs viennent du template Lovable de l'équipe
+ * (https://soa-project-spark.lovable.app/), relevées dans sa feuille de style —
+ * elles ne sont pas réinventées ici.
+ *
+ * Une valeur de couleur, de rayon ou de typographie écrite en dur dans un
+ * composant est un bug de design.
  */
 
 @theme {
-  /* ── Encre — surfaces (DESIGN.md §3.1) ───────────────────────────────── */
-  /* Navy désaturé, jamais noir. L'élévation se lit à la bordure, pas à l'ombre. */
-  --color-canvas: oklch(0.165 0.018 258);
-  --color-surface: oklch(0.198 0.018 258);
-  --color-raised: oklch(0.232 0.017 258);
-  --color-hover: oklch(0.268 0.016 258);
-  --color-sunken: oklch(0.142 0.019 258);
+  /* ── Surfaces (DESIGN.md §2.1) ───────────────────────────────────────── */
+  --color-background: oklch(100% 0 0);
+  --color-surface: oklch(98% 0.005 240);
+  --color-card: oklch(100% 0 0);
 
-  /* ── Os — texte (DESIGN.md §3.2) ─────────────────────────────────────── */
-  /* Blanc cassé chaud. Jamais #fff : le blanc pur vibre sur navy. */
-  --color-bone: oklch(0.955 0.006 85);
-  --color-bone-2: oklch(0.79 0.006 85);
-  --color-bone-3: oklch(0.615 0.008 258);
-  /* 0.52 et non 0.455 : en dessous, les textes de substitution passaient sous
-     le rapport de contraste 4.5:1 exigé par la checklist §8.11. */
-  --color-bone-4: oklch(0.52 0.011 258);
+  /* ── Texte ───────────────────────────────────────────────────────────── */
+  /* `ink` est un navy très sombre, jamais du noir pur : sur fond blanc, le noir
+     pur durcit la page et fait « brouillon non stylé ». */
+  --color-ink: oklch(19% 0.04 260);
+  --color-ink-muted: oklch(55% 0.03 250);
 
-  /* ── Braise — l'unique accent (DESIGN.md §3.3) ───────────────────────── */
-  /* Loi de la braise : fragment retrouvé, retour à l'auteur, focus clavier.
-     Aucune autre apparition n'est autorisée. */
-  --color-ember: oklch(0.765 0.128 62);
-  --color-ember-dim: oklch(0.62 0.098 62);
-  --color-ember-wash: oklch(0.765 0.128 62 / 0.08);
+  /* ── Indigo — l'action (DESIGN.md §2.1) ──────────────────────────────── */
+  /* Porte tout ce sur quoi on clique. Ne jamais l'employer pour célébrer. */
+  --color-primary: oklch(55% 0.22 262);
+  --color-primary-soft: oklch(75% 0.15 258);
+  --color-primary-wash: oklch(55% 0.22 262 / 0.08);
+  --color-on-primary: oklch(100% 0 0);
 
-  /* ── Filets (DESIGN.md §3.4) ─────────────────────────────────────────── */
-  /* Blanc alpha : se compose sur n'importe quelle surface. */
-  --color-line-faint: oklch(1 0 0 / 0.055);
-  --color-line-soft: oklch(1 0 0 / 0.095);
-  --color-line-strong: oklch(1 0 0 / 0.16);
-  --color-line-rule: oklch(1 0 0 / 0.22);
+  /* ── Jaune — la réussite ─────────────────────────────────────────────── */
+  /* Badge débloqué, projet livré, étape franchie. Jamais un bouton. */
+  --color-accent: oklch(87% 0.17 95);
+  --color-accent-soft: oklch(94% 0.09 96);
+  --color-on-accent: oklch(19% 0.04 260);
 
-  /* ── Typographie (DESIGN.md §4) ──────────────────────────────────────── */
-  --font-display: "Newsreader Variable", Georgia, "Times New Roman", serif;
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  /* ── États ───────────────────────────────────────────────────────────── */
+  --color-success: oklch(72% 0.18 145);
+  --color-destructive: oklch(63% 0.24 27);
+  --color-on-destructive: oklch(100% 0 0);
+
+  /* ── Filets ──────────────────────────────────────────────────────────── */
+  --color-border: oklch(92% 0.01 250);
+  --color-border-strong: oklch(86% 0.015 250);
+
+  /* ── Typographie (DESIGN.md §2.2) ────────────────────────────────────── */
+  /* Quatre familles auto-hébergées. Le template charge Google Fonts ; on ne
+     reprend pas cette dépendance : la démo doit tenir sans réseau. */
+  --font-display: "Anton", "Bebas Neue", ui-sans-serif, sans-serif;
+  --font-heading: "Bebas Neue", ui-sans-serif, sans-serif;
+  --font-sans: "DM Sans Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-hand: "Caveat Variable", ui-serif, cursive;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
 
-  --text-display-1: 3.5rem; /* 56 — l'accueil, le retour à l'auteur */
-  --text-display-1--line-height: 1.05;
-  --text-display-1--letter-spacing: -0.022em;
+  /* Anton porte déjà sa graisse : l'échelle ne joue que sur la taille. */
+  --text-display-1: 4.5rem; /* 72 — le titre du héros */
+  --text-display-1--line-height: 0.94;
+  --text-display-1--letter-spacing: -0.02em;
 
-  --text-display-2: 2.375rem; /* 38 — titre de fragment */
-  --text-display-2--line-height: 1.12;
-  --text-display-2--letter-spacing: -0.016em;
+  --text-display-2: 3rem; /* 48 — titres de section */
+  --text-display-2--line-height: 1;
+  --text-display-2--letter-spacing: -0.02em;
 
-  --text-title: 1.375rem; /* 22 — titres de section */
-  --text-title--line-height: 1.3;
-  --text-title--letter-spacing: -0.011em;
+  --text-display-3: 2rem; /* 32 — titres d'écran applicatif */
+  --text-display-3--line-height: 1.06;
+  --text-display-3--letter-spacing: -0.02em;
 
-  --text-body-lg: 1.0625rem; /* 17 — le raisonnement d'un fragment */
-  --text-body-lg--line-height: 1.62;
+  --text-heading: 1.5rem; /* 24 — Bebas Neue, plancher des condensées */
+  --text-heading--line-height: 1.1;
+  --text-heading--letter-spacing: 0.005em;
 
-  --text-body: 0.9375rem; /* 15 — corps par défaut */
+  --text-title: 1.25rem; /* 20 — DM Sans 600 */
+  --text-title--line-height: 1.35;
+  --text-title--letter-spacing: -0.01em;
+
+  --text-body-lg: 1.125rem; /* 18 — chapô, sous-titres */
+  --text-body-lg--line-height: 1.6;
+
+  --text-body: 1rem; /* 16 — corps par défaut */
   --text-body--line-height: 1.6;
 
-  --text-caption: 0.8125rem; /* 13 — métadonnées */
+  --text-caption: 0.875rem; /* 14 — métadonnées */
   --text-caption--line-height: 1.45;
 
-  --text-micro: 0.6875rem; /* 11 — le label d'archive, seul usage de capitales */
+  --text-micro: 0.75rem; /* 12 — étiquettes capitales */
   --text-micro--line-height: 1.3;
-  --text-micro--letter-spacing: 0.09em;
+  --text-micro--letter-spacing: 0.08em;
 
-  /* ── Rayons (DESIGN.md §3.6) ─────────────────────────────────────────── */
-  /* Petits et cohérents. Le rayon large est une signature SaaS. */
-  --radius-control: 6px;
-  --radius-surface: 10px;
+  /* ── Rayons (DESIGN.md §2.3) ─────────────────────────────────────────── */
+  /* 20px : c'est la signature de forme du template.
+     Nommés `--radius-*` pour entrer dans l'espace de noms Tailwind v4 : un
+     `--radius` nu ne génère aucune classe `rounded-…`. */
+  --radius-card: 1.25rem;
+  --radius-sm: 0.75rem;
+  --radius-full: 999px;
 
-  /* ── Mouvement (DESIGN.md §5.3) ──────────────────────────────────────── */
+  /* ── Élévation ───────────────────────────────────────────────────────── */
+  /* Sur fond clair, l'ombre porte réellement — l'inverse de l'ancienne
+     direction sombre, où elle ne faisait que salir. */
+  --shadow-card: 0 1px 2px oklch(19% 0.04 260 / 0.04), 0 8px 24px -12px oklch(19% 0.04 260 / 0.12);
+  --shadow-lift: 0 2px 4px oklch(19% 0.04 260 / 0.05), 0 16px 40px -16px oklch(19% 0.04 260 / 0.18);
+  --shadow-float: 0 8px 12px oklch(19% 0.04 260 / 0.06), 0 32px 64px -24px oklch(19% 0.04 260 / 0.24);
+
+  /* ── Mouvement (DESIGN.md §2.4) ──────────────────────────────────────── */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-quint: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-narrative: cubic-bezier(0.22, 0.61, 0.2, 1);
 
-  /* ── Élévation (DESIGN.md §3.5) ──────────────────────────────────────── */
-  /* Filet de lumière interne pour élever ; ombre réelle réservée au flottant. */
-  --shadow-lift: inset 0 1px 0 oklch(1 0 0 / 0.06);
-  --shadow-float:
-    0 24px 60px -12px oklch(0.09 0.02 258 / 0.72), inset 0 1px 0 oklch(1 0 0 / 0.06);
+  /* Ambiances du template. Elles tournent en boucle : `base.css` les coupe
+     entièrement sous `prefers-reduced-motion`. */
+  --animate-floaty: floaty 6s var(--ease-in-out-quint) infinite;
+  --animate-marquee: marquee 32s linear infinite;
+  --animate-wiggle: wiggle 0.6s var(--ease-out-expo);
 
-  /* ── Mesure de lecture (DESIGN.md §3.7) ──────────────────────────────── */
+  /* ── Mesures ─────────────────────────────────────────────────────────── */
   --measure-prose: 68ch;
-  --measure-rail: 11rem;
+  --measure-page: 76rem;
+}
+
+/* Thème sombre — les 6 surcharges du template. Les accents ne bougent pas :
+   l'indigo et le jaune tiennent sur les deux fonds. */
+.dark {
+  --color-background: oklch(19% 0.04 260);
+  --color-surface: oklch(23% 0.04 260);
+  --color-card: oklch(23% 0.04 260);
+  --color-ink: oklch(98% 0.003 250);
+  --color-ink-muted: oklch(72% 0.02 250);
+  --color-border: oklch(100% 0 0 / 0.1);
+  --color-border-strong: oklch(100% 0 0 / 0.18);
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Le bandeau duplique sa liste : -50% ramène exactement au point de départ. */
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-4deg);
+  }
+  75% {
+    transform: rotate(4deg);
+  }
 }

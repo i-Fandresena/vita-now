@@ -6,19 +6,25 @@ import { cn } from "@/lib/cn";
 /**
  * Surface — l'unité d'élévation du produit.
  *
- * DESIGN.md §3.5 : sur fond sombre une ombre portée ne se voit pas, elle salit.
- * L'élévation se construit par luminance de fond + bordure + filet de lumière
- * interne. Aucune variante n'utilise `box-shadow` pour paraître « au-dessus ».
+ * DESIGN.md : sur fond clair, l'ombre portée porte réellement. C'est
+ * l'inverse de l'ancienne direction sombre, où l'élévation passait par la
+ * luminance de bordure et un filet de lumière interne. Ici : ombre douce +
+ * bordure fine + le grand rayon de 20px, qui est la signature de forme du
+ * template.
  */
-const surface = cva("rounded-surface", {
+const surface = cva("rounded-card", {
   variants: {
     tone: {
-      /** Posé sur le canevas. Le cas courant. */
-      raised: "bg-surface border border-line-soft lift",
-      /** En creux : citation, extrait, zone de lecture secondaire. */
-      sunken: "bg-sunken border border-line-faint",
+      /** Posée sur le fond. Le cas courant. */
+      card: "bg-card border border-border shadow-card",
+      /** Détachée : dialogue, carte de démonstration, élément flottant. */
+      float: "bg-card border border-border shadow-float",
+      /** En creux : citation, extrait, zone secondaire. Pas d'ombre. */
+      sunken: "bg-surface border border-border",
       /** Sans fond : structure uniquement, délimitée par un contour. */
-      outline: "border border-line-soft",
+      outline: "border border-border",
+      /** Zone de réussite — le seul emploi du jaune sur une surface. */
+      accent: "bg-accent-soft border border-accent",
       /** Aucun contenant visible — pour composer sans hériter d'un style. */
       bare: "",
     },
@@ -29,7 +35,7 @@ const surface = cva("rounded-surface", {
       lg: "p-8",
     },
   },
-  defaultVariants: { tone: "raised", padding: "md" },
+  defaultVariants: { tone: "card", padding: "md" },
 });
 
 export interface SurfaceProps

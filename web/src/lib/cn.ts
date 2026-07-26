@@ -4,35 +4,38 @@ import { extendTailwindMerge } from "tailwind-merge";
 /**
  * tailwind-merge doit connaître nos tokens, sinon il les confond.
  *
- * `text-body` (taille) et `text-canvas` (couleur) partagent le préfixe `text-`.
+ * `text-body` (taille) et `text-ink` (couleur) partagent le préfixe `text-`.
  * Sans cette configuration, la fusion les traite comme un même groupe et n'en
  * garde qu'un — ce qui faisait disparaître la couleur du bouton primaire :
- * du texte os sur un fond os, donc un rectangle blanc vide.
+ * du texte blanc sur un fond blanc, donc un rectangle vide.
  *
  * Toute nouvelle valeur ajoutée à `theme.css` doit être déclarée ici.
  */
 const COLORS = [
-  "canvas",
+  "background",
   "surface",
-  "raised",
-  "hover",
-  "sunken",
-  "bone",
-  "bone-2",
-  "bone-3",
-  "bone-4",
-  "ember",
-  "ember-dim",
-  "ember-wash",
-  "line-faint",
-  "line-soft",
-  "line-strong",
-  "line-rule",
+  "card",
+  "ink",
+  "ink-muted",
+  "primary",
+  "primary-soft",
+  "primary-wash",
+  "on-primary",
+  "accent",
+  "accent-soft",
+  "on-accent",
+  "success",
+  "destructive",
+  "on-destructive",
+  "border",
+  "border-strong",
 ];
 
 const FONT_SIZES = [
   "display-1",
   "display-2",
+  "display-3",
+  "heading",
   "title",
   "body-lg",
   "body",
@@ -40,14 +43,18 @@ const FONT_SIZES = [
   "micro",
 ];
 
+const FONT_FAMILIES = ["display", "heading", "sans", "hand", "mono"];
+
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
       "font-size": [{ text: FONT_SIZES }],
+      "font-family": [{ font: FONT_FAMILIES }],
       "text-color": [{ text: COLORS }],
       "bg-color": [{ bg: COLORS }],
       "border-color": [{ border: COLORS }],
       "divide-color": [{ divide: COLORS }],
+      "ring-color": [{ ring: COLORS }],
     },
   },
 });

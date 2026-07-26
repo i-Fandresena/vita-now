@@ -13,7 +13,7 @@ import { CURRENT_USER, DEMO_CAPSULE, FRAGMENTS } from "./corpus";
  * Implémentation de démonstration du port `FragmentRepository`.
  *
  * Le classement est lexical et déterministe — la même question donne toujours
- * le même résultat, exigence de Product_2.0.md « Demo Mode ». En production,
+ * le même résultat, exigence de SPEC.md « Demo Mode ». En production,
  * cette classe est remplacée par un appel pgvector + Claude ; l'interface ne
  * change pas, donc aucun écran n'est touché.
  */
@@ -86,7 +86,7 @@ function score(fragment: Fragment, tokens: string[]): Scored {
   return { fragment, score: total, matched: [...matched] };
 }
 
-/** Latence simulée, annulable. Sous les 2 s exigées par Product_2.0.md. */
+/** Latence simulée, annulable. Sous les 2 s exigées par SPEC.md. */
 function wait(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {

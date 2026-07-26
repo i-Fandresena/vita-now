@@ -9,11 +9,16 @@ import {
 import { cn } from "@/lib/cn";
 
 const control = [
-  "w-full rounded-control bg-raised text-bone",
-  "border border-line-soft lift",
-  "placeholder:text-bone-4",
-  "transition-[border-color,background-color] duration-90 ease-out",
-  "hover:border-line-strong",
+  "w-full rounded-sm bg-card text-ink",
+  "border border-border",
+  "placeholder:text-ink-muted",
+  // `box-shadow` est volontairement hors de la transition : l'anneau de focus
+  // doit apparaître au moment exact où le clavier arrive, pas 150 ms après.
+  "transition-[border-color] duration-150 ease-out",
+  "hover:border-border-strong",
+  // L'anneau indigo remplace l'outline par défaut : sur un champ à bordure
+  // arrondie, un contour décalé de 2px se lit comme un second cadre.
+  "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-wash",
   "disabled:opacity-40 disabled:pointer-events-none",
 ].join(" ");
 
@@ -30,19 +35,19 @@ interface FieldShellProps {
 function FieldShell({ id, label, hint, error, children, className }: FieldShellProps) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <label htmlFor={id} className="label-archive">
+      <label htmlFor={id} className="label-eyebrow">
         {label}
       </label>
       {children}
-      {/* L'erreur ne se signale pas par la couleur : la braise est réservée aux
-          deux moments narratifs (DESIGN.md §3.3). Elle se signale par le
-          contraste maximal du texte et par un filet vertical. */}
+      {/* Le rouge est disponible dans la nouvelle direction (DESIGN.md pose un
+          token `destructive`) : une erreur peut donc se signaler par la couleur
+          sans dépenser le signal de réussite, qui est le jaune. */}
       {(hint || error) && (
         <p
           id={`${id}-desc`}
           className={cn(
             "text-caption",
-            error ? "border-l border-line-rule pl-3 text-bone" : "text-bone-3",
+            error ? "text-destructive" : "text-ink-muted",
           )}
           role={error ? "alert" : undefined}
         >

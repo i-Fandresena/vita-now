@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { EASE } from "@/lib/motion";
 
 /**
- * Le repli obligatoire de la scène 3D (PRODUCT.md:92).
+ * Le repli obligatoire de la scène 3D (SPEC.md §2).
  *
  * Même métaphore, même durée, même courbe — en SVG. Il se déclenche sans
  * WebGL, sur `prefers-reduced-motion`, ou si la scène échoue à se charger.
@@ -36,7 +36,7 @@ export function SealFallback() {
             width={180}
             height={2.4}
             rx={1}
-            fill={i % 2 === 0 ? "#2b3242" : "#232a38"}
+            fill={i % 2 === 0 ? "#c9cfe0" : "#dfe3ee"}
             initial={{ y: 45, rotate: 0 }}
             animate={{ y: 45 + offset * SPREAD, rotate: offset * 0.35 }}
             style={{ originX: "130px", originY: "46px" }}
@@ -54,7 +54,7 @@ export function SealFallback() {
         y={45}
         width={180}
         height={1}
-        fill="#f0a35c"
+        fill="#4b5cf0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.85 }}
         transition={reduced ? { duration: 0.2 } : { duration: 0.7, delay: 0.42 }}
