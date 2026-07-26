@@ -49,24 +49,39 @@ description de ce qui tourne encore en ligne.
   three.js isolé en chunk paresseux
 - **Déployé et servi en HTTPS** : https://aura.icpp-conformite.cloud/
 
+- **Backend Fastify + PostgreSQL 16**, dans [`server/`](server/) : schéma
+  vérifié à l'exécution, recherche plein texte française (`unaccent`),
+  authentification argon2id, session en cookie signé, résumé de projet (M5)
+  avec repli par règles quand l'API Claude n'est pas configurée.
+- **Bascule du front** décidée au build (`VITE_MODE_API=1`) : sans elle, le
+  produit reste en mode démonstration et fonctionne serveur éteint.
+- **CI GitHub Actions** : typecheck, build, et le schéma joué pour de vrai sur
+  PostgreSQL 16.
+- **Artefacts de déploiement** dans [`deploy/`](deploy/) — systemd, nginx,
+  script idempotent, procédure de première installation.
+
 ### Pas fait
 
-- **Aucun backend.** Pas d'Express/Fastify, pas de PostgreSQL, pas de pgvector,
-  pas d'appel à l'API Claude. Tout vit dans le navigateur.
-- **Aucune authentification réelle** : aucun mot de passe n'est demandé ni
-  vérifié, et les écrans de connexion et d'inscription le disent.
-- **La persistance est locale, pas partagée.** `localStorage` est propre à un
-  navigateur : « l'auteur » et « le chercheur » ne peuvent pas être deux
-  personnes distinctes tant que le serveur n'existe pas. C'est la limite qu'il
-  faut annoncer plutôt que subir.
-- Aucune intégration GitHub/GitLab réelle (M4) — l'écran de dépôt le dit.
+- **Aucune intégration GitHub/GitLab réelle** (M4) — l'écran de dépôt le dit.
+- **Le dépôt de fiche n'a pas d'endpoint** : la table existe, la route
+  d'écriture non. `HttpFragmentRepository.deposit` lève explicitement plutôt
+  que d'accepter en silence un texte qui n'irait nulle part.
+- **Les écritures sont optimistes** : appliquées localement, poussées derrière.
+  Si le réseau tombe, l'écran montre un état que le serveur n'a pas —
+  `BandeauSync` le signale, mais rien ne rejoue l'écriture perdue.
 - Aucun envoi de fichier : seuls des liens sont saisissables.
-- Aucun test automatisé, aucune CI/CD.
+- Aucun test unitaire (la CI couvre le typage, le build et le schéma).
+- Les espaces Entreprise et Université lisent l'état mais n'écrivent pas
+  encore côté serveur (validation de compétence, proposition d'entretien,
+  observation d'enseignant restent locales).
 
-### Écart d'architecture à connaître
+### Écart d'architecture — résorbé
 
-Le front a été construit **avant** le backend. Le risque technique du matching
-sémantique reste **entier et non validé**.
+Le front avait été construit **avant** le backend. Le risque technique de la
+recherche a été levé : la FTS française de PostgreSQL (`unaccent` +
+`french_stem`) répond au besoin sans dépendance externe. Vérifié — la requête
+« deux appareils modifient la meme donnee », **sans accents**, retrouve la
+fiche accentuée.
 
 ⚠️ **Correction au plan initial :** le backlog prévoyait « pgvector + embeddings
 + API Claude ». **L'API Claude n'expose pas d'endpoint d'embeddings** — il
@@ -103,6 +118,16 @@ AuraPlusPlus/
 ├── DESIGN.md              direction esthétique (fait autorité)
 ├── HANDOFF.md             ce fichier
 ├── docs/archive/          PRODUCT.md, Product_2.0.md, DESIGN.md (périmés)
+├── deploy/                systemd, nginx, script de déploiement, procédure
+├── .github/workflows/     CI — typecheck, build, schéma sur PostgreSQL réel
+├── server/                l'API
+│   ├── migrations/        001_schema.sql · 002_seed.sql
+│   └── src/
+│       ├── routes/        auth, etat, fiches, projets, ecriture, collectif
+│       ├── db.ts          pool + aide transactionnelle
+│       ├── env.ts         configuration validée au démarrage
+│       ├── session.ts     cookie signé
+│       └── resume.ts      M5 — Claude, avec repli par règles
 └── web/
     ├── README.md          scénario de démo + URLs directes
     └── src/
@@ -122,12 +147,32 @@ possible — mais lire le §4 avant de s'y fier.
 
 ---
 
-## 4. Brancher le vrai backend — la carte exacte
+## 4. Comment le front est branché — FAIT
 
-> ⚠️ **Une version antérieure de ce document affirmait qu'il suffisait
-> d'implémenter les 6 méthodes de `FragmentRepository` et qu'« aucun composant ne
-> change ». C'est faux, et l'écart est d'un facteur cinq.** Ce qui suit décrit le
-> code réel.
+> ✅ **C'est fait** (26 juillet 2026). Ce §4 décrit désormais ce qui existe.
+> Une version antérieure affirmait qu'il suffisait d'implémenter les 6 méthodes
+> de `FragmentRepository` et qu'« aucun composant ne change » : c'était faux
+> d'un facteur cinq, et voici ce qu'il a réellement fallu.
+
+**Le mode est décidé au build.** `VITE_MODE_API=1` branche le front sur l'API ;
+sans lui, le produit reste en démonstration (corpus local + `localStorage`) et
+fonctionne serveur éteint. Les variables Vite sont **inlinées au moment du
+build** — les changer après n'a aucun effet.
+
+**Les mutations sont restées synchrones.** Les passer en `async` aurait imposé
+de modifier les neuf écrans appelants. À la place, l'écriture locale est
+immédiate et l'appel serveur part derrière ([`app/sync.ts`](web/src/app/sync.ts)).
+Les identifiants sont **générés par le client** et transmis au serveur : sans
+cela, l'écran navigue vers un identifiant que le serveur n'a jamais vu, et un
+rechargement donne un écran vide.
+
+**Le compromis est assumé.** Si le réseau tombe, l'écran montre un état que le
+serveur n'a pas. [`BandeauSync`](web/src/features/sync/BandeauSync.tsx) le dit,
+et invite à copier son texte avant de recharger. Rien ne rejoue l'écriture
+perdue — c'est la limite connue.
+
+<details>
+<summary>L'état des lieux d'avant la bascule (conservé pour comprendre le code)</summary>
 
 L'accès aux données passe par **deux chemins indépendants**, hérités de deux
 périmètres successifs. Les confondre est l'erreur qui coûte le plus cher ici.
@@ -169,7 +214,9 @@ projet de l'espace étudiant sont deux univers sans lien. **Le schéma SQL doit
 trancher cette fusion** — c'est la vraie décision de conception qui reste, et
 elle précède tout code serveur.
 
-### Contraintes côté serveur
+</details>
+
+### Contraintes côté serveur — tenues
 
 - Temps de réponse **< 2 s**.
 - `search` doit honorer l'`AbortSignal` — le front annule les requêtes obsolètes.

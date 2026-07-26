@@ -147,6 +147,42 @@ chmod +x deploy/deployer.sh
 sudo bash deploy/deployer.sh
 ```
 
+## 9. Brancher le front sur l'API
+
+**Par défaut, le front construit reste en mode démonstration** : corpus local,
+`localStorage`, aucune requête réseau. C'est volontaire — il fonctionne même
+serveur éteint.
+
+Pour qu'il parle à l'API, il faut construire avec `VITE_MODE_API=1` :
+
+```bash
+cd /opt/vitanow/web
+VITE_MODE_API=1 npm run build
+sudo rsync -a --delete dist/ /var/www/vitanow/
+```
+
+> `VITE_API_URL` reste **vide** : front et API sont servis par le même nginx,
+> donc `/api/...` en chemin relatif suffit.
+>
+> ⚠️ **Ces variables sont inlinées au moment du build.** Les changer après
+> n'a aucun effet — il faut reconstruire.
+
+Pour rendre ce mode permanent, ajouter la variable au script :
+
+```bash
+sed -i 's|^npm run build$|VITE_MODE_API=1 npm run build|' deploy/deployer.sh
+```
+
+### Vérifier que la bascule a pris
+
+```bash
+curl -s https://aura.icpp-conformite.cloud/api/etat | head -c 200
+```
+
+Puis, dans le navigateur, ouvrir l'onglet Réseau : un appel à `/api/etat` doit
+partir au chargement. S'il n'y en a pas, le front est resté en mode
+démonstration — reconstruire avec la variable.
+
 ---
 
 ## Mises à jour suivantes
