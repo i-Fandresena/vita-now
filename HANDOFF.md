@@ -12,16 +12,20 @@
 | [AURA_cadrage.md](AURA_cadrage.md) | **Souverain** | Le besoin de l'équipe : 21 modules étudiants + 10 modules entreprise |
 | [SPEC.md](SPEC.md) | **Opérationnel** | Traduction du cadrage en écrans, modèle de données, états |
 | [BACKLOG.md](BACKLOG.md) | **Exécution** | Ce qui reste à faire, par priorité |
+| [DESIGN.md](DESIGN.md) | **Esthétique** | Tokens, typographie, structure de la landing |
 | [docs/archive/](docs/archive/) | **Périmé** | Ancien périmètre restreint — historique uniquement |
 
 En cas de conflit : `AURA_cadrage.md` > `SPEC.md` > confort d'implémentation.
 
-**Avertissement important pour qui reprend :** les documents `PRODUCT.md`,
-`Product_2.0.md` et `DESIGN.md` ont été **archivés le 26 juillet 2026**. Ils
+**Avertissement pour qui reprend :** `PRODUCT.md` et `Product_2.0.md` ont été
+**archivés le 26 juillet 2026** dans [`docs/archive/`](docs/archive/). Ils
 décrivaient un périmètre réduit à 3 mécaniques et interdisaient explicitement une
-grande partie des modules du cadrage. Le code actuellement en ligne a été écrit
-contre ces documents — **il ne couvre que 5 des 31 modules du cadrage**, dont 3
-partiellement. Voir [SPEC.md §1](SPEC.md).
+grande partie des modules du cadrage. Ils ne font plus autorité.
+
+`DESIGN.md` **à la racine fait autorité** sur l'esthétique : c'est la reprise du
+template Lovable de l'équipe. Le fichier de même nom dans `docs/archive/` est
+l'ancienne direction (palette encre/os/braise) — il ne vaut plus que comme
+description de ce qui tourne encore en ligne.
 
 ---
 
@@ -29,28 +33,48 @@ partiellement. Voir [SPEC.md §1](SPEC.md).
 
 ### Fait et vérifié
 
-- Front React/Vite : **5 écrans**, testés en 1440×900 et 375×812, zéro erreur console
+- Front React/Vite : **37 routes**, 13 fichiers d'écrans, ~15 200 lignes.
+  Les 31 modules du cadrage et la branche Universités ont tous un écran —
+  29 complets, 4 partiels, 0 absent. Détail dans [SPEC.md §4](SPEC.md).
+- Landing publique VITA'NOW + trois espaces séparés (étudiant, entreprise,
+  université), chacun avec sa propre navigation.
 - Design system : tokens, primitives, états (vide / chargement / erreur / squelette)
-- Scène 3D unique + repli SVG automatique sur 4 chemins de défaillance
-- Couche de données découplée derrière un port (`FragmentRepository`)
-- Corpus de démonstration déterministe, 5 entrées à contenu technique réel
-- Build de production vert, three.js isolé en chunk paresseux
+- Navigation **mobile d'abord** : onglets bas < 1024px, rail latéral au-delà,
+  zones de sécurité, cibles ≥ 44px
+- Scène 3D + repli SVG automatique sur 4 chemins de défaillance
+- **Persistance locale** : l'état survit au rechargement
+  ([`lib/persistence.ts`](web/src/lib/persistence.ts)), et le profil offre une
+  sortie « Repartir de zéro » pour revenir au corpus livré.
+- Build de production vert, `tsc` strict (`noUncheckedIndexedAccess`),
+  three.js isolé en chunk paresseux
 - **Déployé et servi en HTTPS** : https://aura.icpp-conformite.cloud/
 
 ### Pas fait
 
-- **26 des 31 modules du cadrage n'ont aucune ligne de code.** Voir [SPEC.md §4](SPEC.md).
-- **Aucun backend.** Pas d'Express/FastAPI, pas de PostgreSQL, pas de pgvector,
-  pas d'appel à l'API Claude. Tout passe par une implémentation en mémoire.
-- Aucune authentification (utilisateur courant codé en dur : `CURRENT_USER`).
-- Aucune persistance : un rechargement de page perd les dépôts effectués.
+- **Aucun backend.** Pas d'Express/Fastify, pas de PostgreSQL, pas de pgvector,
+  pas d'appel à l'API Claude. Tout vit dans le navigateur.
+- **Aucune authentification réelle** : aucun mot de passe n'est demandé ni
+  vérifié, et les écrans de connexion et d'inscription le disent.
+- **La persistance est locale, pas partagée.** `localStorage` est propre à un
+  navigateur : « l'auteur » et « le chercheur » ne peuvent pas être deux
+  personnes distinctes tant que le serveur n'existe pas. C'est la limite qu'il
+  faut annoncer plutôt que subir.
+- Aucune intégration GitHub/GitLab réelle (M4) — l'écran de dépôt le dit.
+- Aucun envoi de fichier : seuls des liens sont saisissables.
 - Aucun test automatisé, aucune CI/CD.
-- Aucune landing page publique — le domaine ouvre directement sur l'écran de recherche.
 
 ### Écart d'architecture à connaître
 
 Le front a été construit **avant** le backend. Le risque technique du matching
-sémantique (pgvector + embeddings + API Claude) reste **entier et non validé**.
+sémantique reste **entier et non validé**.
+
+⚠️ **Correction au plan initial :** le backlog prévoyait « pgvector + embeddings
++ API Claude ». **L'API Claude n'expose pas d'endpoint d'embeddings** — il
+faudrait un fournisseur tiers. Et pour un corpus de quelques dizaines de
+documents, la recherche plein texte française de PostgreSQL (`tsvector`,
+`unaccent`, dictionnaire `french`) donne un résultat comparable sans dépendance
+externe, sans coût par requête et sans risque de panne le jour d'une
+démonstration. C'est le chemin recommandé ; les embeddings restent une option.
 
 ---
 
@@ -72,54 +96,87 @@ sémantique (pgvector + embeddings + API Claude) reste **entier et non validé**
 ## 3. Arborescence
 
 ```
-Aura++/
+AuraPlusPlus/
 ├── AURA_cadrage.md        source de vérité produit
 ├── SPEC.md                traduction opérationnelle
 ├── BACKLOG.md             travaux restants
+├── DESIGN.md              direction esthétique (fait autorité)
 ├── HANDOFF.md             ce fichier
 ├── docs/archive/          PRODUCT.md, Product_2.0.md, DESIGN.md (périmés)
-├── graphify-out/          graphe de connaissances du projet
 └── web/
     ├── README.md          scénario de démo + URLs directes
     └── src/
-        ├── domain/        types + port — ne connaît ni React ni HTTP
-        ├── data/          corpus de démo + implémentation en mémoire
-        ├── app/           providers, routeur, chrome
+        ├── domain/        le modèle — ne connaît ni React ni HTTP
+        ├── data/          corpus de démo + implémentations en mémoire
+        ├── app/           providers, routeur, chrome, état applicatif
         ├── ui/            primitives du design system
         ├── features/      composants liés à un usage
-        ├── screens/       les 5 écrans
+        ├── screens/       13 fichiers, 37 routes
+        ├── lib/           cn, motion, persistance
         └── styles/        theme.css (tokens) + base.css (socle)
 ```
 
-**Règle d'architecture :** aucun écran n'importe le corpus. Ils appellent
-`useRepository()`. Cette règle est ce qui rend le §4 possible.
+**Règle d'architecture :** aucun écran n'importe le corpus directement. Ils
+passent par `useSoa()` ou `useRepository()`. C'est cette règle qui rend le §4
+possible — mais lire le §4 avant de s'y fier.
 
 ---
 
-## 4. Le point d'extension — brancher le vrai backend
+## 4. Brancher le vrai backend — la carte exacte
 
-C'est **le seul endroit à toucher** pour passer de la démo au produit réel.
+> ⚠️ **Une version antérieure de ce document affirmait qu'il suffisait
+> d'implémenter les 6 méthodes de `FragmentRepository` et qu'« aucun composant ne
+> change ». C'est faux, et l'écart est d'un facteur cinq.** Ce qui suit décrit le
+> code réel.
 
-1. Implémenter [`FragmentRepository`](web/src/domain/repository.ts) contre l'API.
-   Le port expose **6 méthodes** : `search`, `getById`, `capsuleForCurrentProject`,
-   `declareUse`, `latestSignal`, `deposit`.
-2. La passer au provider :
-   ```tsx
-   <RepositoryProvider repository={new HttpFragmentRepository(baseUrl)}>
-   ```
-3. C'est tout. **Aucun composant ne change.**
+L'accès aux données passe par **deux chemins indépendants**, hérités de deux
+périmètres successifs. Les confondre est l'erreur qui coûte le plus cher ici.
 
-Contraintes côté serveur :
+| Chemin | Sert | Abstraction | Où |
+|---|---|---|---|
+| `FragmentRepository` | **3 écrans** — Fiche, Signal, Dépôt | port propre, 6 méthodes | [`domain/repository.ts`](web/src/domain/repository.ts) |
+| `useSoa()` | **9 écrans** — tout le reste | **aucune** : ~25 mutations dans un `useState` | [`app/soa-store.tsx`](web/src/app/soa-store.tsx) |
+
+### Chemin 1 — le port (facile)
+
+Implémenter `FragmentRepository` contre l'API, puis :
+
+```tsx
+<RepositoryProvider repository={new HttpFragmentRepository(baseUrl)}>
+```
+
+Aucun des 3 écrans concernés ne change. C'est ce que promettait l'ancien §4, et
+c'est vrai — pour un quart de l'application.
+
+### Chemin 2 — le store (le vrai travail)
+
+`soa-store.tsx` fait 886 lignes et n'a **pas de port**. Les écrans appellent
+directement `createProject`, `addJournalEntry`, `replyToThread`… Il faut donc :
+
+1. **Extraire un port** `SoaRepository` depuis la surface actuelle de `SoaApi` —
+   les lectures dérivées (`analytics`, `capsule`, `summaryFor`) restent calculées
+   côté client tant que le serveur ne les produit pas.
+2. Rendre les mutations **asynchrones**. C'est le point de bascule : aujourd'hui
+   elles renvoient une valeur immédiatement (`createProject` renvoie un `Project`),
+   et plusieurs écrans en dépendent pour naviguer juste après. Chacun de ces
+   appels devient un `await`, avec un état d'attente et un chemin d'échec.
+3. Seulement ensuite, écrire `HttpSoaRepository`.
+
+**Les deux corpus sont disjoints.** [`data/corpus.ts`](web/src/data/corpus.ts)
+(les fiches) et [`data/soa-corpus.ts`](web/src/data/soa-corpus.ts) (projets,
+étudiants, forum…) ne partagent aucune clé : une fiche de la recherche et un
+projet de l'espace étudiant sont deux univers sans lien. **Le schéma SQL doit
+trancher cette fusion** — c'est la vraie décision de conception qui reste, et
+elle précède tout code serveur.
+
+### Contraintes côté serveur
+
 - Temps de réponse **< 2 s**.
 - `search` doit honorer l'`AbortSignal` — le front annule les requêtes obsolètes.
 - `latestSignal` doit rester résolvable sans déclaration préalable : un rechargement
   en pleine soutenance ne doit pas vider l'écran le plus important.
 - `search` renvoie un `why` par résultat (pourquoi *ce* résultat répond à *cette*
   question). Sans cette phrase, le résultat demande un acte de foi.
-
-**Attention :** ce port est modelé sur l'ancien périmètre (le « fragment »). Le
-cadrage travaille au niveau du **projet**. Voir [BACKLOG.md](BACKLOG.md) §
-Refonte du domaine — le port devra être élargi, pas seulement implémenté.
 
 ---
 
@@ -180,9 +237,15 @@ Voir [BACKLOG.md](BACKLOG.md) — priorisé, chiffré, avec les dépendances.
   n'existe plus. Le découpage passe par `React.lazy`.
 - Newsreader est distribué par axe (`opsz.css`), pas par sous-ensemble — il n'y
   a pas de `latin.css` pour cette famille.
-- Le vocabulaire du code (« fragment », « sceau », « braise ») vient de l'ancien
-  périmètre et n'apparaît nulle part dans `AURA_cadrage.md`. Ne pas l'étendre à
-  de nouveaux écrans sans décision explicite.
+- Le vocabulaire du **code** (« fragment », « sceau », « braise ») vient de
+  l'ancien périmètre et n'apparaît nulle part dans `AURA_cadrage.md`. Il a été
+  retiré des **textes visibles** le 26 juillet 2026 — à l'écran on dit « fiche »,
+  « chercher », « les fiches ». Les identifiants internes ont été laissés tels
+  quels volontairement (renommer = du bruit dans l'historique sans gain
+  utilisateur). **Ne pas réintroduire ce vocabulaire dans un texte affiché.**
+- **La persistance est locale.** Un navigateur qui a déjà servi garde son état :
+  une correction du corpus dans le code n'apparaît pas sur un poste déjà utilisé.
+  La sortie est le bouton « Repartir de zéro » en bas du profil.
 
 ---
 
@@ -192,4 +255,5 @@ Voir [BACKLOG.md](BACKLOG.md) — priorisé, chiffré, avec les dépendances.
 - [ ] `cd web && npm ci && npm run dev` — l'app démarre
 - [ ] Dérouler le scénario de démo du README de bout en bout
 - [ ] `npm run build` — build vert
-- [ ] Ouvrir `graphify-out/graph.html` pour la carte du projet
+- [ ] **Avant de toucher au backend, lire le §4 en entier** — deux chemins de
+      données coexistent, et le plus gros n'a pas de port
