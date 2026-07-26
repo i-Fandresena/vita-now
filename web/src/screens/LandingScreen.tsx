@@ -317,19 +317,19 @@ function Bandeau() {
           </div>
         </div>
 
-        {/* Défilé centré des domaines — boucle seamless via liste dupliquée */}
+        {/* Défilé centré des domaines — 4 répétitions par bande pour couvrir les grands écrans sans trou */}
         <div
           aria-hidden
-          className="flex w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
+          className="flex w-full justify-center overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
         >
           {[0, 1].map((copie) => (
             <ul
               key={copie}
-              className="flex shrink-0 items-center gap-12 pr-12 motion-safe:animate-marquee"
+              className="flex shrink-0 items-center justify-around gap-12 pr-12 motion-safe:animate-marquee"
             >
-              {DOMAINES.map((domaine) => (
+              {[...DOMAINES, ...DOMAINES, ...DOMAINES, ...DOMAINES].map((domaine, index) => (
                 <li
-                  key={domaine}
+                  key={`${domaine}-${index}`}
                   className="font-heading text-heading whitespace-nowrap text-ink-muted"
                 >
                   {domaine}
