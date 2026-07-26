@@ -3,7 +3,6 @@ import { ArrowRight, Clock, Plus, Sparkles } from "lucide-react";
 
 import { hrefFor, type Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
-import { CURRENT_STUDENT } from "@/data/soa-corpus";
 import { joursDepuis, type Project } from "@/domain/soa";
 import { cn } from "@/lib/cn";
 import { rise, sequence } from "@/lib/motion";
@@ -28,6 +27,14 @@ import { CardLink, Screen, ScreenHead } from "@/ui/layout";
  * Ce qui n'est **pas** ici, et c'est délibéré : aucun score, aucune série,
  * aucun classement (SPEC.md §2bis). Le tableau de bord est un chemin de
  * reprise ; les mécaniques de reconnaissance vivent dans le profil.
+ *
+ * **Premier lancement.** Un compte neuf n'a ni projet, ni journal, ni capsule.
+ * Le rythme et les chiffres n'affichent alors que des zéros : douze colonnes
+ * vides, « 0 sur 0 », une techno principale à « — ». Ce n'est pas une mesure,
+ * c'est du bruit — et sur un écran de 375px il occupe tout ce qu'on voit en
+ * premier. Ces deux sections sont donc **retirées** tant qu'aucun projet
+ * n'existe, au profit des deux seuls gestes qui ont un sens à ce moment :
+ * en commencer un, ou en reprendre un qu'un autre a arrêté.
  */
 
 function heureDuJour(): string {
@@ -127,13 +134,22 @@ function LigneProjet({
 }
 
 export function DashboardScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { myProjects, analytics, capsule } = useSoa();
+  const { myProjects, analytics, capsule, me } = useSoa();
   const reduced = useReducedMotion() ?? false;
 
   const actifs = myProjects.filter(
     (p) => p.status === "En cours" || p.status === "En pause",
   );
-  const prenom = CURRENT_STUDENT.nom.split(" ")[0];
+  /* Le prénom vient de la session, pas du corpus : modifier son nom dans son
+     profil — ou se connecter avec un autre compte — doit changer qui l'écran
+     salue. Avec la persistance, une salutation figée survivrait au
+     rechargement et deviendrait un défaut permanent. */
+  const prenom = me.nom.split(" ")[0] ?? me.nom;
+
+  /* Aucun projet du tout — compte neuf, ou tous archivés. L'état se lit sur
+     `myProjects` et non sur `actifs` : quelqu'un dont les projets sont tous
+     terminés a bien un rythme et des chiffres à montrer. */
+  const debutant = myProjects.length === 0;
 
   return (
     <Screen>
@@ -141,9 +157,11 @@ export function DashboardScreen({ navigate }: { navigate: (to: Route) => void })
         eyebrow={heureDuJour()}
         titre={<>{prenom}.</>}
         lede={
-          capsule
-            ? "Un projet t'attend. Le reste peut attendre."
-            : "Aucun projet en sommeil. Tout est à jour."
+          debutant
+            ? "Rien ici pour l'instant. Un projet commencé aujourd'hui aura un journal demain."
+            : capsule
+              ? "Un projet t'attend. Le reste peut attendre."
+              : "Aucun projet en sommeil. Tout est à jour."
         }
         actions={
           <Button variant="primary" onClick={() => navigate({ name: "projet-nouveau" })}>
@@ -183,53 +201,71 @@ export function DashboardScreen({ navigate }: { navigate: (to: Route) => void })
               ))
             ) : (
               <div className="rounded-card border border-border bg-surface p-6">
-                <p className="text-body text-ink">Aucun projet en cours.</p>
+                <p className="text-body text-ink">
+                  {debutant ? "Ton premier projet t'attend." : "Aucun projet en cours."}
+                </p>
                 <p className="mt-1 text-body text-ink-muted">
                   Reprendre un projet arrêté coûte moins cher que d'en commencer un.
                 </p>
-                <Button
-                  variant="secondary"
-                  className="mt-4"
-                  onClick={() => navigate({ name: "renaissance" })}
-                >
-                  Voir les projets à reprendre
-                </Button>
+                {/* Les deux sorties sont côte à côte sur un compte neuf : le
+                    bouton « Nouveau projet » de l'en-tête est loin du pouce sur
+                    un téléphone, et c'est ici que la question se pose. */}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {debutant && (
+                    <Button
+                      variant="primary"
+                      onClick={() => navigate({ name: "projet-nouveau" })}
+                    >
+                      Commencer un projet
+                    </Button>
+                  )}
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate({ name: "renaissance" })}
+                  >
+                    Voir les projets à reprendre
+                  </Button>
+                </div>
               </div>
             )}
           </div>
         </motion.section>
 
-        <motion.section variants={rise}>
-          <div className="rounded-card border border-border bg-card p-5 sm:p-6">
-            <Rhythm valeurs={analytics.rythme} libelle="Ton rythme d'écriture" />
-            <p className="mt-4 text-caption text-ink-muted">
-              Une colonne par semaine — une entrée de journal, une décision, une
-              erreur documentée. Une semaine vide est une information, pas une faute.
-            </p>
-          </div>
-        </motion.section>
+        {!debutant && (
+          <motion.section variants={rise}>
+            <div className="rounded-card border border-border bg-card p-5 sm:p-6">
+              <Rhythm valeurs={analytics.rythme} libelle="Ton rythme d'écriture" />
+              <p className="mt-4 text-caption text-ink-muted">
+                Une colonne par semaine — une entrée de journal, une décision, une
+                erreur documentée. Une semaine vide est une information, pas une faute.
+              </p>
+            </div>
+          </motion.section>
+        )}
 
-        <motion.section variants={rise}>
-          <h2 className="font-heading text-heading text-ink">Où tu en es</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat valeur={analytics.projetsCommences} libelle="Projets commencés" />
-            <Stat
-              valeur={analytics.projetsTermines}
-              libelle="Terminés"
-              ton="success"
-              detail={`sur ${analytics.projetsCommences}`}
-            />
-            <Stat valeur={analytics.entreesJournal} libelle="Entrées de journal" />
-            <Stat
-              valeur={
-                <span className="text-title font-semibold">
-                  {analytics.technoPrincipale}
-                </span>
-              }
-              libelle="Techno principale"
-            />
-          </div>
-        </motion.section>
+        {!debutant && (
+          <motion.section variants={rise}>
+            <h2 className="font-heading text-heading text-ink">Où tu en es</h2>
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Stat valeur={analytics.projetsCommences} libelle="Projets commencés" />
+              <Stat
+                valeur={analytics.projetsTermines}
+                libelle="Terminés"
+                ton="success"
+                detail={`sur ${analytics.projetsCommences}`}
+              />
+              <Stat valeur={analytics.entreesJournal} libelle="Entrées de journal" />
+              <Stat
+                valeur={
+                  <span className="text-title font-semibold">
+                    {analytics.technoPrincipale}
+                  </span>
+                }
+                libelle="Techno principale"
+              />
+            </div>
+          </motion.section>
+        )}
 
         <motion.section variants={rise}>
           <CardLink

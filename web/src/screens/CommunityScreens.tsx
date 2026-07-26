@@ -15,7 +15,6 @@ import { hrefFor, type Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
 import {
   COMPANIES,
-  CURRENT_STUDENT,
   CURRENT_STUDENT_ID,
   MENTORS,
   STUDENTS,
@@ -27,6 +26,7 @@ import {
   type Companion,
   type ForumCategory,
   type ForumThread,
+  type Student,
 } from "@/domain/soa";
 import { cn } from "@/lib/cn";
 import { rise, sequence } from "@/lib/motion";
@@ -414,8 +414,7 @@ export function ThreadScreen({
  * les raisons qui l'ont produite. Un chiffre nu ne se vérifie pas, et un
  * matching qu'on ne peut pas vérifier ne se croit pas.
  */
-function calculerCompagnons(): Companion[] {
-  const moi = CURRENT_STUDENT;
+function calculerCompagnons(moi: Student): Companion[] {
   const mesTechnos = new Set(moi.technos.map((t) => t.nom));
   const mesInterets = new Set(moi.interets);
   const mesDispos = new Set(moi.disponibilites);
@@ -466,7 +465,10 @@ function calculerCompagnons(): Companion[] {
 }
 
 export function CompanionsScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const compagnons = useMemo(calculerCompagnons, []);
+  /* Le matching part de la session vivante, pas de la constante du corpus :
+     modifier ses technos dans son profil doit changer ses correspondances. */
+  const { me } = useSoa();
+  const compagnons = useMemo(() => calculerCompagnons(me), [me]);
 
   return (
     <Screen>
