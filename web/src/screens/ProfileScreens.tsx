@@ -117,6 +117,16 @@ function RemiseAZero() {
   );
 }
 
+function parseArray<T>(val: unknown): T[] {
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string") {
+    const cleaned = val.replace(/^\{|\}$/g, "");
+    if (!cleaned.trim()) return [];
+    return cleaned.split(",").map((s) => s.replace(/^"|"$/g, "").trim()) as unknown as T[];
+  }
+  return [];
+}
+
 export function ProfileScreen({
   id,
   navigate,
@@ -142,6 +152,10 @@ export function ProfileScreen({
       </Screen>
     );
   }
+
+  const disponibilites = parseArray<string>(etudiant.disponibilites);
+  const technos = parseArray<any>(etudiant.technos);
+  const interets = parseArray<string>(etudiant.interets);
 
   const siens = projects.filter((p) => p.ownerId === etudiant.id);
   const termines = siens.filter((p) => p.status === "Terminé").length;
@@ -195,7 +209,7 @@ export function ProfileScreen({
           </p>
           <ChipRow className="mt-3">
             {mentor && <Chip tone="primary">Mentor</Chip>}
-            {etudiant.disponibilites.map((d) => (
+            {disponibilites.map((d) => (
               <Chip key={d}>{d}</Chip>
             ))}
           </ChipRow>
@@ -230,13 +244,13 @@ export function ProfileScreen({
           <div className="rounded-card border border-border bg-card p-5 sm:p-6">
             <h3 className="font-heading text-heading text-ink">Technologies</h3>
             <div className="mt-4 flex flex-col gap-4">
-              {etudiant.technos.map((t) => (
+              {technos.map((t) => (
                 <div key={t.nom}>
                   <Progress
-                    valeur={t.maitrise * 25}
+                    valeur={(t.maitrise ?? 1) * 25}
                     libelle={t.nom}
                     origine={
-                      ["Découverte", "Pratiqué", "À l'aise", "Avancé"][t.maitrise - 1]
+                      ["Découverte", "Pratiqué", "À l'aise", "Avancé"][(t.maitrise ?? 1) - 1]
                     }
                   />
                   {/* E9 — la validation par une entreprise est une preuve, pas
@@ -255,7 +269,7 @@ export function ProfileScreen({
           <div className="rounded-card border border-border bg-card p-5 sm:p-6">
             <h3 className="font-heading text-heading text-ink">Centres d'intérêt</h3>
             <ChipRow className="mt-4">
-              {etudiant.interets.map((i) => (
+              {interets.map((i) => (
                 <Chip key={i}>{i}</Chip>
               ))}
             </ChipRow>

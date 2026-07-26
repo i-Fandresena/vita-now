@@ -224,6 +224,16 @@ function ecrireSession(id: string | null) {
 /** Les comptes créés pendant la session s'ajoutent à ceux du corpus. */
 let comptesVivants: Account[] = [...ACCOUNTS];
 
+function parseArray<T>(val: unknown): T[] {
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string") {
+    const cleaned = val.replace(/^\{|\}$/g, "");
+    if (!cleaned.trim()) return [];
+    return cleaned.split(",").map((s) => s.replace(/^"|"$/g, "").trim()) as unknown as T[];
+  }
+  return [];
+}
+
 let compteur = 0;
 const nouvelId = (prefixe: string) => `${prefixe}-${Date.now().toString(36)}-${compteur++}`;
 
@@ -271,17 +281,28 @@ export function SoaProvider({ children }: { children: ReactNode }) {
     void api
       .etat(controleur.signal)
       .then((distant) => {
+        const nettsStudents = ((distant.students ?? []) as any[]).map((st) => ({
+          ...st,
+          disponibilites: parseArray(st.disponibilites),
+          interets: parseArray(st.interets),
+          technos: parseArray(st.technos),
+        }));
+        const nettsProjects = ((distant.projects ?? []) as any[]).map((pj) => ({
+          ...pj,
+          technos: parseArray(pj.technos),
+        }));
+
         setState((s) => ({
           ...s,
-          students: distant.students as SoaState["students"],
-          projects: distant.projects as SoaState["projects"],
-          journal: distant.journal as SoaState["journal"],
-          threads: distant.threads as SoaState["threads"],
-          challenges: distant.challenges as SoaState["challenges"],
-          ideas: distant.ideas as SoaState["ideas"],
-          opportunities: distant.opportunities as SoaState["opportunities"],
-          mentorRequests: distant.mentorRequests as SoaState["mentorRequests"],
-          notifications: distant.notifications as SoaState["notifications"],
+          students: nettsStudents as SoaState["students"],
+          projects: nettsProjects as SoaState["projects"],
+          journal: (distant.journal ?? []) as SoaState["journal"],
+          threads: (distant.threads ?? []) as SoaState["threads"],
+          challenges: (distant.challenges ?? []) as SoaState["challenges"],
+          ideas: (distant.ideas ?? []) as SoaState["ideas"],
+          opportunities: (distant.opportunities ?? []) as SoaState["opportunities"],
+          mentorRequests: (distant.mentorRequests ?? []) as SoaState["mentorRequests"],
+          notifications: (distant.notifications ?? []) as SoaState["notifications"],
           sessionId: distant.sessionId,
         }));
       })
