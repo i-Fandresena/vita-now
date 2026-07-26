@@ -10,8 +10,8 @@
 
 set -euo pipefail
 
-RACINE=/opt/vitanow
-WEB=/var/www/vitanow
+RACINE=/opt/Aura++
+WEB=/var/www/aura-plus-plus
 SERVICE=vitanow-api
 
 rouge() { printf '\033[31m%s\033[0m\n' "$*"; }
@@ -49,7 +49,12 @@ npm ci --no-audit --no-fund
 # VITE_API_URL est inlinée AU MOMENT DU BUILD : la changer après n'a aucun
 # effet. Vide = chemins relatifs (/api/...), ce que le reverse proxy sert
 # déjà sur la même origine — c'est le cas nominal.
-npm run build
+#
+# VITE_MODE_API=1 est indispensable et doit rester ici : sans lui, le front se
+# reconstruit **silencieusement** en mode démonstration — corpus local, aucune
+# requête réseau. Rien n'échoue, rien n'avertit, et la base cesse simplement
+# d'être lue. C'est la panne la plus difficile à diagnostiquer de ce dépôt.
+VITE_MODE_API=1 npm run build
 
 # Le remplacement se fait après un build réussi seulement : si `npm run build`
 # échoue, l'ancienne version reste en ligne au lieu d'être remplacée par rien.

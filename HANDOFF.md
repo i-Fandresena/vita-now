@@ -304,3 +304,53 @@ Voir [BACKLOG.md](BACKLOG.md) — priorisé, chiffré, avec les dépendances.
 - [ ] `npm run build` — build vert
 - [ ] **Avant de toucher au backend, lire le §4 en entier** — deux chemins de
       données coexistent, et le plus gros n'a pas de port
+
+---
+
+## 9. Installation réalisée sur le VPS — 26 juillet 2026
+
+Trois écarts par rapport à `deploy/PREMIERE-INSTALLATION.md`, imposés par ce
+serveur, qui héberge déjà une autre application en production (`icpp_app`).
+
+| Point | La procédure prévoit | Ce qui a été fait | Pourquoi |
+|---|---|---|---|
+| Dépôt | `/opt/vitanow` | `/opt/Aura++` | Le dépôt y était déjà cloné |
+| Racine web | `/var/www/vitanow` | `/var/www/aura-plus-plus` | Racine servie par le vhost existant |
+| Port API | 3000 | **3100** | Le 3000 est publié par le conteneur `icpp_app` |
+| PostgreSQL | port 5432 | **cluster natif sur 5433** | Le 5432 est tenu par `icpp_postgres` |
+
+### Le choix de base de données, et pourquoi il compte
+
+Un PostgreSQL tournait déjà sur cette machine, en conteneur, au service de
+`icpp_app`. Y créer la base de VITA'NOW aurait été plus rapide — et aurait
+placé le `TRUNCATE` de `002_seed.sql` à une faute de frappe des données de
+production d'une autre application.
+
+Un cluster natif a donc été installé, sur le port 5433 attribué
+automatiquement puisque 5432 était pris. Les deux instances ne se voient pas.
+Vérifié après installation : la base `icpp_platform` n'existe pas dans le
+cluster de VITA'NOW.
+
+### nginx — ce qui a été modifié, exactement
+
+**Seul le bloc `location /api/` a été ajouté.** Le reste du vhost est
+intact : 7 directives « managed by Certbot » avant, 7 après, certificat
+valide jusqu'au 23 octobre 2026. Sauvegarde datée dans
+`/root/vhost-avant-api.*.bak`.
+
+### Comptes de démonstration
+
+Le seed peuple les étudiants mais **pas** la table `accounts` : sans
+intervention, personne ne peut se connecter. Quatre comptes ont été créés,
+liés aux étudiants du corpus, avec des empreintes argon2id produites par la
+bibliothèque du serveur lui-même.
+
+`provider` doit valoir `email` : la route de connexion filtre dessus, et un
+compte créé en `universite` échoue silencieusement à l'authentification.
+
+### Le piège à connaître
+
+`deploy/deployer.sh` construit désormais avec `VITE_MODE_API=1`. **Ne pas
+retirer cette variable.** Sans elle, le front se reconstruit en mode
+démonstration : corpus local, aucune requête réseau, aucune erreur affichée.
+La base cesse simplement d'être lue, et rien ne le signale.
