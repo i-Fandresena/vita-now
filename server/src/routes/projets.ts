@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
 import { query, queryOne } from "../db.js";
+import { resumeDe } from "../resume.js";
 
 /**
  * projets.ts — M2 (projets) et M3 (journal), en lecture.
@@ -156,6 +157,23 @@ export async function routesProjets(app: FastifyInstance): Promise<void> {
     if (!ligne) return reponse.code(404).send({ erreur: "Projet introuvable" });
     return versProjet(ligne);
   });
+
+  /**
+   * GET /api/projets/:id/resume — M5.
+   *
+   * Route séparée du projet, et non un champ de sa fiche : le résumé peut
+   * coûter un appel au modèle, alors que la fiche est lue à chaque affichage
+   * de liste. Les fondre ensemble ferait payer ce coût à des écrans qui
+   * n'affichent pas le résumé.
+   */
+  app.get<{ Params: { id: string } }>(
+    "/api/projets/:id/resume",
+    async (requete, reponse) => {
+      const resume = await resumeDe(requete.params.id);
+      if (!resume) return reponse.code(404).send({ erreur: "Projet introuvable" });
+      return resume;
+    },
+  );
 
   /** GET /api/projets/:id/journal — M3, du plus récent au plus ancien. */
   app.get<{ Params: { id: string } }>("/api/projets/:id/journal", async (requete) => {
