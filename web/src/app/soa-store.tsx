@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -50,6 +51,7 @@ import {
   STUDENTS,
   THREADS,
 } from "@/data/soa-corpus";
+import { CLES, charger, enregistrer } from "@/lib/persistence";
 
 /**
  * soa-store.tsx — l'état applicatif de la démonstration.
@@ -223,22 +225,27 @@ let compteur = 0;
 const nouvelId = (prefixe: string) => `${prefixe}-${Date.now().toString(36)}-${compteur++}`;
 
 export function SoaProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SoaState>(() => ({
-    students: STUDENTS,
-    projects: PROJECTS,
-    journal: JOURNAL,
-    threads: THREADS,
-    challenges: CHALLENGES,
-    ideas: IDEAS,
-    notifications: NOTIFICATIONS,
-    opportunities: OPPORTUNITIES,
-    mentorRequests: MENTOR_REQUESTS,
-    // Reprise de la session précédente si elle existe. Sinon `null` : on
-    // entre par la landing, et la connexion est un vrai passage — c'est le
-    // parcours que le cadrage décrit (M1), pas un raccourci de démonstration.
-    sessionId: lireSession(),
-    channels: { web: true, email: false, push: false },
-  }));
+  const [state, setState] = useState<SoaState>(() => {
+    const initial: SoaState = {
+      students: STUDENTS,
+      projects: PROJECTS,
+      journal: JOURNAL,
+      threads: THREADS,
+      challenges: CHALLENGES,
+      ideas: IDEAS,
+      notifications: NOTIFICATIONS,
+      opportunities: OPPORTUNITIES,
+      mentorRequests: MENTOR_REQUESTS,
+      sessionId: lireSession(),
+      channels: { web: true, email: false, push: false },
+    };
+
+    return charger<SoaState>(CLES.etat) ?? initial;
+  });
+
+  useEffect(() => {
+    enregistrer(CLES.etat, state);
+  }, [state]);
 
   const me =
     state.students.find((s) => s.id === (state.sessionId ?? CURRENT_STUDENT_ID)) ??

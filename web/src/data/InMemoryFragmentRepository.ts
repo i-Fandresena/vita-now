@@ -7,6 +7,8 @@ import type {
   SearchHit,
 } from "@/domain/types";
 
+import { CLES, charger, enregistrer } from "@/lib/persistence";
+
 import { CURRENT_USER, DEMO_CAPSULE, FRAGMENTS } from "./corpus";
 
 /**
@@ -105,9 +107,36 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+/** Ce que la Mémoire IA conserve d'une session à l'autre. */
+interface MemoirePersistee {
+  /** Uniquement les dépôts locaux : le corpus livré est reconstruit au chargement. */
+  deposes: Fragment[];
+  signals: AuthorSignal[];
+}
+
 export class InMemoryFragmentRepository implements FragmentRepository {
-  private readonly fragments: Fragment[] = [...FRAGMENTS];
-  private readonly signals: AuthorSignal[] = [];
+  private readonly fragments: Fragment[];
+  private readonly signals: AuthorSignal[];
+
+  constructor() {
+    /* Seuls les dépôts locaux sont relus ; le corpus livré vient toujours du
+       code. Persister les cinq mémoires d'origine les figerait dans le
+       navigateur : une correction de contenu ne serait jamais reprise, et un
+       poste de démonstration afficherait une version périmée sans qu'on
+       comprenne pourquoi. */
+    const sauvegarde = charger<MemoirePersistee>(CLES.memoire);
+    this.fragments = [...(sauvegarde?.deposes ?? []), ...FRAGMENTS];
+    this.signals = sauvegarde?.signals ?? [];
+  }
+
+  /** Ne sauvegarde que ce qui a été produit localement (cf. constructeur). */
+  private sauver(): void {
+    const livres = new Set(FRAGMENTS.map((f) => f.id));
+    enregistrer<MemoirePersistee>(CLES.memoire, {
+      deposes: this.fragments.filter((f) => !livres.has(f.id)),
+      signals: this.signals,
+    });
+  }
 
   async search(query: string, options?: { signal?: AbortSignal }): Promise<SearchHit[]> {
     await wait(420, options?.signal);
@@ -147,7 +176,7 @@ export class InMemoryFragmentRepository implements FragmentRepository {
     if (!fragment) throw new Error(`Fragment inconnu : ${fragmentId}`);
 
     const signal: AuthorSignal = {
-      id: `s-${fragmentId}-${this.signals.length}`,
+      id: `s-${fragmentId}-${Date.now().toString(36)}`,
       fragmentId,
       fragmentTitle: fragment.title,
       author: fragment.author,
@@ -156,6 +185,7 @@ export class InMemoryFragmentRepository implements FragmentRepository {
     };
 
     this.signals.push(signal);
+    this.sauver();
     return signal;
   }
 
@@ -182,7 +212,10 @@ export class InMemoryFragmentRepository implements FragmentRepository {
     await wait(360);
 
     const fragment: Fragment = {
-      id: `f-local-${this.fragments.length}`,
+      // Horodaté plutôt qu'indexé : un identifiant tiré de `length` se
+      // réattribuerait au dépôt suivant une fois l'état relu, et deux
+      // fragments distincts partageraient la même URL.
+      id: `f-local-${Date.now().toString(36)}`,
       title: draft.title,
       promise: draft.reasoning.slice(0, 160),
       origin: {
@@ -201,6 +234,7 @@ export class InMemoryFragmentRepository implements FragmentRepository {
     };
 
     this.fragments.unshift(fragment);
+    this.sauver();
     return fragment;
   }
 }
