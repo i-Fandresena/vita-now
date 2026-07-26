@@ -423,22 +423,27 @@ function Bandeau() {
           )}
         </div>
 
-        {/* Défilé centré des domaines — boucle seamless via liste dupliquée */}
+        {/* Défilé centré des domaines — animation CSS fluide & continue (GPU-accelerated) */}
         <div
           aria-hidden
-          className="flex w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
+          className="relative flex w-full overflow-hidden justify-center py-2 [mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]"
         >
-          <motion.ul
-            className="flex shrink-0 gap-x-8"
-            animate={reduced ? {} : { x: ["0%", "-50%"] }}
-            transition={{ duration: 18, ease: "linear", repeat: Infinity }}
+          <div
+            className="flex shrink-0 items-center gap-10 whitespace-nowrap"
+            style={{
+              animation: reduced ? "none" : "marquee 20s linear infinite",
+              willChange: "transform",
+            }}
           >
-            {[...DOMAINES, ...DOMAINES].map((domaine, i) => (
-              <li key={i} className="whitespace-nowrap font-heading text-heading text-ink-muted">
+            {[...DOMAINES, ...DOMAINES, ...DOMAINES, ...DOMAINES].map((domaine, i) => (
+              <span
+                key={i}
+                className="inline-block font-heading text-heading text-ink-muted transition-colors duration-150 hover:text-primary"
+              >
                 {domaine}
-              </li>
+              </span>
             ))}
-          </motion.ul>
+          </div>
         </div>
 
         <p className="text-center text-caption text-ink-muted">
