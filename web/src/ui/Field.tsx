@@ -1,6 +1,8 @@
+import { Eye, EyeOff } from "lucide-react";
 import {
   forwardRef,
   useId,
+  useState,
   type InputHTMLAttributes,
   type ReactNode,
   type TextareaHTMLAttributes,
@@ -67,8 +69,11 @@ export interface InputProps
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, hint, error, className, wrapperClassName, ...props }, ref) => {
+  ({ label, hint, error, className, wrapperClassName, type, ...props }, ref) => {
     const id = useId();
+    const [afficherMotDePasse, setAfficherMotDePasse] = useState(false);
+    const estMotDePasse = type === "password";
+
     return (
       <FieldShell
         id={id}
@@ -77,14 +82,45 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         error={error}
         className={wrapperClassName}
       >
-        <input
-          ref={ref}
-          id={id}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={hint || error ? `${id}-desc` : undefined}
-          className={cn(control, "h-11 px-3 text-body", className)}
-          {...props}
-        />
+        {estMotDePasse ? (
+          <div className="relative w-full">
+            <input
+              ref={ref}
+              id={id}
+              type={afficherMotDePasse ? "text" : "password"}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={hint || error ? `${id}-desc` : undefined}
+              className={cn(control, "h-11 pl-3 pr-10 text-body", className)}
+              {...props}
+            />
+            <button
+              type="button"
+              onClick={() => setAfficherMotDePasse((v) => !v)}
+              aria-label={
+                afficherMotDePasse
+                  ? "Masquer le mot de passe"
+                  : "Afficher le mot de passe"
+              }
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xs p-1 text-ink-muted transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {afficherMotDePasse ? (
+                <EyeOff className="size-5" aria-hidden />
+              ) : (
+                <Eye className="size-5" aria-hidden />
+              )}
+            </button>
+          </div>
+        ) : (
+          <input
+            ref={ref}
+            id={id}
+            type={type}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={hint || error ? `${id}-desc` : undefined}
+            className={cn(control, "h-11 px-3 text-body", className)}
+            {...props}
+          />
+        )}
       </FieldShell>
     );
   },
