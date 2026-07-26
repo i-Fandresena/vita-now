@@ -124,15 +124,20 @@ export function ProfileScreen({
   id?: string;
   navigate: (to: Route) => void;
 }) {
-  const { projects, pointsOf, me } = useSoa();
+  const { projects, pointsOf, me, students } = useSoa();
   const [onglet, setOnglet] = useState<(typeof ONGLETS)[number]>("Projets");
 
-  const etudiant = id ? studentById(id) : me;
-  const moi = !id || id === me.id;
+  const etudiant = id ? (students.find((s) => s.id === id) ?? studentById(id)) : me;
+  const moi = !id || (me && id === me.id);
 
   if (!etudiant) {
     return (
       <Screen>
+        <ScreenHead
+          titre="Profil introuvable"
+          retour={{ name: "tableau" }}
+          onRetour={navigate}
+        />
         <EmptyState title="Profil introuvable" body="Le lien est peut-être périmé." />
       </Screen>
     );
@@ -149,7 +154,7 @@ export function ProfileScreen({
     <Screen>
       <ScreenHead
         titre={moi ? "Profil" : etudiant.nom}
-        retour={moi ? undefined : { name: "communaute" }}
+        retour={moi ? { name: "tableau" } : { name: "communaute" }}
         onRetour={navigate}
         actions={
           moi && (
@@ -542,8 +547,8 @@ export function PortfolioScreen({
   id: string;
   navigate: (to: Route) => void;
 }) {
-  const { projects, journalFor } = useSoa();
-  const etudiant = studentById(id);
+  const { projects, journalFor, students } = useSoa();
+  const etudiant = students.find((s) => s.id === id) ?? studentById(id);
 
   if (!etudiant) {
     return (
