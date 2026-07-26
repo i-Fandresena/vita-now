@@ -177,6 +177,13 @@ export function ProfileScreen({
             <>
               <Button
                 variant="secondary"
+                onClick={() => navigate({ name: "classements" })}
+              >
+                <Trophy aria-hidden className="size-4 text-primary" />
+                Classements & Prix
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => navigate({ name: "opportunites" })}
               >
                 <Briefcase aria-hidden className="size-4" />

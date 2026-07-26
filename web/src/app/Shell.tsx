@@ -8,6 +8,7 @@ import {
   Users,
   LogOut,
   Menu,
+  Trophy,
 } from "lucide-react";
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 
@@ -422,6 +423,15 @@ function MenuMobile({
               </li>
               <li>
                 <button
+                  onClick={() => aller({ name: "classements" })}
+                  className="flex h-13 w-full items-center gap-3 rounded-sm px-2 text-body text-ink transition-colors duration-150 hover:bg-surface"
+                >
+                  <Trophy aria-hidden className="size-5 shrink-0 text-primary" />
+                  Classements & Prix
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => aller({ name: "profil-edition" })}
                   className="flex h-13 w-full items-center gap-3 rounded-sm px-2 text-body text-ink transition-colors duration-150 hover:bg-surface"
                 >
@@ -639,6 +649,13 @@ export function Shell({ route, navigate, children }: ShellProps) {
                     {unread}
                   </span>
                 )}
+              </button>
+              <button
+                onClick={() => navigate({ name: "classements" })}
+                className="flex h-11 items-center gap-3 rounded-full px-4 text-body font-medium text-ink-muted transition-colors duration-150 hover:bg-surface hover:text-ink"
+              >
+                <Trophy aria-hidden className="size-5 text-primary" />
+                Classements & Prix
               </button>
               <Button
                 variant="ghost"

@@ -285,10 +285,22 @@ export function DashboardScreen({ navigate }: { navigate: (to: Route) => void })
               : "Aucun projet en sommeil. Tout est à jour."
         }
         actions={
-          <Button variant="primary" onClick={() => navigate({ name: "projet-nouveau" })}>
-            <Plus aria-hidden className="size-4" />
-            Nouveau projet
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => navigate({ name: "classements" })}
+            >
+              <Trophy aria-hidden className="size-4 text-primary" />
+              Classements & Prix
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => navigate({ name: "projet-nouveau" })}
+            >
+              <Plus aria-hidden className="size-4" />
+              Nouveau projet
+            </Button>
+          </div>
         }
       />
 
