@@ -354,3 +354,62 @@ compte créé en `universite` échoue silencieusement à l'authentification.
 retirer cette variable.** Sans elle, le front se reconstruit en mode
 démonstration : corpus local, aucune requête réseau, aucune erreur affichée.
 La base cesse simplement d'être lue, et rien ne le signale.
+
+---
+
+## 10. Audit de stabilité — 26 juillet 2026
+
+Trois défauts trouvés en testant, et corrigés. Aucun n'était visible à la
+lecture du code.
+
+### 10.1 L'API mourait quand PostgreSQL tombait
+
+`systemctl stop postgresql` faisait entrer le service en boucle de
+redémarrage, et `/api/sante` répondait 502 — alors que le fichier de service
+documente l'inverse (`Wants` et non `Requires`, pour que le contrôle de santé
+réponde encore quand la base est absente).
+
+Cause : `pg.Pool` est un `EventEmitter`. À la fermeture d'une connexion
+inactive, le client émet `error` ; un `error` sans écouteur relance
+l'exception et **arrête Node**. Le processus mourait sans qu'aucune requête
+n'ait échoué.
+
+Corrigé par `pool.on("error", …)` dans `db.ts`. Vérifié : base arrêtée, le
+service reste `active`, `/api/sante` répond `503 {"statut":"degrade"}`, le
+front continue d'être servi, et au retour de la base tout repart — **zéro
+redémarrage**.
+
+### 10.2 Les projets privés fuyaient
+
+`GET /api/projets?etudiant=<id>` servait **tous** les projets de la personne,
+privés compris, à n'importe qui — y compris à un visiteur non connecté. Il
+suffisait de deviner un identifiant.
+
+La visibilité se décide maintenant à partir de la session : on ne voit un
+projet non public que s'il est le sien. Vérifié dans les cinq cas (anonyme,
+propriétaire, tiers, avec et sans filtre).
+
+### 10.3 Le produit ne tenait pas sa promesse de confidentialité
+
+`projects.public` valait `true` par défaut, alors que la FAQ de la landing
+affirme « par défaut, oui [privés] ». Tout projet créé était public à la
+seconde où il existait.
+
+Défaut passé à `false` dans `001_schema.sql` et dans la base en cours. Le
+corpus de démonstration n'est pas affecté : le seed pose la valeur
+explicitement.
+
+### Ce qui a été ajouté pour la production
+
+| | |
+|---|---|
+| Sauvegarde | `pg_dump` quotidien à 3h, gzip, rétention 14 jours, intégrité vérifiée à chaque exécution (`/usr/local/bin/vitanow-sauvegarde`) |
+| Minuterie | `vitanow-sauvegarde.timer`, `Persistent=true` — rattrape une sauvegarde manquée si la machine était éteinte |
+| Journaux | `vitanow.access.log` / `vitanow.error.log` dédiés, rotation 14 jours dans `/etc/logrotate.d/vitanow` |
+
+### Restauration d'une sauvegarde
+
+```bash
+zcat /var/backups/vitanow/vitanow-AAAAMMJJ-HHMM.sql.gz \
+  | sudo -u postgres psql -p 5433 -d vitanow
+```

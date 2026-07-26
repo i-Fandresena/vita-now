@@ -146,7 +146,9 @@ CREATE TABLE projects (
   -- M15 — « les projets abandonnés restent visibles avec leur état
   -- (%, raison) ». Le pourcentage vient du journal, jamais d'une saisie.
   raison_abandon    text,
-  public            boolean NOT NULL DEFAULT true,
+  -- Faux par défaut : la FAQ du produit promet « par défaut, tout est privé ».
+  -- Un défaut à `true` faisait mentir cette phrase dès la première création.
+  public            boolean NOT NULL DEFAULT false,
   -- M17 — présentation, et M4 — dépôt Git rattaché.
   -- En JSONB : ces deux objets sont toujours lus en entier avec le projet
   -- et ne sont jamais filtrés champ par champ. Les normaliser produirait

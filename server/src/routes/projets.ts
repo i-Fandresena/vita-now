@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 
 import { query, queryOne } from "../db.js";
 import { resumeDe } from "../resume.js";
+import { sessionDe } from "../session.js";
 
 /**
  * projets.ts — M2 (projets) et M3 (journal), en lecture.
@@ -96,15 +97,34 @@ export async function routesProjets(app: FastifyInstance): Promise<void> {
     async (requete) => {
       const { etudiant, statut } = requete.query;
 
+      /* La confidentialité se décide **ici**, à partir de la session, jamais à
+         partir du seul paramètre d'URL.
+
+         La version précédente servait tous les projets d'un étudiant dès que
+         `?etudiant=<id>` était fourni, sans regarder qui demandait : n'importe
+         quel visiteur lisait les projets privés de n'importe qui en devinant
+         un identifiant. Or le produit promet, dans sa propre FAQ, que « par
+         défaut, tout est privé ».
+
+         Trois cas, et un seul invariant : on ne voit un projet non public que
+         s'il est le sien. */
+      const moi = sessionDe(requete);
+
       const conditions: string[] = [];
       const valeurs: unknown[] = [];
 
       if (etudiant) {
         valeurs.push(etudiant);
         conditions.push(`p.owner_id = $${valeurs.length}`);
+        // Les projets d'un tiers : le public seulement.
+        if (etudiant !== moi) conditions.push("p.public = true");
+      } else if (moi) {
+        // Sans filtre, un membre connecté voit le public **et** ses propres
+        // projets privés — sinon un projet qu'il vient de créer disparaîtrait
+        // de sa propre liste.
+        valeurs.push(moi);
+        conditions.push(`(p.public = true OR p.owner_id = $${valeurs.length})`);
       } else {
-        // Sans propriétaire demandé, on ne sert que le public : la liste des
-        // projets privés de quelqu'un d'autre ne regarde personne.
         conditions.push("p.public = true");
       }
 

@@ -39,6 +39,35 @@ export const pool = new pg.Pool({
   connectionTimeoutMillis: 5_000,
 });
 
+/**
+ * Écouteur d'erreur du pool — **obligatoire**, pas défensif.
+ *
+ * `pg.Pool` est un `EventEmitter`. Quand PostgreSQL ferme une connexion
+ * inactive — arrêt du service, `pg_terminate_backend`, redémarrage pour une
+ * mise à jour — le client concerné émet `error`. Un `EventEmitter` dont
+ * l'événement `error` n'a aucun écouteur **relance l'exception**, et Node
+ * s'arrête. Le processus meurt alors sans qu'aucune requête ait échoué.
+ *
+ * C'est exactement ce qui s'est produit : `systemctl stop postgresql` faisait
+ * tomber l'API en boucle de redémarrage, et `/api/sante` répondait 502 au lieu
+ * du 503 documenté. Or ce contrôle de santé est précisément ce qu'on consulte
+ * quand la base est tombée — il doit répondre à ce moment-là, pas seulement
+ * quand tout va bien.
+ *
+ * L'erreur est journalisée et rien d'autre : le client fautif est déjà retiré
+ * du pool par `pg`, et la requête suivante en ouvrira un neuf.
+ */
+pool.on("error", (erreur) => {
+  console.error(
+    JSON.stringify({
+      level: 50,
+      time: Date.now(),
+      msg: "connexion PostgreSQL perdue — le pool se reconstituera",
+      erreur: erreur instanceof Error ? erreur.message : String(erreur),
+    }),
+  );
+});
+
 /** Requête typée. `T` décrit une ligne, pas le résultat entier. */
 export async function query<T extends pg.QueryResultRow>(
   texte: string,
