@@ -45,8 +45,8 @@ export function MemoryScreen({ navigate }: { navigate: (to: Route) => void }) {
   return (
     <Screen>
       <ScreenHead
-        titre="Mémoire"
-        lede="Les mémoires et les projets de l'école — terminés comme arrêtés. On y cherche un raisonnement, pas du code à copier."
+        titre="Chercher"
+        lede="Ce que d'autres ont déjà compris avant toi — mémoires et projets de l'école, terminés comme arrêtés. On y cherche un raisonnement, pas du code à copier."
       />
 
       <div className="mt-6">
@@ -103,7 +103,7 @@ export function MemoryScreen({ navigate }: { navigate: (to: Route) => void }) {
       <div className="mt-8">
         {status === "en-cours" && (
           <>
-            <Pending label="Lecture du corpus" />
+            <Pending label="Recherche en cours" />
             <div aria-hidden className="mt-4 flex flex-col gap-4">
               <FragmentSkeleton />
               <FragmentSkeleton />
@@ -114,7 +114,7 @@ export function MemoryScreen({ navigate }: { navigate: (to: Route) => void }) {
         {status === "erreur" && (
           <ErrorState
             title="La recherche n'a pas abouti"
-            body="Le corpus n'a pas répondu. Rien n'est perdu : la même question relancée donnera le même résultat."
+            body="La recherche n'a pas répondu. Rien n'est perdu : la même question relancée donnera le même résultat."
             action={
               <Button variant="secondary" onClick={() => run(query)}>
                 Relancer
@@ -125,7 +125,7 @@ export function MemoryScreen({ navigate }: { navigate: (to: Route) => void }) {
 
         {status === "abouti" && hits.length === 0 && (
           <EmptyState
-            title="Rien dans le corpus ne répond à cette question"
+            title="Aucune fiche ne répond à cette question"
             body="C'est une information en soi : personne n'a encore documenté ce blocage ici. Ce que tu vas comprendre en le résolvant vaut d'être déposé."
             action={
               <Button variant="secondary" onClick={() => navigate({ name: "depot" })}>

@@ -103,7 +103,7 @@ const ETAPES = [
 const FAQ = [
   {
     q: "VITA'NOW est-il gratuit pour les étudiants ?",
-    r: "Oui. L'accès étudiant est gratuit — c'est la condition pour que le corpus de l'école se remplisse.",
+    r: "Oui. L'accès étudiant est gratuit — c'est la condition pour que les fiches de l'école se remplissent.",
   },
   {
     q: "Mes projets sont-ils privés ?",
@@ -660,7 +660,7 @@ const DOMAINES_PRODUIT = [
   {
     titre: "Mémoire IA",
     corps:
-      "Le corpus de l'école, cherchable par problème résolu. Résumé de projet, capsule de reprise, renaissance des projets arrêtés.",
+      "Les fiches de l'école, cherchables par problème résolu. Résumé de projet, aide à la reprise, reprise des projets arrêtés.",
   },
   {
     titre: "Communauté",
@@ -1307,20 +1307,22 @@ function AppelFinal({ navigate }: { navigate: (to: Route) => void }) {
           {/* Le grand carré fléché. `aria-label` est obligatoire : sans lui, un
               lecteur d'écran annonce « bouton » et rien d'autre — une flèche
               n'a pas de nom accessible. */}
-          <button
-            type="button"
-            aria-label="Ouvrir la recherche dans le corpus"
-            onClick={() => navigate({ name: "memoire" })}
-            className={cn(
-              "grid size-24 shrink-0 place-items-center rounded-card md:size-28",
-              "border-2 border-on-accent text-on-accent",
-              "transition-colors duration-150 ease-out",
-              "hover:bg-on-accent hover:text-accent",
-              "active:translate-y-px",
-            )}
-          >
-            <ArrowUpRight aria-hidden className="size-10" />
-          </button>
+          <Magnetic force={9}>
+            <button
+              type="button"
+              aria-label="Ouvrir la recherche dans les fiches"
+              onClick={() => navigate({ name: "memoire" })}
+              className={cn(
+                "grid size-24 shrink-0 place-items-center rounded-card md:size-28",
+                "border-2 border-on-accent text-on-accent",
+                "transition-colors duration-150 ease-out",
+                "hover:bg-on-accent hover:text-accent",
+                "active:translate-y-px",
+              )}
+            >
+              <ArrowUpRight aria-hidden className="size-10" />
+            </button>
+          </Magnetic>
         </div>
       </div>
     </Section>

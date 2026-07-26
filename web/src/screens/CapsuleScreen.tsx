@@ -42,7 +42,7 @@ export function CapsuleScreen({ navigate }: { navigate: (to: Route) => void }) {
       <Screen>
         <EmptyState
           title="Aucun projet en sommeil"
-          body="SOA ne génère une capsule que lorsqu'un travail s'est arrêté. Rien à reprendre pour le moment."
+          body="VITA'NOW ne prépare une reprise que lorsqu'un projet s'est arrêté. Rien à reprendre pour le moment."
           action={
             <Button variant="secondary" onClick={() => navigate({ name: "projets" })}>
               Voir mes projets

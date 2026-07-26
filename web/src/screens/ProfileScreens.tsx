@@ -273,7 +273,7 @@ export function ProfileScreen({
               ne dirait rien ; c'est le journal qui porte l'information. */}
           <div className="rounded-card border border-border bg-card p-5 sm:p-6">
             <div className="flex items-baseline justify-between gap-4">
-              <h3 className="font-heading text-heading text-ink">Points SOA</h3>
+              <h3 className="font-heading text-heading text-ink">Points VITA'NOW</h3>
               <span className="font-display text-display-3 tabular-nums text-primary">
                 {pointsOf(etudiant.id)}
               </span>

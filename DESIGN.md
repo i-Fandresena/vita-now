@@ -1,4 +1,4 @@
-# DESIGN.md — Aura++ / SOA
+# DESIGN.md — VITA'NOW
 
 > Source de vérité **esthétique**. Subordonné à [`AURA_cadrage.md`](AURA_cadrage.md)
 > et [`SPEC.md`](SPEC.md) : en cas de conflit, le produit gagne sur le style.

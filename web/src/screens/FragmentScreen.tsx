@@ -74,7 +74,7 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
   if (!fragment) {
     return (
       <ErrorState
-        title="Ce fragment n’est plus dans le corpus"
+        title="Cette fiche n’existe plus"
         body="Le lien pointe vers un travail qui a été retiré de l’index."
         action={
           <Button variant="secondary" onClick={() => navigate({ name: "memoire" })}>

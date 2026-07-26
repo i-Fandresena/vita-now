@@ -1,4 +1,4 @@
-# Aura++ — application web
+# VITA'NOW — application web
 
 Interface du produit décrit par [AURA_cadrage.md](../AURA_cadrage.md), traduit en
 écrans par [SPEC.md](../SPEC.md).

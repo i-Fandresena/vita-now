@@ -1,4 +1,4 @@
-# HANDOFF.md — Aura++ / SOA
+# HANDOFF.md — VITA'NOW
 
 > Document de passation. Destiné à qui reprend le projet sans avoir assisté à ce
 > qui précède. **Dernière mise à jour : 26 juillet 2026.**

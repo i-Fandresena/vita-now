@@ -54,7 +54,11 @@ interface NavItem {
 const STUDENT_NAV: NavItem[] = [
   { label: "Tableau", name: "tableau", route: { name: "tableau" }, icon: LayoutDashboard },
   { label: "Projets", name: "projets", route: { name: "projets" }, icon: FolderKanban },
-  { label: "Mémoire", name: "memoire", route: { name: "memoire" }, icon: LibraryBig },
+  /* « Chercher » plutôt que « Mémoire » : le verbe dit quoi faire. « Mémoire »
+     portait la thèse du produit mais laissait l'utilisateur deviner l'usage —
+     et un onglet qu'on n'ouvre pas ne sert à rien, si juste soit son nom.
+     La route reste `#/memoire` : elle est documentée et liée ailleurs. */
+  { label: "Chercher", name: "memoire", route: { name: "memoire" }, icon: LibraryBig },
   { label: "Communauté", name: "communaute", route: { name: "communaute" }, icon: Users },
   { label: "Profil", name: "profil", route: { name: "profil" }, icon: UserRound },
 ];
@@ -287,7 +291,7 @@ function AppTopBar({
 const TITRES: Partial<Record<Route["name"], string>> = {
   tableau: "Tableau",
   projets: "Projets",
-  memoire: "Mémoire",
+  memoire: "Chercher",
   communaute: "Communauté",
   profil: "Profil",
 };

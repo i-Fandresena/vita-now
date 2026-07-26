@@ -74,7 +74,7 @@ export function SignalScreen({
     return (
       <ErrorState
         title="Aucun signal à afficher"
-        body="Ce fragment n’a encore servi à personne, ou il a été retiré du corpus."
+        body="Cette fiche n’a encore servi à personne, ou elle a été retirée."
         action={
           <Button variant="secondary" onClick={() => navigate({ name: "memoire" })}>
             Revenir à la recherche
@@ -141,7 +141,7 @@ export function SignalScreen({
       >
         <div className="flex flex-col gap-2">
           <dt>
-            <ArchiveLabel>Le fragment</ArchiveLabel>
+            <ArchiveLabel>La fiche</ArchiveLabel>
           </dt>
           <dd className="max-w-[36ch] text-body-lg text-ink-muted">
             {signal.fragmentTitle}

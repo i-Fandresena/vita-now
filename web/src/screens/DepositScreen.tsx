@@ -156,7 +156,7 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
           label="Titre"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Ce que ce fragment permet de comprendre"
+          placeholder="Ce que cette fiche permet de comprendre"
           required
         />
 
@@ -165,7 +165,7 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
           value={work}
           onChange={(event) => setWork(event.target.value)}
           placeholder="Mémoire, projet de fin d’année, travail de groupe…"
-          hint="Facultatif. Sert à situer le fragment, pas à le classer."
+          hint="Facultatif. Sert à situer la fiche, pas à la classer."
         />
 
         <div className="flex flex-wrap gap-10">

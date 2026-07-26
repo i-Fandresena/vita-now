@@ -1,4 +1,4 @@
-# SPEC.md — Aura++ / SOA
+# SPEC.md — VITA'NOW
 
 > **Source de vérité produit : [`AURA_cadrage.md`](AURA_cadrage.md).**
 > Ce fichier n'ajoute rien au cadrage : il le **traduit** en écrans, en modèle de données
