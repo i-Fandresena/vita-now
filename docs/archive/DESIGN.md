@@ -1,3 +1,10 @@
+> **⚠️ DOCUMENT PÉRIMÉ — archivé le 26 juillet 2026.**
+> Il ne fait plus autorité. La source de vérité du produit est [`AURA_cadrage.md`](../../AURA_cadrage.md),
+> traduite en spécification opérationnelle dans [`SPEC.md`](../../SPEC.md).
+> Conservé pour historique : il documente le périmètre restreint qui a produit les 5 écrans actuellement en ligne.
+
+---
+
 # DESIGN.md — Aura++
 
 > Source de vérité **esthétique**. Subordonné à [PRODUCT.md](PRODUCT.md) et [Product_2.0.md](Product_2.0.md) :

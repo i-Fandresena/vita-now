@@ -1,3 +1,10 @@
+> **⚠️ DOCUMENT PÉRIMÉ — archivé le 26 juillet 2026.**
+> Il ne fait plus autorité. La source de vérité du produit est [`AURA_cadrage.md`](../../AURA_cadrage.md),
+> traduite en spécification opérationnelle dans [`SPEC.md`](../../SPEC.md).
+> Conservé pour historique : il documente le périmètre restreint qui a produit les 5 écrans actuellement en ligne.
+
+---
+
 # PRODUCT.md — Aura++ (SOA)
 
 > Ce fichier cadre tout le développement du hackathon. Claude Code, Impeccable, et tout agent doivent le lire avant toute génération de code ou d'interface. Toute fonctionnalité, tout écran, toute animation qui contredit ce document doit être refusé ou signalé, même si demandé rapidement en cours de route.

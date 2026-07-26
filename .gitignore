@@ -5,6 +5,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Graphe de contexte (graphify) — régénérable par `graphify update .`
+graphify-out/
+
 # Environnement — ne jamais committer de clé (Claude API, base, etc.)
 .env
 .env.*
@@ -13,6 +16,10 @@ dist/
 # Logs
 *.log
 npm-debug.log*
+
+# Réglages Claude Code propres à une machine — les hooks Impeccable y pointent
+# vers des chemins absolus (/root/.claude/...) qui n'existent pas ailleurs.
+.claude/settings.local.json
 
 # Éditeurs & OS
 .DS_Store
