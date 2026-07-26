@@ -99,8 +99,6 @@ export const sequence = (stagger = 0.035): Variants => ({
  *
  *   · `transform` et `opacity` seuls, jamais une propriété qui repeint ;
  *   · 12px de montée, pas 40 — on lit une arrivée, pas un défilé ;
- *   · une seule fois par section (`once`), sinon la page rejoue son animation
- *     à chaque remontée et devient impraticable pendant une démonstration ;
  *   · rien en cascade à l'intérieur d'une section : c'est la section qui
  *     arrive, pas ses dix enfants l'un après l'autre.
  *
@@ -118,13 +116,22 @@ export const reveal: Variants = {
 };
 
 /**
- * Seuil de déclenchement : la section s'anime quand 15 % en est visible.
+ * Réglage du déclenchement au défilement.
  *
- * Plus haut, une section plus grande que la fenêtre ne se déclencherait jamais
- * — son sommet touche déjà le bas de l'écran alors que le seuil n'est pas
- * atteint, et elle resterait invisible. 15 % passe sur toutes les hauteurs.
+ * `once: false` — la transition se rejoue à **chaque** passage, dans les deux
+ * sens. C'est un choix, et il a une contrepartie qu'il faut connaître : quand
+ * une section quitte l'écran, elle repasse par son état de départ. Elle
+ * s'efface donc légèrement au bord au moment où elle sort, et se rejoue au
+ * retour. Repasser à `true` fige chaque section après sa première arrivée.
+ *
+ * `amount: 0.1` — la section s'anime dès qu'un dixième en est visible.
+ * Le seuil est bas pour deux raisons opposées. Trop haut, une section plus
+ * grande que la fenêtre ne se déclencherait jamais : son sommet touche déjà le
+ * bas de l'écran alors que le seuil n'est pas atteint, et elle resterait
+ * invisible. Trop haut aussi, la sortie se produirait alors qu'une large bande
+ * est encore à l'écran — et l'effacement, discret à 10 %, deviendrait visible.
  */
-export const REVEAL_VIEWPORT = { once: true, amount: 0.15 } as const;
+export const REVEAL_VIEWPORT = { once: false, amount: 0.1 } as const;
 
 /**
  * Arrivée d'un élément dans une liste, décalée par son rang.

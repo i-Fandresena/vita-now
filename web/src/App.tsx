@@ -1,17 +1,11 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useRef, type ReactElement } from "react";
 
 import { RepositoryProvider } from "./app/repository";
-import { depthOf, routeKey, spaceOf, useRoute, type Route } from "./app/router";
+import { routeKey, useRoute, type Route } from "./app/router";
 import { SearchProvider } from "./app/search-store";
 import { Shell } from "./app/Shell";
-import { SoaProvider } from "./app/soa-store";
-import { EASE, fade, reduceVariants } from "./lib/motion";
-import {
-  LoginScreen,
-  ProfileEditScreen,
-  SignupScreen,
-} from "./screens/AuthScreens";
+import { VitanowProvider } from "./app/vitanow-store";
+import { fade, reduceVariants } from "./lib/motion";
 import { CapsuleScreen } from "./screens/CapsuleScreen";
 import {
   ChallengeScreen,
@@ -34,6 +28,8 @@ import { DashboardScreen } from "./screens/DashboardScreen";
 import { DepositScreen } from "./screens/DepositScreen";
 import { FragmentScreen } from "./screens/FragmentScreen";
 import { LandingScreen } from "./screens/LandingScreen";
+import { SignInScreen } from "./screens/SignInScreen";
+import { SignUpScreen } from "./screens/SignUpScreen";
 import { MemoryScreen, RenaissanceScreen } from "./screens/MemoryScreens";
 import {
   JournalScreen,
@@ -51,7 +47,6 @@ import {
   ProfileScreen,
 } from "./screens/ProfileScreens";
 import { SignalScreen } from "./screens/SignalScreen";
-import { UniversityScreen } from "./screens/UniversityScreens";
 
 /**
  * App.tsx — l'aiguillage.
@@ -67,15 +62,15 @@ function CurrentScreen({
 }: {
   route: Route;
   navigate: (to: Route) => void;
-}): ReactElement {
+}) {
   switch (route.name) {
     /* Public */
     case "accueil":
       return <LandingScreen navigate={navigate} />;
     case "connexion":
-      return <LoginScreen navigate={navigate} />;
+      return <SignInScreen navigate={navigate} />;
     case "inscription":
-      return <SignupScreen navigate={navigate} />;
+      return <SignUpScreen navigate={navigate} />;
 
     /* Étudiant — onglets */
     case "tableau":
@@ -88,8 +83,6 @@ function CurrentScreen({
       return <CommunityScreen navigate={navigate} />;
     case "profil":
       return <ProfileScreen id={route.id} navigate={navigate} />;
-    case "profil-edition":
-      return <ProfileEditScreen navigate={navigate} />;
 
     /* Projets */
     case "projet":
@@ -152,53 +145,13 @@ function CurrentScreen({
       return <CompanyChallengesScreen navigate={navigate} />;
     case "ent-marketplace":
       return <MarketplaceScreen navigate={navigate} />;
-
-    /* Université */
-    case "univ-accueil":
-      return <UniversityScreen navigate={navigate} />;
   }
 }
 
 function Screens() {
   const { route, navigate } = useRoute();
   const reduced = useReducedMotion() ?? false;
-
-  /* La profondeur précédente donne sa **direction** à la transition : on entre
-     par la droite en s'enfonçant dans la hiérarchie, on sort vers la droite en
-     revenant. Sans elle, chaque changement de route est un fondu identique et
-     l'utilisateur perd le sens de son déplacement — un projet ouvert depuis la
-     liste et la liste retrouvée depuis le projet se ressemblent alors trait
-     pour trait.
-
-     La landing est exclue : elle occupe toute la page, et 22px de décalage
-     horizontal sur un héros pleine largeur se lisent comme un défaut de rendu,
-     pas comme une navigation. */
-  const profondeur = depthOf(route);
-  const precedente = useRef(profondeur);
-  const sens = profondeur >= precedente.current ? 1 : -1;
-  precedente.current = profondeur;
-  const marketing = spaceOf(route) === "public";
-
-  const variants =
-    reduced || marketing
-      ? reduceVariants(fade, true)
-      : {
-          hidden: { opacity: 0, x: sens * 22, filter: "blur(4px)" },
-          visible: {
-            opacity: 1,
-            x: 0,
-            filter: "blur(0px)",
-            transition: { duration: 0.28, ease: EASE.outExpo },
-          },
-          /* La sortie est plus courte que l'entrée : le système répond vite,
-             l'utilisateur décide lentement. */
-          exit: {
-            opacity: 0,
-            x: sens * -18,
-            filter: "blur(4px)",
-            transition: { duration: 0.18, ease: "linear" as const },
-          },
-        };
+  const variants = reduceVariants(fade, reduced);
 
   return (
     <Shell route={route} navigate={navigate}>
@@ -222,12 +175,12 @@ function Screens() {
 
 export function App() {
   return (
-    <SoaProvider>
+    <VitanowProvider>
       <RepositoryProvider>
         <SearchProvider>
           <Screens />
         </SearchProvider>
       </RepositoryProvider>
-    </SoaProvider>
+    </VitanowProvider>
   );
 }

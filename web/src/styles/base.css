@@ -257,6 +257,59 @@
      par un token de couleur : un token deviendrait `bg-*` et `text-*`, et cette
      palette élargie n'a rien à faire sur un bouton ou un libellé. Elle est
      décorative, elle reste enfermée dans cet utilitaire. */
+  /* Le panneau en dégradé des écrans d'entrée — jaune et bleu, grainé.
+     C'est le seul dégradé du produit qui n'invente aucune teinte : il n'emploie
+     que l'indigo et le jaune de la palette, aux valeurs des tokens.
+
+     Des taches radiales plutôt qu'un dégradé linéaire : un linéaire trace une
+     diagonale nette d'un coin à l'autre, alors que des taches se recouvrent et
+     donnent un fondu sans direction.
+
+     Le jaune reste concentré en haut à gauche, avec une chute rapide. La raison
+     est colorimétrique : entre le jaune et le bleu, toute interpolation passe
+     par le vert. Une transition longue étalerait donc une large bande verdâtre
+     au milieu du panneau. Courte, elle se lit comme une frange, et le grain
+     achève de la casser. */
+  .panel-aura {
+    position: relative;
+    background-color: oklch(55% 0.22 262);
+    background-image:
+      /* Le jaune est adouci sur trois plans à la fois : chroma abaissée de 0,17
+         à 0,11, luminance de 89 % à 84 %, et une transparence qui le laisse
+         prendre un peu du bleu au lieu de se poser dessus. Agir sur la seule
+         opacité aurait gardé un cœur criard sous un voile ; c'est la chroma qui
+         fait le contraste avec un fond froid. */
+      radial-gradient(ellipse 55% 32% at 12% 8%, oklch(84% 0.11 98 / 0.88), transparent 70%),
+      radial-gradient(ellipse 75% 45% at 22% 26%, oklch(80% 0.09 84 / 0.32), transparent 72%),
+      radial-gradient(ellipse 70% 50% at 88% 62%, oklch(62% 0.2 258 / 0.9), transparent 70%),
+      radial-gradient(ellipse 90% 70% at 95% 100%, oklch(42% 0.2 266), transparent 72%);
+  }
+
+  /* Le grain.
+     Un `feTurbulence` encodé en `data:` — pas de fichier, pas de requête, et il
+     se régénère à n'importe quelle taille d'écran sans jamais pixeliser, ce
+     qu'une texture bitmap ne sait pas faire.
+
+     `mix-blend-mode: overlay` plutôt qu'une simple opacité : posé en surimpression,
+     le bruit assombrit les zones sombres et éclaircit les claires au lieu de
+     voiler l'ensemble de gris. C'est la différence entre un grain et un calque
+     sale.
+
+     `z-index: 0` avec le contenu en `z-10` : sans cette précaution, un
+     pseudo-élément positionné se peint au-dessus des enfants en flux, et le
+     grain texturerait le texte. */
+  .panel-aura::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.55;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E");
+    background-size: 220px 220px;
+  }
+
   .frame-aura {
     background: conic-gradient(
       from 210deg at 50% 50%,

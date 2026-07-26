@@ -9,14 +9,14 @@ import {
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/cn";
 import { EASE } from "@/lib/motion";
 import { useSectionActive } from "@/lib/use-section-active";
-import { useSoa } from "@/app/soa-store";
+import { useVitanow } from "@/app/vitanow-store";
 import { Button } from "@/ui/Button";
-import { activeTab, hrefFor, spaceOf, type Route } from "./router";
+import { activeTab, estEcranNu, hrefFor, spaceOf, type Route } from "./router";
 
 /**
  * Shell.tsx — la navigation, en trois chromes distincts.
@@ -132,7 +132,6 @@ function TabBar({
   navigate: (to: Route) => void;
 }) {
   const courant = activeTab(route) ?? route.name;
-  const reduced = useReducedMotion() ?? false;
 
   return (
     <nav
@@ -159,25 +158,11 @@ function TabBar({
                 className={cn(
                   // 56px de haut : au-delà du minimum de 44px, parce qu'un
                   // onglet se vise au pouce, souvent en marchant.
-                  "relative flex h-14 flex-col items-center justify-center gap-1 px-1",
+                  "flex h-14 flex-col items-center justify-center gap-1 px-1",
                   "transition-colors duration-150",
                   actif ? "text-primary" : "text-ink-muted",
                 )}
               >
-                {/* Un seul trait pour toute la barre. `layoutId` le fait
-                    **glisser** d'un onglet à l'autre au lieu de le faire
-                    disparaître ici et réapparaître là : c'est ce glissement qui
-                    dit « tu t'es déplacé » plutôt que « l'écran a changé ».
-                    Retiré sous mouvement réduit — la couleur suffit à désigner
-                    l'onglet courant. */}
-                {actif && !reduced && (
-                  <motion.span
-                    layoutId="onglet-actif"
-                    aria-hidden
-                    className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-primary"
-                    transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
-                  />
-                )}
                 <Icon
                   className={cn("size-5 shrink-0", actif && "scale-105")}
                   aria-hidden
@@ -212,7 +197,6 @@ function SideRail({
   bas?: ReactNode;
 }) {
   const courant = activeTab(route) ?? route.name;
-  const reduced = useReducedMotion() ?? false;
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-8 border-r border-border px-4 py-6 lg:flex">
@@ -234,25 +218,13 @@ function SideRail({
                     navigate(cible);
                   }}
                   className={cn(
-                    "relative flex h-11 items-center gap-3 rounded-full px-4 text-body font-medium",
+                    "flex h-11 items-center gap-3 rounded-full px-4 text-body font-medium",
                     "transition-colors duration-150",
-                    actif ? "text-primary" : "text-ink-muted hover:text-ink",
+                    actif
+                      ? "bg-primary-wash text-primary"
+                      : "text-ink-muted hover:bg-surface hover:text-ink",
                   )}
                 >
-                  {actif &&
-                    (reduced ? (
-                      <span
-                        aria-hidden
-                        className="absolute inset-0 -z-10 rounded-full bg-primary-wash"
-                      />
-                    ) : (
-                      <motion.span
-                        layoutId="rail-actif"
-                        aria-hidden
-                        className="absolute inset-0 -z-10 rounded-full bg-primary-wash"
-                        transition={{ type: "spring", duration: 0.4, bounce: 0.12 }}
-                      />
-                    ))}
                   <Icon aria-hidden className="size-5 shrink-0" />
                   {label}
                 </a>
@@ -321,7 +293,7 @@ const TITRES: Partial<Record<Route["name"], string>> = {
 
 export function Shell({ route, navigate, children }: ShellProps) {
   const espace = spaceOf(route);
-  const { unread } = useSoa();
+  const { unread } = useVitanow();
 
   /* Appelé sans condition, comme tout hook — mais avec une liste vide hors de
      la landing, ce qui démonte l'observateur au lieu de le laisser tourner sur
@@ -336,6 +308,20 @@ export function Shell({ route, navigate, children }: ShellProps) {
       Aller au contenu
     </a>
   );
+
+  /* Écran nu — la connexion. Elle porte sa propre marque et sa propre sortie ;
+     lui ajouter la barre marketing offrirait quatre ancres vers des arguments
+     de vente à quelqu'un qui a déjà décidé d'entrer. */
+  if (estEcranNu(route)) {
+    return (
+      <>
+        {skip}
+        <main id="contenu" tabIndex={-1} className="focus:outline-none">
+          {children}
+        </main>
+      </>
+    );
+  }
 
   /* Landing publique — en-tête marketing, pas de navigation applicative. */
   if (espace === "public") {
@@ -405,12 +391,12 @@ export function Shell({ route, navigate, children }: ShellProps) {
                 lien nu. */}
             <div className="ml-auto flex items-center gap-2">
               <Button
-                variant="secondary"
+                variant="quiet"
                 size="sm"
                 className="hidden sm:inline-flex"
-                onClick={() => navigate({ name: "ent-accueil" })}
+                onClick={() => navigate({ name: "connexion" })}
               >
-                Espace entreprise
+                Se connecter
               </Button>
               <Button
                 variant="primary"

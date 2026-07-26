@@ -26,7 +26,6 @@ export type Route =
   | { name: "memoire" }
   | { name: "communaute" }
   | { name: "profil"; id?: string }
-  | { name: "profil-edition" }
   /* Étudiant — écrans profonds */
   | { name: "projet"; id: string }
   | { name: "projet-nouveau" }
@@ -54,18 +53,25 @@ export type Route =
   | { name: "ent-talent"; id: string }
   | { name: "ent-opportunites" }
   | { name: "ent-challenges" }
-  | { name: "ent-marketplace" }
-  /* Université — la branche du schéma d'architecture du cadrage */
-  | { name: "univ-accueil" };
+  | { name: "ent-marketplace" };
 
-export type Space = "public" | "etudiant" | "entreprise" | "universite";
+export type Space = "public" | "etudiant" | "entreprise";
 
 export function spaceOf(route: Route): Space {
   if (route.name === "accueil" || route.name === "connexion" || route.name === "inscription")
     return "public";
-  if (route.name.startsWith("ent-")) return "entreprise";
-  if (route.name.startsWith("univ-")) return "universite";
-  return "etudiant";
+  return route.name.startsWith("ent-") ? "entreprise" : "etudiant";
+}
+
+/**
+ * Les écrans publics qui se passent de la barre marketing.
+ *
+ * La connexion en fait partie : une page qui demande de s'identifier ne doit
+ * pas offrir en même temps quatre ancres vers des arguments de vente. Elle
+ * porte sa propre sortie — le retour à l'accueil par la marque.
+ */
+export function estEcranNu(route: Route): boolean {
+  return route.name === "connexion" || route.name === "inscription";
 }
 
 /** Les cinq onglets de la barre basse — `bottom-nav-limit` : jamais plus. */
@@ -104,7 +110,6 @@ const TAB_PARENT: Partial<Record<Route["name"], Route["name"]>> = {
   classements: "profil",
   portfolio: "profil",
   opportunites: "profil",
-  "profil-edition": "profil",
 };
 
 export function activeTab(route: Route): Route["name"] | null {
@@ -140,7 +145,6 @@ export function parseRoute(hash: string): Route {
       if (milieu === "sujet" && queue) return { name: "sujet", id: queue };
       return { name: "communaute" };
     case "profil":
-      if (milieu === "edition") return { name: "profil-edition" };
       return { name: "profil", id: milieu };
     case "reprise":
       return { name: "reprise" };
@@ -168,8 +172,6 @@ export function parseRoute(hash: string): Route {
       return milieu ? { name: "portfolio", id: milieu } : { name: "profil" };
     case "opportunites":
       return { name: "opportunites" };
-    case "universite":
-      return { name: "univ-accueil" };
     case "entreprise":
       switch (milieu) {
         case "talents":
@@ -218,8 +220,6 @@ export function hrefFor(route: Route): string {
       return `#/communaute/sujet/${route.id}`;
     case "profil":
       return route.id ? `#/profil/${route.id}` : "#/profil";
-    case "profil-edition":
-      return "#/profil/edition";
     case "reprise":
       return "#/reprise";
     case "renaissance":
@@ -260,65 +260,12 @@ export function hrefFor(route: Route): string {
       return "#/entreprise/challenges";
     case "ent-marketplace":
       return "#/entreprise/marketplace";
-    case "univ-accueil":
-      return "#/universite";
   }
 }
 
 /** Clé de transition : deux routes distinctes ne partagent jamais une clé. */
 export function routeKey(route: Route): string {
   return "id" in route && route.id ? `${route.name}:${route.id}` : route.name;
-}
-
-/**
- * Profondeur d'un écran dans la hiérarchie.
- *
- * Elle sert à donner une **direction** à la transition : aller vers un écran
- * plus profond entre par la droite, revenir sort vers la droite. Sans cette
- * notion, chaque changement de route est un fondu identique, et l'utilisateur
- * perd le sens du déplacement (`hierarchy-motion`, `navigation-direction`).
- */
-const PROFONDEUR: Partial<Record<Route["name"], number>> = {
-  accueil: 0,
-  connexion: 1,
-  inscription: 2,
-  tableau: 1,
-  projets: 1,
-  memoire: 1,
-  communaute: 1,
-  profil: 1,
-  "ent-accueil": 1,
-  "univ-accueil": 1,
-  projet: 2,
-  "projet-nouveau": 2,
-  reprise: 2,
-  renaissance: 2,
-  fragment: 2,
-  depot: 2,
-  sujet: 2,
-  compagnons: 2,
-  challenges: 2,
-  idees: 2,
-  mentorat: 2,
-  notifications: 2,
-  classements: 2,
-  portfolio: 2,
-  opportunites: 2,
-  "profil-edition": 2,
-  "ent-talents": 2,
-  "ent-opportunites": 2,
-  "ent-challenges": 2,
-  "ent-marketplace": 2,
-  "projet-journal": 3,
-  "projet-presentation": 3,
-  "projet-depot": 3,
-  signal: 3,
-  challenge: 3,
-  "ent-talent": 3,
-};
-
-export function depthOf(route: Route): number {
-  return PROFONDEUR[route.name] ?? 1;
 }
 
 function subscribe(onChange: () => void): () => void {

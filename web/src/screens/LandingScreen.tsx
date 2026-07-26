@@ -1,11 +1,4 @@
-import {
-  motion,
-  useInView,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-  type Variants,
-} from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import {
   ArrowUpRight,
   Brain,
@@ -18,11 +11,9 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { Suspense, lazy, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 
 import type { Route } from "@/app/router";
-import { Magnetic } from "@/features/landing/Magnetic";
-import { SceneFallback, useWebGL } from "@/features/landing/SceneFallback";
 import { cn } from "@/lib/cn";
 import { EASE, REVEAL_VIEWPORT, reveal, rise, sequence, staggerItem } from "@/lib/motion";
 import { Button } from "@/ui/Button";
@@ -267,29 +258,18 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
             de recommencer de zéro.
           </motion.p>
 
-          {/* Les deux actions du héros suivent légèrement le pointeur. Le
-              geste est borné à quelques pixels et éteint au tactile : c'est un
-              plaisir, jamais une aide à la visée. */}
           <motion.div variants={rise} className="flex flex-wrap items-center gap-3">
-            <Magnetic force={7}>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => navigate({ name: "tableau" })}
-              >
-                Entrer dans VITA'NOW
-              </Button>
-            </Magnetic>
-            <Magnetic force={5}>
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => navigate({ name: "memoire" })}
-              >
-                Explorer le corpus
-                <ArrowUpRight aria-hidden className="size-4" />
-              </Button>
-            </Magnetic>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => navigate({ name: "tableau" })}
+            >
+              Entrer dans VITA'NOW
+            </Button>
+            <Button variant="secondary" size="lg" onClick={() => navigate({ name: "memoire" })}>
+              Explorer le corpus
+              <ArrowUpRight aria-hidden className="size-4" />
+            </Button>
           </motion.div>
         </motion.div>
 
@@ -442,27 +422,13 @@ function Bandeau() {
           )}
         </div>
 
-        {/* Défilé centré des domaines — 4 répétitions par bande pour couvrir les grands écrans sans trou */}
-        <div
-          aria-hidden
-          className="flex w-full justify-center overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
-        >
-          {[0, 1].map((copie) => (
-            <ul
-              key={copie}
-              className="flex shrink-0 items-center justify-around gap-12 pr-12 motion-safe:animate-marquee"
-            >
-              {[...DOMAINES, ...DOMAINES, ...DOMAINES, ...DOMAINES].map((domaine, index) => (
-                <li
-                  key={`${domaine}-${index}`}
-                  className="font-heading text-heading whitespace-nowrap text-ink-muted"
-                >
-                  {domaine}
-                </li>
-              ))}
-            </ul>
+        <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+          {DOMAINES.map((domaine) => (
+            <li key={domaine} className="font-heading text-heading text-ink-muted">
+              {domaine}
+            </li>
           ))}
-        </div>
+        </ul>
 
         <p className="text-center text-caption text-ink-muted">
           Les domaines du corpus de l'ENI Fianarantsoa.
@@ -815,70 +781,6 @@ function Perimetre() {
  * client. C'est le motif pour lequel les « 12k+ étudiants » du template
  * d'origine ont été retirés.
  */
-/**
- * MemoireAssemblee — la seule scène 3D de la landing.
- *
- * Elle occupe sa propre section plutôt que le héros, et c'est délibéré : le
- * héros porte déjà le collage de l'équipe et l'effet de frappe, deux gestes
- * forts qui se disputeraient l'attention avec une scène animée. Ici, elle a la
- * page pour elle.
- *
- * Ce qu'elle raconte n'est pas décoratif. Au repos, quinze feuillets flottent
- * dispersés — l'état que décrit la lettre : des efforts épars, sans lien.
- * À mesure qu'on descend, ils **convergent** en une pile ordonnée. Le geste dit
- * la thèse du produit avant que le texte l'explique, et il la dit dans le seul
- * langage qu'un jury retient : ce qu'il a vu bouger.
- *
- * Le module three.js pèse 880 ko. Il est donc chargé en `React.lazy`, jamais
- * dans le paquet d'entrée, et un repli SVG tient la place pendant ce temps —
- * ainsi qu'en l'absence de WebGL, cas parfaitement plausible sur la machine
- * d'une soutenance.
- */
-const MemoryScene = lazy(() => import("@/features/landing/MemoryScene"));
-
-function MemoireAssemblee() {
-  const reduced = useReducedMotion() ?? false;
-  const webgl = useWebGL();
-  const section = useRef<HTMLElement>(null);
-  const enVue = useInView(section, { margin: "0px 0px -20% 0px" });
-
-  /* La progression vit dans une ref, pas dans un état : la scène la lit dans sa
-     boucle de rendu, et React n'a aucune raison de se rendre soixante fois par
-     seconde pour une valeur qu'il n'affiche pas. */
-  const assemblage = useRef(0);
-
-  const { scrollYProgress } = useScroll({
-    target: section,
-    offset: ["start end", "center center"],
-  });
-
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    assemblage.current = Math.min(1, Math.max(0, v));
-  });
-
-  return (
-    <Section ref={section} tone="surface">
-      <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
-        <SectionHead
-          eyebrow="La mémoire"
-          title={<>Ce qui était épars finit par tenir ensemble.</>}
-          lede="Chaque décision écrite, chaque impasse documentée, chaque mémoire déposé rejoint le même endroit. Ce n'est pas un dossier de plus : c'est ce qui te permettra de reprendre, et à quelqu'un d'autre de continuer."
-        />
-
-        <div className="relative h-[16rem] w-full sm:h-[20rem] lg:h-[26rem]">
-          {webgl === false ? (
-            <SceneFallback actif={enVue} />
-          ) : (
-            <Suspense fallback={<SceneFallback actif={enVue} />}>
-              <MemoryScene progression={assemblage} actif={enVue} reduced={reduced} />
-            </Suspense>
-          )}
-        </div>
-      </div>
-    </Section>
-  );
-}
-
 function Lettre() {
   return (
     <Section tone="background">
@@ -1074,12 +976,21 @@ function PanneauMock({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-card border border-border bg-card p-4", className)}>
+    /* Colonne flex, et la zone de contenu prend le reste (`flex-1`).
+       Les panneaux d'une même rangée s'étirent à la hauteur du plus haut ; sans
+       cette chaîne, leur contenu resterait collé en haut et un `mt-auto` posé
+       par un enfant n'aurait rien à repousser. */
+    <div
+      className={cn(
+        "flex flex-col rounded-card border border-border bg-card p-4",
+        className,
+      )}
+    >
       <div className="flex items-center justify-between gap-3">
         <span className="label-eyebrow">{titre}</span>
         {extra}
       </div>
-      <div className="mt-4">{children}</div>
+      <div className="mt-4 flex flex-1 flex-col">{children}</div>
     </div>
   );
 }
@@ -1227,6 +1138,25 @@ function Dashboard() {
                   extra={<span className="text-caption text-ink-muted">Cette année</span>}
                 >
                   <Heatmap />
+
+                  {/* Le vide de ce panneau ne venait pas d'un manque de
+                      contenu mais d'une contrainte de grille : la trame ne fait
+                      que cinq rangées de 8px, alors que le panneau s'étire à la
+                      hauteur du kanban voisin, qui a deux cartes empilées. Il
+                      restait donc une bande blanche d'une centaine de pixels
+                      sous les points.
+
+                      La mascotte l'occupe en s'appuyant sur le bord bas, comme
+                      un personnage accoudé au panneau. `mt-auto` la pousse
+                      contre ce bord quelle que soit la hauteur finale — un
+                      décalage fixe se serait décollé dès que le kanban change
+                      d'une carte. */}
+                  <img
+                    src="/mascotte2.png"
+                    alt=""
+                    aria-hidden
+                    className="mt-auto -mb-4 ml-auto h-24 w-auto self-end"
+                  />
                 </PanneauMock>
 
                 <PanneauMock
@@ -1377,22 +1307,20 @@ function AppelFinal({ navigate }: { navigate: (to: Route) => void }) {
           {/* Le grand carré fléché. `aria-label` est obligatoire : sans lui, un
               lecteur d'écran annonce « bouton » et rien d'autre — une flèche
               n'a pas de nom accessible. */}
-          <Magnetic force={9}>
-            <button
-              type="button"
-              aria-label="Ouvrir la recherche dans le corpus"
-              onClick={() => navigate({ name: "memoire" })}
-              className={cn(
-                "grid size-24 shrink-0 place-items-center rounded-card md:size-28",
-                "border-2 border-on-accent text-on-accent",
-                "transition-colors duration-150 ease-out",
-                "hover:bg-on-accent hover:text-accent",
-                "active:translate-y-px",
-              )}
-            >
-              <ArrowUpRight aria-hidden className="size-10" />
-            </button>
-          </Magnetic>
+          <button
+            type="button"
+            aria-label="Ouvrir la recherche dans le corpus"
+            onClick={() => navigate({ name: "memoire" })}
+            className={cn(
+              "grid size-24 shrink-0 place-items-center rounded-card md:size-28",
+              "border-2 border-on-accent text-on-accent",
+              "transition-colors duration-150 ease-out",
+              "hover:bg-on-accent hover:text-accent",
+              "active:translate-y-px",
+            )}
+          >
+            <ArrowUpRight aria-hidden className="size-10" />
+          </button>
         </div>
       </div>
     </Section>
@@ -1437,7 +1365,6 @@ export function LandingScreen({ navigate }: { navigate: (to: Route) => void }) {
       <Piliers />
       <Methode />
       <Perimetre />
-      <MemoireAssemblee />
       <Lettre />
       <Dashboard />
       <Faq />
