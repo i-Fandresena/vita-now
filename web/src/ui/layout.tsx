@@ -61,6 +61,39 @@ export function WideScreen({
 }
 
 /**
+ * Écran pleine largeur — tableaux de bord et vues de pilotage.
+ *
+ * `WideScreen` plafonne à 72 rem (1152 px). À côté d'un rail de 15 rem, sur un
+ * portable de 1920 px, cela laisse près de 500 px inutilisés : le contenu
+ * paraît alors flotter au milieu d'un écran vide, quelle que soit la densité
+ * réelle des données.
+ *
+ * 100 rem (1600 px) est la borne haute retenue. Sans borne du tout, une ligne
+ * de texte traverserait un écran ultra-large de bout en bout et deviendrait
+ * illisible — le confort de lecture plafonne bien avant la largeur de l'écran.
+ * Avec cette valeur, un 1920 px est rempli, et un 2560 px reste lisible.
+ */
+export function BoardScreen({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "mx-auto w-full max-w-[100rem] px-4 pt-6 sm:px-6 lg:px-8",
+        "pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-16",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
  * En-tête d'écran.
  *
  * `retour` n'est pas décoratif : sur les écrans profonds atteints par lien

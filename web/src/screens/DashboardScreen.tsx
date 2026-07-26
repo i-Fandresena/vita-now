@@ -17,7 +17,7 @@ import { rise, sequence } from "@/lib/motion";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
 import { Progress, Rhythm, Stat } from "@/ui/data";
-import { CardLink, ScreenHead, WideScreen } from "@/ui/layout";
+import { BoardScreen, CardLink, ScreenHead } from "@/ui/layout";
 
 /**
  * Tableau de bord — le « QG » que la landing promet.
@@ -273,7 +273,7 @@ export function DashboardScreen({ navigate }: { navigate: (to: Route) => void })
   const debutant = myProjects.length === 0;
 
   return (
-    <WideScreen>
+    <BoardScreen>
       <ScreenHead
         eyebrow={heureDuJour()}
         titre={<>{prenom}.</>}
@@ -303,7 +303,11 @@ export function DashboardScreen({ navigate }: { navigate: (to: Route) => void })
             ferait passer pour une carte parmi d'autres. */}
         <CarteReprise navigate={navigate} />
 
-        <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr] lg:items-start">
+        {/* Deux tiers pour l'action, un tiers pour la consultation.
+            Au-delà de 1536 px, la colonne de gauche est élargie encore : à
+            cette largeur, une carte de projet à 1000 px devient une bande, et
+            mieux vaut rendre l'espace à ce qu'on lit qu'à ce qu'on consulte. */}
+        <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr] lg:items-start 2xl:grid-cols-[1.9fr_1fr]">
           {/* ── Colonne d'action ── */}
           <div className="flex flex-col gap-6">
             <motion.section variants={rise}>
@@ -438,6 +442,6 @@ export function DashboardScreen({ navigate }: { navigate: (to: Route) => void })
           </div>
         </div>
       </motion.div>
-    </WideScreen>
+    </BoardScreen>
   );
 }
