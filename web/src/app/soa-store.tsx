@@ -9,26 +9,43 @@ import {
 
 import type {
   Challenge,
+  ChannelPrefs,
+  CohortHealth,
   ForumThread,
   Idea,
   JournalEntry,
   JournalKind,
+  MentorRequest,
   Notification,
+  Opportunity,
   Project,
+  ProjectShowcase,
   ProjectStatus,
   ProjectSummary,
   ResumptionCapsule,
+  Student,
   StudentAnalytics,
 } from "@/domain/soa";
-import { avancement, enSommeil, joursDepuis } from "@/domain/soa";
 import {
+  POINT_VALUES,
+  SEUIL_INACTIVITE_JOURS,
+  avancement,
+  enSommeil,
+  joursDepuis,
+} from "@/domain/soa";
+import {
+  ACCOUNTS,
   CHALLENGES,
-  CURRENT_STUDENT,
+  COHORTS,
   CURRENT_STUDENT_ID,
   IDEAS,
   JOURNAL,
+  MENTOR_REQUESTS,
   NOTIFICATIONS,
+  OPPORTUNITIES,
+  POINTS,
   PROJECTS,
+  STUDENTS,
   THREADS,
 } from "@/data/soa-corpus";
 
@@ -46,15 +63,26 @@ import {
  */
 
 interface SoaState {
+  students: Student[];
   projects: Project[];
   journal: JournalEntry[];
   threads: ForumThread[];
   challenges: Challenge[];
   ideas: Idea[];
   notifications: Notification[];
+  opportunities: Opportunity[];
+  mentorRequests: MentorRequest[];
+  /** M1 — null tant que personne n'est connecté. */
+  sessionId: string | null;
+  /** M20 — « Canaux : email, push mobile, notification web ». */
+  channels: ChannelPrefs;
 }
 
 interface SoaApi extends SoaState {
+  /* M1 — session */
+  me: Student;
+  connecte: boolean;
+
   /* Lectures dérivées */
   myProjects: Project[];
   dormant: Project[];
@@ -77,6 +105,36 @@ interface SoaApi extends SoaState {
   checkChallengeWeek: (challengeId: string, semaine: number) => void;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
+  setChannel: (canal: keyof ChannelPrefs, actif: boolean) => void;
+
+  /* M1 — authentification (mock : rien n'est vérifié) */
+  login: (email: string) => boolean;
+  signup: (draft: NewStudent) => void;
+  logout: () => void;
+  updateProfile: (patch: Partial<Student>) => void;
+
+  /* M12 — points SOA */
+  pointsOf: (studentId: string) => number;
+
+  /* M14 — commenter une idée */
+  commentIdea: (ideaId: string, corps: string) => void;
+
+  /* M18 — mise en relation */
+  askMentor: (mentorId: string, blocage: string) => MentorRequest;
+  answerMentorRequest: (requestId: string, corps: string) => void;
+
+  /* M13 — un étudiant publie aussi */
+  publishOpportunity: (draft: NewOpportunity) => void;
+
+  /* M17 — présentation */
+  saveShowcase: (projectId: string, showcase: ProjectShowcase) => void;
+
+  /* E8/E9 — actions entreprise */
+  validateSkill: (studentId: string, techno: string, entreprise: string) => void;
+  proposeInterview: (studentId: string) => void;
+
+  /* Universités */
+  cohortHealth: (cohortId: string) => CohortHealth;
   /** M15 — reprendre un projet arrêté par quelqu'un d'autre. */
   reviveProject: (projectId: string) => Project;
 }
@@ -105,6 +163,24 @@ export interface NewThread {
   corps: string;
 }
 
+export interface NewStudent {
+  nom: string;
+  email: string;
+  universite: string;
+  niveau: Student["niveau"];
+  filiere: string;
+  objectifs: string;
+}
+
+export interface NewOpportunity {
+  titre: string;
+  description: string;
+  technos: string[];
+  dureeMois: number;
+  profil: string;
+  nature: Opportunity["nature"];
+}
+
 const SoaContext = createContext<SoaApi | null>(null);
 
 let compteur = 0;
@@ -112,13 +188,25 @@ const nouvelId = (prefixe: string) => `${prefixe}-${Date.now().toString(36)}-${c
 
 export function SoaProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SoaState>(() => ({
+    students: STUDENTS,
     projects: PROJECTS,
     journal: JOURNAL,
     threads: THREADS,
     challenges: CHALLENGES,
     ideas: IDEAS,
     notifications: NOTIFICATIONS,
+    opportunities: OPPORTUNITIES,
+    mentorRequests: MENTOR_REQUESTS,
+    // Une démonstration ne peut pas commencer par un écran de connexion : la
+    // session est ouverte d'emblée. `logout()` permet de montrer le parcours
+    // d'entrée quand le pitch le demande.
+    sessionId: CURRENT_STUDENT_ID,
+    channels: { web: true, email: false, push: false },
   }));
+
+  const me =
+    state.students.find((s) => s.id === (state.sessionId ?? CURRENT_STUDENT_ID)) ??
+    state.students[0]!;
 
   const journalFor = useCallback(
     (projectId: string) =>
@@ -134,8 +222,8 @@ export function SoaProvider({ children }: { children: ReactNode }) {
   );
 
   const myProjects = useMemo(
-    () => state.projects.filter((p) => p.ownerId === CURRENT_STUDENT_ID),
-    [state.projects],
+    () => state.projects.filter((p) => p.ownerId === me.id),
+    [state.projects, me.id],
   );
 
   const dormant = useMemo(() => myProjects.filter((p) => enSommeil(p)), [myProjects]);
@@ -164,15 +252,38 @@ export function SoaProvider({ children }: { children: ReactNode }) {
       }).length;
     });
 
+    // M19 — « progression moyenne ». Calculée sur les projets **non terminés** :
+    // inclure les projets livrés à 100 % gonflerait la moyenne sans rien dire
+    // de l'endroit où le travail en est réellement.
+    const enCours = myProjects.filter(
+      (p) => p.status !== "Terminé" && p.status !== "Idée",
+    );
+    const progressionMoyenne =
+      enCours.length === 0
+        ? 0
+        : Math.round(
+            enCours.reduce(
+              (t, p) => t + avancement(state.journal.filter((e) => e.projectId === p.id)),
+              0,
+            ) / enCours.length,
+          );
+
+    const points = POINTS.filter((p) => p.studentId === me.id).reduce(
+      (t, p) => t + POINT_VALUES[p.reason],
+      0,
+    );
+
     return {
       projetsCommences: myProjects.length,
       projetsTermines: termines,
       projetsRepris: repris,
       technoPrincipale,
+      progressionMoyenne,
       entreesJournal: mien.length,
+      points,
       rythme,
     };
-  }, [myProjects, state.journal]);
+  }, [myProjects, state.journal, me.id]);
 
   /**
    * M6 — la capsule est **dérivée**, pas stockée.
@@ -336,7 +447,7 @@ export function SoaProvider({ children }: { children: ReactNode }) {
                   auteurId: CURRENT_STUDENT_ID,
                   corps,
                   date: new Date().toISOString(),
-                  deMentor: CURRENT_STUDENT.mentor,
+                  deMentor: me.mentor,
                 },
               ],
             }
@@ -466,10 +577,269 @@ export function SoaProvider({ children }: { children: ReactNode }) {
     return repris;
   }, []);
 
+  /* ── M1 — Authentification ────────────────────────────────────────────── */
+
+  /**
+   * Aucun mot de passe n'est vérifié : le compte identifie, il ne protège pas.
+   * L'écran de connexion l'affiche noir sur blanc — laisser croire à une
+   * authentification qui n'existe pas serait pire que ne pas en avoir.
+   */
+  const login = useCallback((email: string): boolean => {
+    const compte = ACCOUNTS.find(
+      (c) => c.email.toLowerCase() === email.trim().toLowerCase(),
+    );
+    if (!compte) return false;
+    setState((s) => ({ ...s, sessionId: compte.studentId }));
+    return true;
+  }, []);
+
+  const signup = useCallback((draft: NewStudent) => {
+    const id = nouvelId("s");
+    const etudiant: Student = {
+      id,
+      nom: draft.nom,
+      initiales: draft.nom
+        .split(" ")
+        .map((m) => m[0] ?? "")
+        .slice(0, 2)
+        .join("")
+        .toUpperCase(),
+      universite: draft.universite,
+      niveau: draft.niveau,
+      filiere: draft.filiere,
+      technos: [],
+      interets: [],
+      disponibilites: [],
+      objectifs: draft.objectifs,
+      mentor: false,
+      promo: String(new Date().getFullYear() + 2),
+    };
+    setState((s) => ({ ...s, students: [...s.students, etudiant], sessionId: id }));
+  }, []);
+
+  const logout = useCallback(() => {
+    setState((s) => ({ ...s, sessionId: null }));
+  }, []);
+
+  const updateProfile = useCallback((patch: Partial<Student>) => {
+    setState((s) => ({
+      ...s,
+      students: s.students.map((e) =>
+        e.id === (s.sessionId ?? CURRENT_STUDENT_ID) ? { ...e, ...patch } : e,
+      ),
+    }));
+  }, []);
+
+  /* ── M12 — Points ─────────────────────────────────────────────────────── */
+
+  const pointsOf = useCallback(
+    (studentId: string) =>
+      POINTS.filter((p) => p.studentId === studentId).reduce(
+        (t, p) => t + POINT_VALUES[p.reason],
+        0,
+      ),
+    [],
+  );
+
+  /* ── M14 — Commenter une idée ─────────────────────────────────────────── */
+
+  const commentIdea = useCallback((ideaId: string, corps: string) => {
+    setState((s) => ({
+      ...s,
+      ideas: s.ideas.map((i) =>
+        i.id === ideaId
+          ? {
+              ...i,
+              commentaires: [
+                ...i.commentaires,
+                {
+                  auteurId: s.sessionId ?? CURRENT_STUDENT_ID,
+                  corps,
+                  date: new Date().toISOString(),
+                },
+              ],
+            }
+          : i,
+      ),
+    }));
+  }, []);
+
+  /* ── M18 — Mise en relation ───────────────────────────────────────────── */
+
+  const askMentor = useCallback((mentorId: string, blocage: string): MentorRequest => {
+    const demande: MentorRequest = {
+      id: nouvelId("mr"),
+      mentorId,
+      studentId: CURRENT_STUDENT_ID,
+      blocage,
+      date: new Date().toISOString(),
+      reponses: [],
+      statut: "en attente",
+    };
+    setState((s) => ({
+      ...s,
+      mentorRequests: [demande, ...s.mentorRequests],
+      // La demande crée sa propre notification : sans retour visible, on ne
+      // sait pas si le geste a abouti.
+      notifications: [
+        {
+          id: nouvelId("n"),
+          kind: "mentorat",
+          titre: "Demande envoyée",
+          corps: blocage.slice(0, 90) + (blocage.length > 90 ? "…" : ""),
+          date: demande.date,
+          lu: false,
+          cible: "#/mentorat",
+        },
+        ...s.notifications,
+      ],
+    }));
+    return demande;
+  }, []);
+
+  const answerMentorRequest = useCallback((requestId: string, corps: string) => {
+    setState((s) => ({
+      ...s,
+      mentorRequests: s.mentorRequests.map((d) =>
+        d.id === requestId
+          ? {
+              ...d,
+              statut: "en cours",
+              reponses: [
+                ...d.reponses,
+                {
+                  auteurId: s.sessionId ?? CURRENT_STUDENT_ID,
+                  corps,
+                  date: new Date().toISOString(),
+                },
+              ],
+            }
+          : d,
+      ),
+    }));
+  }, []);
+
+  /* ── M13 — Un étudiant publie aussi ───────────────────────────────────── */
+
+  const publishOpportunity = useCallback((draft: NewOpportunity) => {
+    setState((s) => ({
+      ...s,
+      opportunities: [
+        {
+          id: nouvelId("o"),
+          ...draft,
+          studentId: s.sessionId ?? CURRENT_STUDENT_ID,
+          publieeLe: new Date().toISOString(),
+        },
+        ...s.opportunities,
+      ],
+    }));
+  }, []);
+
+  /* ── M17 — Présentation ───────────────────────────────────────────────── */
+
+  const saveShowcase = useCallback((projectId: string, showcase: ProjectShowcase) => {
+    setState((s) => ({
+      ...s,
+      projects: s.projects.map((p) =>
+        p.id === projectId ? { ...p, presentation: showcase } : p,
+      ),
+    }));
+  }, []);
+
+  /* ── E8 / E9 — Actions entreprise ─────────────────────────────────────── */
+
+  const validateSkill = useCallback(
+    (studentId: string, techno: string, entreprise: string) => {
+      setState((s) => ({
+        ...s,
+        students: s.students.map((e) =>
+          e.id === studentId
+            ? {
+                ...e,
+                technos: e.technos.map((t) =>
+                  t.nom === techno ? { ...t, valideePar: entreprise } : t,
+                ),
+              }
+            : e,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const proposeInterview = useCallback((studentId: string) => {
+    setState((s) => ({
+      ...s,
+      notifications:
+        studentId === (s.sessionId ?? CURRENT_STUDENT_ID)
+          ? [
+              {
+                id: nouvelId("n"),
+                kind: "opportunite" as const,
+                titre: "Proposition d'entretien",
+                corps:
+                  "Une entreprise a vu tes projets terminés et souhaite te rencontrer.",
+                date: new Date().toISOString(),
+                lu: false,
+                cible: "#/opportunites",
+              },
+              ...s.notifications,
+            ]
+          : s.notifications,
+    }));
+  }, []);
+
+  const setChannel = useCallback((canal: keyof ChannelPrefs, actif: boolean) => {
+    setState((s) => ({ ...s, channels: { ...s.channels, [canal]: actif } }));
+  }, []);
+
+  /* ── Universités — suivi pédagogique ──────────────────────────────────── */
+
+  /**
+   * Santé d'une promotion.
+   *
+   * Ce que l'enseignant doit voir en premier n'est pas la moyenne : c'est la
+   * liste des étudiants **sans aucune activité**. Une moyenne de promotion
+   * masque exactement les deux ou trois personnes qui décrochent, et ce sont
+   * elles que le suivi pédagogique existe pour rattraper.
+   */
+  const cohortHealth = useCallback(
+    (cohortId: string): CohortHealth => {
+      const promo = COHORTS.find((c) => c.id === cohortId);
+      const ids = promo?.studentIds ?? [];
+      const projets = state.projects.filter((p) => ids.includes(p.ownerId));
+      const entrees = state.journal.filter((e) =>
+        projets.some((p) => p.id === e.projectId),
+      );
+
+      const sansActivite = ids.filter((id) => {
+        const siens = projets.filter((p) => p.ownerId === id);
+        if (siens.length === 0) return true;
+        return siens.every(
+          (p) => joursDepuis(p.derniereActivite) >= SEUIL_INACTIVITE_JOURS,
+        );
+      });
+
+      return {
+        cohortId,
+        effectif: ids.length,
+        projetsActifs: projets.filter((p) => p.status === "En cours").length,
+        projetsTermines: projets.filter((p) => p.status === "Terminé").length,
+        projetsEnSommeil: projets.filter((p) => enSommeil(p)).length,
+        etudiantsSansActivite: sansActivite,
+        entreesJournal: entrees.length,
+      };
+    },
+    [state.projects, state.journal],
+  );
+
   const unread = state.notifications.filter((n) => !n.lu).length;
 
   const value: SoaApi = {
     ...state,
+    me,
+    connecte: state.sessionId !== null,
     myProjects,
     dormant,
     analytics,
@@ -489,6 +859,20 @@ export function SoaProvider({ children }: { children: ReactNode }) {
     checkChallengeWeek,
     markNotificationRead,
     markAllRead,
+    setChannel,
+    login,
+    signup,
+    logout,
+    updateProfile,
+    pointsOf,
+    commentIdea,
+    askMentor,
+    answerMentorRequest,
+    publishOpportunity,
+    saveShowcase,
+    validateSkill,
+    proposeInterview,
+    cohortHealth,
     reviveProject,
   };
 

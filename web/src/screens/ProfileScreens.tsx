@@ -8,26 +8,32 @@ import {
   ListOrdered,
   Lock,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
 import {
   BADGES,
   COMPANIES,
-  CURRENT_STUDENT,
   CURRENT_STUDENT_ID,
   MENTORS,
-  OPPORTUNITIES,
+  POINTS,
   RELIABILITY,
   studentById,
 } from "@/data/soa-corpus";
-import { joursDepuis, type LeaderboardKind, type Notification } from "@/domain/soa";
+import {
+  POINT_LABELS,
+  POINT_VALUES,
+  joursDepuis,
+  type LeaderboardKind,
+  type Notification,
+} from "@/domain/soa";
 import { cn } from "@/lib/cn";
 import { rise, sequence } from "@/lib/motion";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
 import { Avatar, Progress, Stat } from "@/ui/data";
+import { Input, Textarea } from "@/ui/Field";
 import { Block, CardLink, Screen, ScreenHead, Tabs } from "@/ui/layout";
 import { EmptyState } from "@/ui/states";
 import { ProjectRow } from "./ProjectScreens";
@@ -52,11 +58,11 @@ export function ProfileScreen({
   id?: string;
   navigate: (to: Route) => void;
 }) {
-  const { projects } = useSoa();
+  const { projects, pointsOf, me } = useSoa();
   const [onglet, setOnglet] = useState<(typeof ONGLETS)[number]>("Projets");
 
-  const etudiant = id ? studentById(id) : CURRENT_STUDENT;
-  const moi = !id || id === CURRENT_STUDENT_ID;
+  const etudiant = id ? studentById(id) : me;
+  const moi = !id || id === me.id;
 
   if (!etudiant) {
     return (
@@ -71,6 +77,7 @@ export function ProfileScreen({
   const arretes = siens.filter((p) => p.status === "Abandonné").length;
   const mentor = MENTORS.find((m) => m.studentId === etudiant.id);
   const badgesObtenus = BADGES.filter((b) => b.obtenuLe);
+  const mesPoints = POINTS.filter((p) => p.studentId === etudiant.id);
 
   return (
     <Screen>
@@ -93,6 +100,12 @@ export function ProfileScreen({
                 onClick={() => navigate({ name: "portfolio", id: etudiant.id })}
               >
                 Portfolio
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => navigate({ name: "profil-edition" })}
+              >
+                Modifier
               </Button>
             </>
           )
@@ -189,6 +202,44 @@ export function ProfileScreen({
             fait — ils ne servent pas à faire avancer.
           </p>
 
+          {/* M12 — « Points SOA gagnés en terminant un projet, aidant un pair,
+              partageant une solution, documentant une erreur ». Le total seul
+              ne dirait rien ; c'est le journal qui porte l'information. */}
+          <div className="rounded-card border border-border bg-card p-5 sm:p-6">
+            <div className="flex items-baseline justify-between gap-4">
+              <h3 className="font-heading text-heading text-ink">Points SOA</h3>
+              <span className="font-display text-display-3 tabular-nums text-primary">
+                {pointsOf(etudiant.id)}
+              </span>
+            </div>
+
+            <ul className="mt-4 flex flex-col gap-2">
+              {mesPoints.map((pt, i) => (
+                <li
+                  key={i}
+                  className="flex items-baseline justify-between gap-4 border-b border-border pb-2 last:border-0 last:pb-0"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-body text-ink">{pt.detail}</span>
+                    <span className="block text-caption text-ink-muted">
+                      {POINT_LABELS[pt.reason]}
+                    </span>
+                  </span>
+                  <span className="shrink-0 tabular-nums text-caption text-ink-muted">
+                    +{POINT_VALUES[pt.reason]}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            {mesPoints.length === 0 && (
+              <p className="mt-3 text-body text-ink-muted">
+                Aucun point pour l'instant. Terminer un projet, aider un pair,
+                partager une solution ou documenter une erreur en rapporte.
+              </p>
+            )}
+          </div>
+
           <div className="rounded-card border border-border bg-card p-5 sm:p-6">
             <h3 className="font-heading text-heading text-ink">Badges</h3>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -251,24 +302,56 @@ export function ProfileScreen({
 
 /* ── M11 — Classements ──────────────────────────────────────────────────── */
 
-const CLASSEMENTS: { cle: LeaderboardKind; libelle: string; unite: string }[] = [
-  { cle: "progression", libelle: "Régularité", unite: "" },
-  { cle: "contribution", libelle: "Entraide", unite: "" },
-  { cle: "projets", libelle: "Projets terminés", unite: "" },
+/** Les trois classements nommés par le cadrage, dans son ordre. */
+const CLASSEMENTS: { cle: LeaderboardKind; libelle: string }[] = [
+  { cle: "academique", libelle: "Par catégorie" },
+  { cle: "progression", libelle: "Régularité" },
+  { cle: "contribution", libelle: "Entraide" },
 ];
 
 export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const [type, setType] = useState<LeaderboardKind>("progression");
+  const { projects, journalFor } = useSoa();
+  const [type, setType] = useState<LeaderboardKind>("academique");
+
+  /**
+   * « Classements académiques (meilleur projet par catégorie) » — le premier
+   * des trois que nomme le cadrage, et le seul qui ne classe pas des personnes.
+   *
+   * C'est ce qui le rend acceptable : comparer des projets sur ce qu'ils ont
+   * produit (jalons franchis, décisions écrites) reste un fait vérifiable.
+   * Comparer des étudiants entre eux ne l'est jamais.
+   */
+  const parCategorie = useMemo(() => {
+    const categories = [...new Set(projects.map((p) => p.type))];
+    return categories
+      .map((categorie) => {
+        const classes = projects
+          .filter((p) => p.type === categorie && p.public)
+          .map((p) => {
+            const entrees = journalFor(p.id);
+            return {
+              projet: p,
+              auteur: studentById(p.ownerId),
+              jalons: entrees.filter((e) => e.jalon).length,
+              entrees: entrees.length,
+              termine: p.status === "Terminé",
+            };
+          })
+          .sort(
+            (a, b) =>
+              Number(b.termine) - Number(a.termine) ||
+              b.jalons - a.jalons ||
+              b.entrees - a.entrees,
+          );
+        return { categorie, classes };
+      })
+      .filter((g) => g.classes.length > 0);
+  }, [projects, journalFor]);
 
   const lignes = [...RELIABILITY]
     .map((r) => ({
       student: studentById(r.studentId)!,
-      valeur:
-        type === "progression"
-          ? r.regularite
-          : type === "contribution"
-            ? r.entraide
-            : r.projetsTermines,
+      valeur: type === "progression" ? r.regularite : r.entraide,
     }))
     .filter((l) => l.student)
     .sort((a, b) => b.valeur - a.valeur);
@@ -292,47 +375,90 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
         className="mt-6"
       />
 
-      <ol className="mt-6 flex flex-col gap-2">
-        {lignes.map((l, index) => {
-          const moi = l.student.id === CURRENT_STUDENT_ID;
-          return (
-            <li key={l.student.id}>
-              <a
-                href={hrefFor({ name: "profil", id: l.student.id })}
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate({ name: "profil", id: l.student.id });
-                }}
-                className={cn(
-                  "flex items-center gap-4 rounded-card border p-4 transition-colors duration-150",
-                  moi
-                    ? "border-primary bg-primary-wash"
-                    : "border-border bg-card hover:border-border-strong",
-                )}
-              >
-                {/* Pas de podium, pas de médaille : un rang numéroté et rien
-                    de plus. Le premier n'a pas de couronne. */}
-                <span className="w-6 shrink-0 text-right font-display text-title tabular-nums text-ink-muted">
-                  {index + 1}
-                </span>
-                <Avatar initiales={l.student.initiales} nom={l.student.nom} taille="sm" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-body font-medium text-ink">
-                    {l.student.nom}
-                    {moi && <span className="ml-2 text-caption text-primary">toi</span>}
-                  </p>
-                  <p className="text-caption text-ink-muted">
-                    {l.student.niveau} · {l.student.filiere}
-                  </p>
-                </div>
-                <span className="shrink-0 tabular-nums text-body font-semibold text-ink">
-                  {l.valeur}
-                </span>
-              </a>
-            </li>
-          );
-        })}
-      </ol>
+      {type === "academique" ? (
+        <div className="mt-6 flex flex-col gap-8">
+          {parCategorie.map(({ categorie, classes }) => (
+            <section key={categorie}>
+              <h2 className="font-heading text-heading text-ink">{categorie}</h2>
+              <ol className="mt-3 flex flex-col gap-2">
+                {classes.map((c, index) => (
+                  <li key={c.projet.id}>
+                    <a
+                      href={hrefFor({ name: "projet", id: c.projet.id })}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigate({ name: "projet", id: c.projet.id });
+                      }}
+                      className="flex items-center gap-4 rounded-card border border-border bg-card p-4 transition-colors duration-150 hover:border-border-strong"
+                    >
+                      <span className="w-6 shrink-0 text-right font-display text-title tabular-nums text-ink-muted">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-body font-medium text-ink">
+                          {c.projet.nom}
+                        </p>
+                        <p className="text-caption text-ink-muted">
+                          {c.auteur?.nom} · {c.jalons} jalon{c.jalons > 1 ? "s" : ""} ·{" "}
+                          {c.entrees} entrée{c.entrees > 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      {c.termine && <Chip tone="success">Terminé</Chip>}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ))}
+          <p className="rounded-card border border-border bg-surface p-4 text-caption text-ink-muted">
+            Ce classement compare des <strong className="text-ink">projets</strong>,
+            pas des personnes : jalons franchis et décisions écrites, deux faits
+            vérifiables dans le journal.
+          </p>
+        </div>
+      ) : (
+        <ol className="mt-6 flex flex-col gap-2">
+          {lignes.map((l, index) => {
+            const moi = l.student.id === CURRENT_STUDENT_ID;
+            return (
+              <li key={l.student.id}>
+                <a
+                  href={hrefFor({ name: "profil", id: l.student.id })}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate({ name: "profil", id: l.student.id });
+                  }}
+                  className={cn(
+                    "flex items-center gap-4 rounded-card border p-4 transition-colors duration-150",
+                    moi
+                      ? "border-primary bg-primary-wash"
+                      : "border-border bg-card hover:border-border-strong",
+                  )}
+                >
+                  {/* Pas de podium, pas de médaille : un rang numéroté et rien
+                      de plus. Le premier n'a pas de couronne. */}
+                  <span className="w-6 shrink-0 text-right font-display text-title tabular-nums text-ink-muted">
+                    {index + 1}
+                  </span>
+                  <Avatar initiales={l.student.initiales} nom={l.student.nom} taille="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-body font-medium text-ink">
+                      {l.student.nom}
+                      {moi && <span className="ml-2 text-caption text-primary">toi</span>}
+                    </p>
+                    <p className="text-caption text-ink-muted">
+                      {l.student.niveau} · {l.student.filiere}
+                    </p>
+                  </div>
+                  <span className="shrink-0 tabular-nums text-body font-semibold text-ink">
+                    {l.valeur}
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </Screen>
   );
 }
@@ -462,7 +588,8 @@ const ICONE_NOTIF: Record<Notification["kind"], typeof Bell> = {
 };
 
 export function NotificationsScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { notifications, markNotificationRead, markAllRead, unread } = useSoa();
+  const { notifications, markNotificationRead, markAllRead, unread, channels, setChannel } =
+    useSoa();
 
   return (
     <Screen>
@@ -526,10 +653,43 @@ export function NotificationsScreen({ navigate }: { navigate: (to: Route) => voi
         })}
       </motion.ul>
 
-      <p className="mt-8 rounded-card border border-border bg-surface p-4 text-caption text-ink-muted">
-        Les canaux e-mail et push sont prévus au cadrage (M20) mais hors périmètre
-        de la démonstration : seul le canal web est actif.
-      </p>
+      {/* M20 — « Canaux : email, push mobile, notification web ». Les trois
+          existent comme réglage ; deux ne peuvent pas fonctionner sans serveur,
+          et l'écran le dit au lieu de le laisser croire. */}
+      <Block titre="Canaux">
+        <div className="flex flex-col gap-3">
+          {(
+            [
+              ["web", "Notification web", "Active. C'est ce que tu vois ici."],
+              ["email", "E-mail", "Nécessite un serveur d'envoi — pas encore développé."],
+              ["push", "Push mobile", "Nécessite une application native — hors périmètre."],
+            ] as const
+          ).map(([cle, libelle, detail]) => {
+            const dispo = cle === "web";
+            return (
+              <label
+                key={cle}
+                className={cn(
+                  "flex items-start gap-3 rounded-card border border-border bg-card p-4",
+                  !dispo && "opacity-60",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={channels[cle]}
+                  disabled={!dispo}
+                  onChange={(e) => setChannel(cle, e.target.checked)}
+                  className="mt-1 size-5 shrink-0 accent-[var(--color-primary)]"
+                />
+                <span className="min-w-0">
+                  <span className="block text-body font-medium text-ink">{libelle}</span>
+                  <span className="block text-caption text-ink-muted">{detail}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </Block>
     </Screen>
   );
 }
@@ -537,7 +697,16 @@ export function NotificationsScreen({ navigate }: { navigate: (to: Route) => voi
 /* ── M13 — Opportunités (côté étudiant) ─────────────────────────────────── */
 
 export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { myProjects } = useSoa();
+  const { myProjects, opportunities, publishOpportunity } = useSoa();
+  const [ouvert, setOuvert] = useState(false);
+  const [form, setForm] = useState({
+    titre: "",
+    description: "",
+    technos: "",
+    dureeMois: 3,
+    profil: "",
+  });
+
   const mesTechnos = new Set(myProjects.flatMap((p) => p.technos));
   const termines = myProjects.filter((p) => p.status === "Terminé").length;
 
@@ -546,18 +715,21 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
       <ScreenHead
         eyebrow="M13"
         titre="Opportunités"
-        lede="Des entreprises publient des projets réels. Le cadrage est clair : elles arrivent après l'apprentissage, pas avant."
+        lede="Des entreprises publient des projets réels — et des étudiants aussi, quand ils cherchent des bras pour le leur."
         retour={{ name: "profil" }}
         onRetour={navigate}
+        actions={
+          <Button variant="primary" onClick={() => setOuvert(!ouvert)}>
+            Publier un appel
+          </Button>
+        }
       />
 
       {/* Garde-fou du cadrage rendu littéral : tant qu'aucun projet n'est
-          terminé, l'écran explique pourquoi plutôt que d'afficher des offres. */}
+          terminé, l'écran explique pourquoi plutôt que de vendre des offres. */}
       {termines === 0 && (
         <div className="mt-6 rounded-card border border-border bg-surface p-5">
-          <p className="text-body text-ink">
-            Tu n'as pas encore de projet terminé.
-          </p>
+          <p className="text-body text-ink">Tu n'as pas encore de projet terminé.</p>
           <p className="mt-1 text-body text-ink-muted">
             Les offres restent consultables, mais ce que les entreprises regardent
             ici, c'est un projet mené jusqu'au bout — pas une liste de technologies.
@@ -565,9 +737,79 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
         </div>
       )}
 
+      {/* M13 — « Entreprises **ou étudiants** publient des projets à réaliser ». */}
+      {ouvert && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!form.titre.trim()) return;
+            publishOpportunity({
+              titre: form.titre.trim(),
+              description: form.description.trim(),
+              technos: form.technos.split(",").map((t) => t.trim()).filter(Boolean),
+              dureeMois: form.dureeMois,
+              profil: form.profil.trim() || "Ouvert à tous les niveaux.",
+              nature: "Projet",
+            });
+            setOuvert(false);
+            setForm({ titre: "", description: "", technos: "", dureeMois: 3, profil: "" });
+          }}
+          className="mt-6 flex flex-col gap-5 rounded-card border border-border bg-card p-5 sm:p-6"
+        >
+          <h2 className="font-heading text-heading text-ink">Publier un appel</h2>
+          <p className="text-caption text-ink-muted">
+            Tu cherches quelqu'un pour ton projet ? Publie-le ici : c'est le même
+            canal que les entreprises, et les étudiants le lisent davantage.
+          </p>
+
+          <Input
+            label="Titre"
+            value={form.titre}
+            onChange={(e) => setForm({ ...form, titre: e.target.value })}
+            placeholder="Cherche un binôme pour la partie synchronisation"
+          />
+          <Textarea
+            label="Description"
+            rows={3}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+          <Input
+            label="Technologies"
+            value={form.technos}
+            onChange={(e) => setForm({ ...form, technos: e.target.value })}
+            hint="Séparées par des virgules."
+          />
+          <Input
+            label="Durée (mois)"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={24}
+            value={form.dureeMois}
+            onChange={(e) => setForm({ ...form, dureeMois: Number(e.target.value) || 1 })}
+          />
+          <Input
+            label="Profil recherché"
+            value={form.profil}
+            onChange={(e) => setForm({ ...form, profil: e.target.value })}
+          />
+
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="primary" disabled={!form.titre.trim()}>
+              Publier
+            </Button>
+            <Button variant="ghost" onClick={() => setOuvert(false)}>
+              Annuler
+            </Button>
+          </div>
+        </form>
+      )}
+
       <div className="mt-6 flex flex-col gap-4">
-        {OPPORTUNITIES.map((o) => {
+        {opportunities.map((o) => {
           const entreprise = COMPANIES.find((e) => e.id === o.companyId);
+          const auteur = o.studentId ? studentById(o.studentId) : undefined;
           const communes = o.technos.filter((t) => mesTechnos.has(t));
 
           return (
@@ -579,11 +821,27 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
                 <div className="min-w-0">
                   <h3 className="text-title font-semibold text-ink">{o.titre}</h3>
                   <p className="mt-1 flex items-center gap-1.5 text-caption text-ink-muted">
-                    <Building2 aria-hidden className="size-3.5" />
-                    {entreprise?.nom} · {entreprise?.secteur}
+                    {entreprise ? (
+                      <>
+                        <Building2 aria-hidden className="size-3.5" />
+                        {entreprise.nom} · {entreprise.secteur}
+                      </>
+                    ) : (
+                      <>
+                        <Avatar
+                          initiales={auteur?.initiales ?? "??"}
+                          nom={auteur?.nom ?? ""}
+                          taille="sm"
+                        />
+                        {auteur?.nom} · {auteur?.niveau} {auteur?.filiere}
+                      </>
+                    )}
                   </p>
                 </div>
-                <Chip tone={o.nature === "Stage" ? "primary" : "neutral"}>{o.nature}</Chip>
+                <ChipRow>
+                  {!entreprise && <Chip tone="primary">Étudiant</Chip>}
+                  <Chip tone={o.nature === "Stage" ? "primary" : "neutral"}>{o.nature}</Chip>
+                </ChipRow>
               </div>
 
               <p className="prose-measure mt-3 text-body text-ink-muted">{o.description}</p>

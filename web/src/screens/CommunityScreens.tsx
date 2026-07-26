@@ -687,6 +687,36 @@ export function ChallengeScreen({
 
 /* ── M14 — Validation d'idée ────────────────────────────────────────────── */
 
+function CommentaireIdee({ ideaId }: { ideaId: string }) {
+  const { commentIdea } = useSoa();
+  const [corps, setCorps] = useState("");
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!corps.trim()) return;
+        commentIdea(ideaId, corps.trim());
+        setCorps("");
+      }}
+      className="mt-4 flex flex-col gap-3"
+    >
+      <Textarea
+        label="Commenter"
+        rows={2}
+        value={corps}
+        onChange={(e) => setCorps(e.target.value)}
+        hint="L'obstacle que l'auteur n'a pas vu vaut mieux qu'un encouragement."
+      />
+      <div>
+        <Button type="submit" variant="secondary" size="sm" disabled={!corps.trim()}>
+          Publier le commentaire
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function IdeasScreen({ navigate }: { navigate: (to: Route) => void }) {
   const { ideas, voteIdea } = useSoa();
 
@@ -754,8 +784,9 @@ export function IdeasScreen({ navigate }: { navigate: (to: Route) => void }) {
                 </Button>
               </div>
 
-              {idee.commentaires.length > 0 && (
-                <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5">
+              <div className="mt-5 border-t border-border pt-5">
+                {idee.commentaires.length > 0 && (
+                <div className="flex flex-col gap-3">
                   {idee.commentaires.map((c, i) => {
                     const a = studentById(c.auteurId);
                     return (
@@ -773,7 +804,9 @@ export function IdeasScreen({ navigate }: { navigate: (to: Route) => void }) {
                     );
                   })}
                 </div>
-              )}
+                )}
+                <CommentaireIdee ideaId={idee.id} />
+              </div>
             </article>
           );
         })}
@@ -783,6 +816,143 @@ export function IdeasScreen({ navigate }: { navigate: (to: Route) => void }) {
 }
 
 /* ── M18 — Mentorat ─────────────────────────────────────────────────────── */
+
+function DemandeMentor({ mentorId, nom }: { mentorId: string; nom: string }) {
+  const { askMentor } = useSoa();
+  const [ouvert, setOuvert] = useState(false);
+  const [blocage, setBlocage] = useState("");
+  const [envoye, setEnvoye] = useState(false);
+
+  if (envoye) {
+    return (
+      <p className="mt-4 flex items-center gap-2 rounded-sm bg-success/10 p-3 text-caption text-success">
+        <Check aria-hidden className="size-4 shrink-0" />
+        Demande envoyée à {nom.split(" ")[0]}.
+      </p>
+    );
+  }
+
+  if (!ouvert) {
+    return (
+      <div className="mt-4">
+        <Button variant="secondary" size="sm" onClick={() => setOuvert(true)}>
+          Demander de l'aide
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!blocage.trim()) return;
+        askMentor(mentorId, blocage.trim());
+        setEnvoye(true);
+      }}
+      className="mt-4 flex flex-col gap-3"
+    >
+      <Textarea
+        label="Ton blocage"
+        rows={3}
+        value={blocage}
+        onChange={(e) => setBlocage(e.target.value)}
+        hint="Un blocage précis, pas « je suis perdu ». Dis ce que tu as déjà essayé — c'est ce qui permet une réponse utile du premier coup."
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" variant="primary" size="sm" disabled={!blocage.trim()}>
+          Envoyer
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setOuvert(false)}>
+          Annuler
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** Le fil des demandes — un annuaire sans suite ne « guide » personne. */
+function MesDemandes() {
+  const { mentorRequests, answerMentorRequest } = useSoa();
+  const [reponses, setReponses] = useState<Record<string, string>>({});
+
+  if (mentorRequests.length === 0) return null;
+
+  return (
+    <Block titre="Les demandes en cours">
+      <div className="flex flex-col gap-3">
+        {mentorRequests.map((d) => {
+          const mentor = studentById(d.mentorId);
+          const demandeur = studentById(d.studentId);
+          return (
+            <article key={d.id} className="rounded-card border border-border bg-card p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <p className="text-caption text-ink-muted">
+                  {demandeur?.nom} → {mentor?.nom}
+                </p>
+                <Chip tone={d.statut === "résolu" ? "success" : "primary"}>{d.statut}</Chip>
+              </div>
+
+              <p className="prose-measure mt-3 text-body text-ink">{d.blocage}</p>
+
+              {d.reponses.length > 0 && (
+                <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
+                  {d.reponses.map((r, i) => {
+                    const a = studentById(r.auteurId);
+                    return (
+                      <div key={i} className="flex gap-3">
+                        <Avatar
+                          initiales={a?.initiales ?? "??"}
+                          nom={a?.nom ?? ""}
+                          taille="sm"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-caption font-medium text-ink">{a?.nom}</p>
+                          <p className="mt-0.5 text-body text-ink-muted">{r.corps}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {d.statut !== "résolu" && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const corps = (reponses[d.id] ?? "").trim();
+                    if (!corps) return;
+                    answerMentorRequest(d.id, corps);
+                    setReponses({ ...reponses, [d.id]: "" });
+                  }}
+                  className="mt-4 flex flex-col gap-3 border-t border-border pt-4"
+                >
+                  <Textarea
+                    label="Répondre"
+                    rows={2}
+                    value={reponses[d.id] ?? ""}
+                    onChange={(e) => setReponses({ ...reponses, [d.id]: e.target.value })}
+                  />
+                  <div>
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      size="sm"
+                      disabled={!(reponses[d.id] ?? "").trim()}
+                    >
+                      <Send aria-hidden className="size-4" />
+                      Envoyer
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </Block>
+  );
+}
 
 export function MentorsScreen({ navigate }: { navigate: (to: Route) => void }) {
   return (
@@ -800,10 +970,9 @@ export function MentorsScreen({ navigate }: { navigate: (to: Route) => void }) {
           const s = studentById(m.studentId);
           if (!s) return null;
           return (
-            <CardLink
+            <div
               key={m.studentId}
-              href={hrefFor({ name: "profil", id: s.id })}
-              onClick={() => navigate({ name: "profil", id: s.id })}
+              className="rounded-card border border-border bg-card p-4 sm:p-5"
             >
               <div className="flex items-start gap-4">
                 <Avatar initiales={s.initiales} nom={s.nom} />
@@ -829,12 +998,16 @@ export function MentorsScreen({ navigate }: { navigate: (to: Route) => void }) {
                       <Chip key={d}>{d}</Chip>
                     ))}
                   </ChipRow>
+
+                  {m.disponible && <DemandeMentor mentorId={s.id} nom={s.nom} />}
                 </div>
               </div>
-            </CardLink>
+            </div>
           );
         })}
       </div>
+
+      <MesDemandes />
     </Screen>
   );
 }

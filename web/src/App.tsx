@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import type { ReactElement } from "react";
 
 import { RepositoryProvider } from "./app/repository";
 import { routeKey, useRoute, type Route } from "./app/router";
@@ -6,6 +7,11 @@ import { SearchProvider } from "./app/search-store";
 import { Shell } from "./app/Shell";
 import { SoaProvider } from "./app/soa-store";
 import { fade, reduceVariants } from "./lib/motion";
+import {
+  LoginScreen,
+  ProfileEditScreen,
+  SignupScreen,
+} from "./screens/AuthScreens";
 import { CapsuleScreen } from "./screens/CapsuleScreen";
 import {
   ChallengeScreen,
@@ -45,6 +51,7 @@ import {
   ProfileScreen,
 } from "./screens/ProfileScreens";
 import { SignalScreen } from "./screens/SignalScreen";
+import { UniversityScreen } from "./screens/UniversityScreens";
 
 /**
  * App.tsx — l'aiguillage.
@@ -60,11 +67,15 @@ function CurrentScreen({
 }: {
   route: Route;
   navigate: (to: Route) => void;
-}) {
+}): ReactElement {
   switch (route.name) {
     /* Public */
     case "accueil":
       return <LandingScreen navigate={navigate} />;
+    case "connexion":
+      return <LoginScreen navigate={navigate} />;
+    case "inscription":
+      return <SignupScreen navigate={navigate} />;
 
     /* Étudiant — onglets */
     case "tableau":
@@ -77,6 +88,8 @@ function CurrentScreen({
       return <CommunityScreen navigate={navigate} />;
     case "profil":
       return <ProfileScreen id={route.id} navigate={navigate} />;
+    case "profil-edition":
+      return <ProfileEditScreen navigate={navigate} />;
 
     /* Projets */
     case "projet":
@@ -139,6 +152,10 @@ function CurrentScreen({
       return <CompanyChallengesScreen navigate={navigate} />;
     case "ent-marketplace":
       return <MarketplaceScreen navigate={navigate} />;
+
+    /* Université */
+    case "univ-accueil":
+      return <UniversityScreen navigate={navigate} />;
   }
 }
 

@@ -17,6 +17,21 @@ export type Niveau = "L1" | "L2" | "L3" | "M1" | "M2";
 
 export type Disponibilite = "Soirs" | "Week-ends" | "Vacances" | "Temps plein";
 
+/**
+ * M1 — « Authentification (email, Google, GitHub, université en option) ».
+ * En démonstration, aucun mot de passe n'est vérifié : le compte identifie,
+ * il ne protège pas. C'est écrit à l'écran plutôt que sous-entendu.
+ */
+export type AuthProvider = "email" | "google" | "github" | "universite";
+
+export type Role = "etudiant" | "enseignant";
+
+export interface Account {
+  studentId: string;
+  email: string;
+  provider: AuthProvider;
+}
+
 export interface Student {
   id: string;
   nom: string;
@@ -91,6 +106,8 @@ export interface Project {
 
 export interface ProjectShowcase {
   captures: string[];
+  /** M17 — « vidéo de démo ». URL saisie : l'envoi de fichier suppose un serveur. */
+  videoUrl?: string;
   demoUrl?: string;
   architecture: string;
   documentation: string;
@@ -307,7 +324,43 @@ export interface Badge {
   obtenuLe?: string;
 }
 
-export type LeaderboardKind = "progression" | "contribution" | "projets";
+/**
+ * M12 — « Points SOA gagnés en terminant un projet, aidant un pair, partageant
+ * une solution, documentant une erreur ».
+ *
+ * Les quatre gestes sont ceux du cadrage, et leur barème dit quelque chose :
+ * documenter une erreur rapporte autant qu'aider un pair, parce que c'est le
+ * même service rendu — simplement décalé dans le temps.
+ */
+export type PointReason =
+  | "projet-termine"
+  | "pair-aide"
+  | "solution-partagee"
+  | "erreur-documentee";
+
+export const POINT_VALUES: Record<PointReason, number> = {
+  "projet-termine": 50,
+  "pair-aide": 15,
+  "solution-partagee": 15,
+  "erreur-documentee": 15,
+};
+
+export const POINT_LABELS: Record<PointReason, string> = {
+  "projet-termine": "Projet terminé",
+  "pair-aide": "Pair aidé",
+  "solution-partagee": "Solution partagée",
+  "erreur-documentee": "Erreur documentée",
+};
+
+export interface PointEntry {
+  studentId: string;
+  reason: PointReason;
+  detail: string;
+  date: string;
+}
+
+/** Les trois classements nommés par le cadrage. */
+export type LeaderboardKind = "academique" | "progression" | "contribution";
 
 export interface LeaderboardRow {
   studentId: string;
@@ -320,7 +373,12 @@ export interface LeaderboardRow {
 export interface Opportunity {
   id: string;
   titre: string;
-  companyId: string;
+  /**
+   * Le cadrage écrit « Entreprises **ou étudiants** publient des projets à
+   * réaliser ». L'émetteur est donc l'un ou l'autre, jamais imposé.
+   */
+  companyId?: string;
+  studentId?: string;
   description: string;
   technos: string[];
   dureeMois: number;
@@ -357,6 +415,78 @@ export interface MentorProfile {
   disponible: boolean;
 }
 
+/**
+ * M18 — la mise en relation. Le cadrage demande que les mentors « conseillent,
+ * répondent, guident » : un annuaire ne suffit pas, il faut un fil.
+ */
+export interface MentorRequest {
+  id: string;
+  mentorId: string;
+  studentId: string;
+  blocage: string;
+  date: string;
+  reponses: { auteurId: string; corps: string; date: string }[];
+  statut: "en attente" | "en cours" | "résolu";
+}
+
+/* ── Universités — la branche du schéma d'architecture ──────────────────── */
+
+/**
+ * Le schéma d'architecture du cadrage place les universités au même rang que
+ * les entreprises, avec quatre usages : suivi pédagogique, projets académiques,
+ * classements, et l'accès à la Mémoire IA.
+ *
+ * Cette branche n'apparaît dans aucun des 21 modules numérotés — c'est
+ * probablement pour cela qu'elle avait été oubliée. Elle est traitée ici comme
+ * un espace à part entière, avec sa propre navigation.
+ */
+export interface Teacher {
+  id: string;
+  nom: string;
+  initiales: string;
+  universite: string;
+  departement: string;
+  /** Les promotions dont l'enseignant a la charge. */
+  promotions: string[];
+}
+
+/** Une promotion suivie : le grain du suivi pédagogique. */
+export interface Cohort {
+  id: string;
+  libelle: string;
+  niveau: Niveau;
+  filiere: string;
+  annee: string;
+  studentIds: string[];
+}
+
+/**
+ * Encadrement d'un projet académique par un enseignant.
+ * Le cadrage sépare « projets académiques » de « suivi pédagogique » : le
+ * premier est l'objet, le second est le regard porté dessus.
+ */
+export interface Supervision {
+  projectId: string;
+  teacherId: string;
+  cohortId: string;
+  /** Observation de l'enseignant — factuelle, pas une note. */
+  observation?: string;
+  /** Jalon attendu par le programme, et sa date. */
+  echeance?: { libelle: string; date: string };
+}
+
+/** Agrégat de suivi pédagogique pour une promotion. */
+export interface CohortHealth {
+  cohortId: string;
+  effectif: number;
+  projetsActifs: number;
+  projetsTermines: number;
+  projetsEnSommeil: number;
+  /** Étudiants sans aucune activité depuis le seuil — le signal qui compte. */
+  etudiantsSansActivite: string[];
+  entreesJournal: number;
+}
+
 /* ── M20 — Notifications ────────────────────────────────────────────────── */
 
 export type NotificationKind =
@@ -366,6 +496,15 @@ export type NotificationKind =
   | "opportunite"
   | "signal"
   | "mentorat";
+
+/** M20 — « Canaux : email, push mobile, notification web ». */
+export type NotificationChannel = "web" | "email" | "push";
+
+export interface ChannelPrefs {
+  web: boolean;
+  email: boolean;
+  push: boolean;
+}
 
 export interface Notification {
   id: string;
@@ -422,7 +561,11 @@ export interface StudentAnalytics {
   projetsRepris: number;
   /** Techno la plus utilisée, exigée telle quelle par le cadrage. */
   technoPrincipale: string;
+  /** M19 — « progression moyenne », sur les projets non terminés. */
+  progressionMoyenne: number;
   entreesJournal: number;
+  /** M12 — total des points SOA. */
+  points: number;
   /** Activité des 12 dernières semaines — alimente la carte de rythme. */
   rythme: number[];
 }

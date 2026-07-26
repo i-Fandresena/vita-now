@@ -348,8 +348,9 @@ export function TalentScreen({
   id: string;
   navigate: (to: Route) => void;
 }) {
-  const { projects, journalFor } = useSoa();
-  const etudiant = studentById(id);
+  const { projects, journalFor, students, validateSkill, proposeInterview } = useSoa();
+  const [entretien, setEntretien] = useState(false);
+  const etudiant = students.find((e) => e.id === id) ?? studentById(id);
   const score = reliabilityFor(id);
 
   if (!etudiant || !score) {
@@ -374,12 +375,25 @@ export function TalentScreen({
         retour={{ name: "ent-talents" }}
         onRetour={navigate}
         actions={
-          <>
-            <Button variant="secondary">Valider une compétence</Button>
-            <Button variant="primary">Proposer un entretien</Button>
-          </>
+          <Button
+            variant="primary"
+            onClick={() => {
+              proposeInterview(id);
+              setEntretien(true);
+            }}
+            disabled={entretien}
+          >
+            {entretien ? "Entretien proposé" : "Proposer un entretien"}
+          </Button>
         }
       />
+
+      {entretien && (
+        <p className="mt-4 flex items-center gap-2 rounded-card border border-success/30 bg-success/5 p-4 text-body text-success">
+          <Check aria-hidden className="size-4 shrink-0" />
+          {etudiant.nom.split(" ")[0]} a reçu la proposition dans ses notifications.
+        </p>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[20rem_1fr]">
         <section className="rounded-card border border-border bg-card p-5 sm:p-6">
@@ -427,11 +441,23 @@ export function TalentScreen({
                     libelle={t.nom}
                     origine={["Découverte", "Pratiqué", "À l'aise", "Avancé"][t.maitrise - 1]}
                   />
-                  {t.valideePar && (
+                  {/* E9 — « une entreprise valide formellement un rôle tenu sur
+                      un projet, comme preuve ». La validation porte le nom de
+                      qui la signe : une preuve anonyme n'en est pas une. */}
+                  {t.valideePar ? (
                     <p className="mt-1.5 flex items-center gap-1.5 text-caption text-success">
                       <Award aria-hidden className="size-3.5" />
-                      Validé par {t.valideePar} — E9
+                      Validé par {t.valideePar}
                     </p>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        validateSkill(id, t.nom, ENTREPRISE_COURANTE.nom);
+                      }}
+                      className="mt-1.5 rounded-sm text-caption font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      Valider cette compétence
+                    </button>
                   )}
                 </div>
               ))}

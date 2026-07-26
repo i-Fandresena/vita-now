@@ -930,8 +930,16 @@ export function ShowcaseScreen({
   id: string;
   navigate: (to: Route) => void;
 }) {
-  const { projects } = useSoa();
+  const { projects, saveShowcase } = useSoa();
   const projet = projects.find((p) => p.id === id);
+  const [edition, setEdition] = useState(false);
+  const [form, setForm] = useState({
+    architecture: projet?.presentation?.architecture ?? "",
+    documentation: projet?.presentation?.documentation ?? "",
+    videoUrl: projet?.presentation?.videoUrl ?? "",
+    demoUrl: projet?.presentation?.demoUrl ?? "",
+    captures: (projet?.presentation?.captures ?? []).join("\n"),
+  });
 
   if (!projet) {
     return (
@@ -943,6 +951,18 @@ export function ShowcaseScreen({
 
   const p = projet.presentation;
 
+  function enregistrer(event: FormEvent) {
+    event.preventDefault();
+    saveShowcase(projet!.id, {
+      architecture: form.architecture.trim(),
+      documentation: form.documentation.trim(),
+      videoUrl: form.videoUrl.trim() || undefined,
+      demoUrl: form.demoUrl.trim() || undefined,
+      captures: form.captures.split("\n").map((c) => c.trim()).filter(Boolean),
+    });
+    setEdition(false);
+  }
+
   return (
     <Screen>
       <ScreenHead
@@ -951,9 +971,69 @@ export function ShowcaseScreen({
         lede="Ce que verra un jury, une entreprise, ou un étudiant qui envisage de reprendre le projet."
         retour={{ name: "projet", id: projet.id }}
         onRetour={navigate}
+        actions={
+          !edition && (
+            <Button variant="primary" onClick={() => setEdition(true)}>
+              {p ? "Modifier" : "Compléter"}
+            </Button>
+          )
+        }
       />
 
-      {p ? (
+      {edition ? (
+        <form onSubmit={enregistrer} className="mt-8 flex max-w-2xl flex-col gap-6">
+          <Textarea
+            label="Architecture"
+            rows={4}
+            value={form.architecture}
+            onChange={(e) => setForm({ ...form, architecture: e.target.value })}
+            hint="Les choix structurants et leur raison. C'est ce qu'un repreneur lira en premier."
+          />
+          <Textarea
+            label="Documentation"
+            rows={4}
+            value={form.documentation}
+            onChange={(e) => setForm({ ...form, documentation: e.target.value })}
+            hint="Ce qu'il faut savoir pour faire tourner le projet, et ses limites connues."
+          />
+          {/* M17 — « vidéo de démo ». URL saisie : l'envoi de fichier suppose
+              un serveur, qui n'existe pas encore. L'écran ne prétend pas
+              l'inverse. */}
+          <Input
+            label="Vidéo de démonstration"
+            type="url"
+            inputMode="url"
+            value={form.videoUrl}
+            onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+            placeholder="https://…"
+            hint="Un lien. L'envoi de fichier suppose un serveur, qui n'existe pas encore."
+          />
+          <Input
+            label="Démonstration en ligne"
+            type="url"
+            inputMode="url"
+            value={form.demoUrl}
+            onChange={(e) => setForm({ ...form, demoUrl: e.target.value })}
+            placeholder="https://…"
+          />
+          <Textarea
+            label="Captures"
+            rows={3}
+            value={form.captures}
+            onChange={(e) => setForm({ ...form, captures: e.target.value })}
+            hint="Une légende par ligne. Les images elles-mêmes attendent le serveur."
+          />
+
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit" variant="primary" size="lg">
+              Enregistrer
+            </Button>
+            <Button variant="ghost" onClick={() => setEdition(false)}>
+              Annuler
+            </Button>
+          </div>
+        </form>
+      ) : p ? (
         <div className="mt-8 flex flex-col gap-6">
           <section className="rounded-card border border-border bg-card p-5 sm:p-6">
             <h2 className="font-heading text-heading text-ink">Architecture</h2>
@@ -964,6 +1044,36 @@ export function ShowcaseScreen({
             <h2 className="font-heading text-heading text-ink">Documentation</h2>
             <p className="prose-measure mt-3 text-body text-ink-muted">{p.documentation}</p>
           </section>
+
+          {(p.videoUrl || p.demoUrl) && (
+            <section className="rounded-card border border-border bg-card p-5 sm:p-6">
+              <h2 className="font-heading text-heading text-ink">Liens</h2>
+              <ul className="mt-3 flex flex-col gap-2">
+                {p.videoUrl && (
+                  <li>
+                    <a
+                      href={p.videoUrl}
+                      className="flex items-center gap-2 rounded-sm text-body text-primary underline-offset-4 hover:underline"
+                    >
+                      <Presentation aria-hidden className="size-4 shrink-0" />
+                      Vidéo de démonstration
+                    </a>
+                  </li>
+                )}
+                {p.demoUrl && (
+                  <li>
+                    <a
+                      href={p.demoUrl}
+                      className="flex items-center gap-2 rounded-sm text-body text-primary underline-offset-4 hover:underline"
+                    >
+                      <GitBranch aria-hidden className="size-4 shrink-0" />
+                      Démonstration en ligne
+                    </a>
+                  </li>
+                )}
+              </ul>
+            </section>
+          )}
 
           <section className="rounded-card border border-border bg-card p-5 sm:p-6">
             <h2 className="font-heading text-heading text-ink">Captures</h2>
@@ -978,7 +1088,7 @@ export function ShowcaseScreen({
               ))}
             </ul>
             <p className="mt-3 text-caption text-ink-muted">
-              Emplacements réservés : l'envoi d'images n'est pas développé.
+              Emplacements réservés : l'envoi d'images attend le serveur.
             </p>
           </section>
         </div>
@@ -986,13 +1096,10 @@ export function ShowcaseScreen({
         <div className="mt-8">
           <EmptyState
             title="Présentation à compléter"
-            body="Un projet livré sans présentation reste invisible — c'est le second échec décrit par la lettre. Architecture, documentation, captures : trois blocs suffisent."
+            body="Un projet livré sans présentation reste invisible — c'est le second échec décrit par la lettre. Architecture, documentation, vidéo : trois blocs suffisent."
             action={
-              <Button
-                variant="secondary"
-                onClick={() => navigate({ name: "projet-journal", id: projet.id })}
-              >
-                Partir du journal
+              <Button variant="secondary" onClick={() => setEdition(true)}>
+                Commencer
               </Button>
             }
           />

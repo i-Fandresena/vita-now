@@ -2,8 +2,10 @@ import {
   Bell,
   Building2,
   FolderKanban,
+  GraduationCap,
   LayoutDashboard,
   LibraryBig,
+  LogOut,
   UserRound,
   Users,
 } from "lucide-react";
@@ -74,6 +76,15 @@ const COMPANY_NAV: NavItem[] = [
     name: "ent-marketplace",
     route: { name: "ent-marketplace" },
     icon: LayoutDashboard,
+  },
+];
+
+const UNIVERSITY_NAV: NavItem[] = [
+  {
+    label: "Suivi",
+    name: "univ-accueil",
+    route: { name: "univ-accueil" },
+    icon: GraduationCap,
   },
 ];
 
@@ -280,7 +291,7 @@ const TITRES: Partial<Record<Route["name"], string>> = {
 
 export function Shell({ route, navigate, children }: ShellProps) {
   const espace = spaceOf(route);
-  const { unread } = useSoa();
+  const { unread, logout } = useSoa();
 
   const skip = (
     <a
@@ -315,11 +326,15 @@ export function Shell({ route, navigate, children }: ShellProps) {
                 variant="ghost"
                 size="sm"
                 className="hidden sm:inline-flex"
-                onClick={() => navigate({ name: "ent-accueil" })}
+                onClick={() => navigate({ name: "connexion" })}
               >
-                Espace entreprise
+                Se connecter
               </Button>
-              <Button variant="primary" size="sm" onClick={() => navigate({ name: "tableau" })}>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => navigate({ name: "inscription" })}
+              >
                 Commencer
               </Button>
             </div>
@@ -333,7 +348,13 @@ export function Shell({ route, navigate, children }: ShellProps) {
   }
 
   const entreprise = espace === "entreprise";
-  const items = entreprise ? COMPANY_NAV : STUDENT_NAV;
+  const universite = espace === "universite";
+  const items = entreprise ? COMPANY_NAV : universite ? UNIVERSITY_NAV : STUDENT_NAV;
+  const sousTitre = entreprise
+    ? "Espace entreprise"
+    : universite
+      ? "Espace universitaire"
+      : "ENI Fianarantsoa";
 
   return (
     <div className="flex min-h-dvh">
@@ -343,9 +364,9 @@ export function Shell({ route, navigate, children }: ShellProps) {
         items={items}
         route={route}
         navigate={navigate}
-        sousTitre={entreprise ? "Espace entreprise" : "ENI Fianarantsoa"}
+        sousTitre={sousTitre}
         bas={
-          entreprise ? (
+          entreprise || universite ? (
             <Button
               variant="ghost"
               size="sm"
@@ -381,6 +402,28 @@ export function Shell({ route, navigate, children }: ShellProps) {
               >
                 Espace entreprise →
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start"
+                onClick={() => navigate({ name: "univ-accueil" })}
+              >
+                Espace universitaire →
+              </Button>
+              {/* `destructive-nav-separation` : la déconnexion est séparée du
+                  reste de la navigation, jamais collée à un onglet. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 justify-start border-t border-border pt-4"
+                onClick={() => {
+                  logout();
+                  navigate({ name: "accueil" });
+                }}
+              >
+                <LogOut aria-hidden className="size-4" />
+                Se déconnecter
+              </Button>
             </div>
           )
         }
@@ -394,7 +437,7 @@ export function Shell({ route, navigate, children }: ShellProps) {
             titre={TITRES[activeTab(route) ?? route.name] ?? "SOA"}
           />
         )}
-        {entreprise && (
+        {(entreprise || universite) && (
           <header className="sticky top-0 z-30 border-b border-border bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur-md lg:hidden">
             <div className="flex h-14 items-center justify-between px-4">
               <Wordmark />

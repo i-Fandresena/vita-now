@@ -18,12 +18,15 @@ import { useCallback, useSyncExternalStore } from "react";
 export type Route =
   /* Public */
   | { name: "accueil" }
+  | { name: "connexion" }
+  | { name: "inscription" }
   /* Étudiant — onglets principaux */
   | { name: "tableau" }
   | { name: "projets" }
   | { name: "memoire" }
   | { name: "communaute" }
   | { name: "profil"; id?: string }
+  | { name: "profil-edition" }
   /* Étudiant — écrans profonds */
   | { name: "projet"; id: string }
   | { name: "projet-nouveau" }
@@ -51,13 +54,18 @@ export type Route =
   | { name: "ent-talent"; id: string }
   | { name: "ent-opportunites" }
   | { name: "ent-challenges" }
-  | { name: "ent-marketplace" };
+  | { name: "ent-marketplace" }
+  /* Université — la branche du schéma d'architecture du cadrage */
+  | { name: "univ-accueil" };
 
-export type Space = "public" | "etudiant" | "entreprise";
+export type Space = "public" | "etudiant" | "entreprise" | "universite";
 
 export function spaceOf(route: Route): Space {
-  if (route.name === "accueil") return "public";
-  return route.name.startsWith("ent-") ? "entreprise" : "etudiant";
+  if (route.name === "accueil" || route.name === "connexion" || route.name === "inscription")
+    return "public";
+  if (route.name.startsWith("ent-")) return "entreprise";
+  if (route.name.startsWith("univ-")) return "universite";
+  return "etudiant";
 }
 
 /** Les cinq onglets de la barre basse — `bottom-nav-limit` : jamais plus. */
@@ -96,6 +104,7 @@ const TAB_PARENT: Partial<Record<Route["name"], Route["name"]>> = {
   classements: "profil",
   portfolio: "profil",
   opportunites: "profil",
+  "profil-edition": "profil",
 };
 
 export function activeTab(route: Route): Route["name"] | null {
@@ -112,6 +121,10 @@ export function parseRoute(hash: string): Route {
   switch (tete) {
     case "":
       return { name: "accueil" };
+    case "connexion":
+      return { name: "connexion" };
+    case "inscription":
+      return { name: "inscription" };
     case "tableau":
       return { name: "tableau" };
     case "projets":
@@ -127,6 +140,7 @@ export function parseRoute(hash: string): Route {
       if (milieu === "sujet" && queue) return { name: "sujet", id: queue };
       return { name: "communaute" };
     case "profil":
+      if (milieu === "edition") return { name: "profil-edition" };
       return { name: "profil", id: milieu };
     case "reprise":
       return { name: "reprise" };
@@ -154,6 +168,8 @@ export function parseRoute(hash: string): Route {
       return milieu ? { name: "portfolio", id: milieu } : { name: "profil" };
     case "opportunites":
       return { name: "opportunites" };
+    case "universite":
+      return { name: "univ-accueil" };
     case "entreprise":
       switch (milieu) {
         case "talents":
@@ -176,6 +192,10 @@ export function hrefFor(route: Route): string {
   switch (route.name) {
     case "accueil":
       return "#/";
+    case "connexion":
+      return "#/connexion";
+    case "inscription":
+      return "#/inscription";
     case "tableau":
       return "#/tableau";
     case "projets":
@@ -198,6 +218,8 @@ export function hrefFor(route: Route): string {
       return `#/communaute/sujet/${route.id}`;
     case "profil":
       return route.id ? `#/profil/${route.id}` : "#/profil";
+    case "profil-edition":
+      return "#/profil/edition";
     case "reprise":
       return "#/reprise";
     case "renaissance":
@@ -238,6 +260,8 @@ export function hrefFor(route: Route): string {
       return "#/entreprise/challenges";
     case "ent-marketplace":
       return "#/entreprise/marketplace";
+    case "univ-accueil":
+      return "#/universite";
   }
 }
 

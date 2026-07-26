@@ -13,7 +13,7 @@ import { SearchField } from "@/features/search/SearchField";
 import { exitTransition, rise, sequence } from "@/lib/motion";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
-import { Avatar } from "@/ui/data";
+import { Avatar, Progress } from "@/ui/data";
 import { Block, CardLink, Screen, ScreenHead, Tabs } from "@/ui/layout";
 import { EmptyState, ErrorState, FragmentSkeleton, Pending } from "@/ui/states";
 
@@ -167,7 +167,7 @@ export function MemoryScreen({ navigate }: { navigate: (to: Route) => void }) {
 const FILTRES = ["Tous", "Java", "PHP", "Python", "Go", "TypeScript"] as const;
 
 export function RenaissanceScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { projects, journalFor, reviveProject } = useSoa();
+  const { projects, journalFor, reviveProject, progressOf } = useSoa();
   const [filtre, setFiltre] = useState<(typeof FILTRES)[number]>("Tous");
 
   const arretes = projects.filter((p) => p.status === "Abandonné");
@@ -229,13 +229,22 @@ export function RenaissanceScreen({ navigate }: { navigate: (to: Route) => void 
                 </div>
               )}
 
+              {/* Le cadrage demande que les projets arrêtés restent visibles
+                  « avec leur état (%, raison) ». Le pourcentage est déduit du
+                  journal : il dit où le travail s'est arrêté, pas ce qu'il
+                  vaut. */}
+              <div className="mt-4">
+                <Progress
+                  valeur={progressOf(projet.id)}
+                  libelle="État à l'arrêt"
+                  origine={`${entrees.length} entrée${entrees.length > 1 ? "s" : ""} de journal — déduit, pas déclaré`}
+                />
+              </div>
+
               <ChipRow className="mt-4">
                 {projet.technos.map((t) => (
                   <Chip key={t}>{t}</Chip>
                 ))}
-                <Chip>
-                  {entrees.length} entrée{entrees.length > 1 ? "s" : ""} de journal
-                </Chip>
               </ChipRow>
 
               <div className="mt-5 flex flex-wrap gap-2">

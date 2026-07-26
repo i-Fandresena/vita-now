@@ -1,5 +1,11 @@
 import type {
+  Account,
   Badge,
+  Cohort,
+  MentorRequest,
+  PointEntry,
+  Supervision,
+  Teacher,
   Challenge,
   Company,
   ForumThread,
@@ -12,7 +18,7 @@ import type {
   ReliabilityScore,
   Student,
 } from "@/domain/soa";
-import { scoreGlobal } from "@/domain/soa";
+import { POINT_VALUES, scoreGlobal } from "@/domain/soa";
 
 /**
  * soa-corpus.ts — le corpus de démonstration de la plateforme.
@@ -1087,5 +1093,156 @@ export const NOTIFICATIONS: Notification[] = [
     date: ilYA(9),
     lu: true,
     cible: "#/mentorat",
+  },
+];
+
+/* ── M1 — Comptes ───────────────────────────────────────────────────────── */
+
+/**
+ * Le cadrage prévoit quatre fournisseurs d'identité. Ici aucun mot de passe
+ * n'est vérifié : le compte identifie, il ne protège pas. L'écran de connexion
+ * le dit explicitement plutôt que de le laisser croire.
+ */
+export const ACCOUNTS: Account[] = [
+  { studentId: "s-soa", email: "soa.rakotoarisoa@eni.mg", provider: "universite" },
+  { studentId: "s-hery", email: "hery.rakotomalala@eni.mg", provider: "email" },
+  { studentId: "s-lova", email: "lova.a@gmail.com", provider: "google" },
+  { studentId: "s-naina", email: "naina@users.noreply.github.com", provider: "github" },
+];
+
+/* ── M12 — Points SOA ───────────────────────────────────────────────────── */
+
+/**
+ * Journal des points, plutôt qu'un compteur.
+ *
+ * Un total nu (« 245 points ») ne dit pas ce qui a été fait ; la liste, si.
+ * C'est aussi ce qui permet de retirer la mécanique du chemin de travail sans
+ * perdre l'information : chaque ligne est un fait daté, pas un score.
+ */
+export const POINTS: PointEntry[] = [
+  { studentId: "s-soa", reason: "projet-termine", detail: "Quiz de révision hors-ligne", date: ilYA(118) },
+  { studentId: "s-soa", reason: "erreur-documentee", detail: "Blog PHP — raison d'arrêt écrite", date: ilYA(296) },
+  { studentId: "s-soa", reason: "erreur-documentee", detail: "Bibliothèque Java — raison d'arrêt écrite", date: ilYA(226) },
+  { studentId: "s-soa", reason: "erreur-documentee", detail: "File de synchronisation en double", date: ilYA(24) },
+  { studentId: "s-soa", reason: "solution-partagee", detail: "File vidée à l'accusé, pas à l'envoi", date: ilYA(22) },
+
+  { studentId: "s-hery", reason: "projet-termine", detail: "Mémoire — conflits de synchronisation", date: ilYA(700) },
+  { studentId: "s-hery", reason: "pair-aide", detail: "NullPointerException au chargement des emprunts", date: ilYA(225) },
+  { studentId: "s-hery", reason: "pair-aide", detail: "Arbitrage sans horloge fiable", date: ilYA(3) },
+  { studentId: "s-hery", reason: "solution-partagee", detail: "Décider avec le champ, pas avec le temps", date: ilYA(3) },
+
+  { studentId: "s-mirana", reason: "projet-termine", detail: "OCR des actes d'état civil", date: ilYA(540) },
+  { studentId: "s-mirana", reason: "pair-aide", detail: "Indexation des diacritiques malgaches", date: ilYA(299) },
+
+  { studentId: "s-lova", reason: "pair-aide", detail: "Annulation de requête obsolète", date: ilYA(15) },
+  { studentId: "s-lova", reason: "solution-partagee", detail: "AbortController dans le nettoyage d'effet", date: ilYA(15) },
+
+  { studentId: "s-tiana", reason: "pair-aide", detail: "Invalidation de cache par l'écriture", date: ilYA(97) },
+  { studentId: "s-naina", reason: "pair-aide", detail: "Filtrage sur passerelle sans VLAN", date: ilYA(29) },
+  { studentId: "s-naina", reason: "erreur-documentee", detail: "File SMS — jamais testée à l'échelle", date: ilYA(150) },
+  { studentId: "s-fanja", reason: "erreur-documentee", detail: "Cache servant des prix périmés", date: ilYA(96) },
+];
+
+export function pointsFor(studentId: string): number {
+  return POINTS.filter((p) => p.studentId === studentId).reduce(
+    (total, p) => total + POINT_VALUES[p.reason],
+    0,
+  );
+}
+
+/* ── M18 — Demandes de mentorat ─────────────────────────────────────────── */
+
+export const MENTOR_REQUESTS: MentorRequest[] = [
+  {
+    id: "mr-1",
+    mentorId: "s-hery",
+    studentId: "s-fanja",
+    blocage:
+      "Je n'arrive pas à décider quoi invalider dans mon cache. J'ai essayé une " +
+      "durée de vie de 5 minutes, mais les prix restent faux entre-temps.",
+    date: ilYA(94),
+    statut: "résolu",
+    reponses: [
+      {
+        auteurId: "s-hery",
+        corps:
+          "Inverse la question : ce n'est pas au cache d'expirer, c'est à " +
+          "l'écriture du prix de purger la clé. La durée de vie devient un filet " +
+          "de sécurité, plus la règle.",
+        date: ilYA(93),
+      },
+      {
+        auteurId: "s-fanja",
+        corps: "Ça marche. J'ai écrit l'entrée de journal correspondante.",
+        date: ilYA(92),
+      },
+    ],
+  },
+];
+
+/* ── Universités — enseignants, promotions, encadrement ─────────────────── */
+
+export const TEACHERS: Teacher[] = [
+  {
+    id: "t-randria",
+    nom: "Pr. Randrianarisoa",
+    initiales: "PR",
+    universite: "ENI Fianarantsoa",
+    departement: "Génie logiciel",
+    promotions: ["c-l3-gl", "c-m1-gl"],
+  },
+];
+
+export const CURRENT_TEACHER: Teacher = TEACHERS[0]!;
+
+export const COHORTS: Cohort[] = [
+  {
+    id: "c-l3-gl",
+    libelle: "L3 Génie logiciel",
+    niveau: "L3",
+    filiere: "Génie logiciel",
+    annee: "2025-2026",
+    studentIds: ["s-soa", "s-naina", "s-toky"],
+  },
+  {
+    id: "c-m1-gl",
+    libelle: "M1 Génie logiciel",
+    niveau: "M1",
+    filiere: "Génie logiciel",
+    annee: "2025-2026",
+    studentIds: ["s-lova", "s-mirana"],
+  },
+];
+
+/**
+ * Encadrement des projets académiques.
+ *
+ * L'observation de l'enseignant est **factuelle et non notée** : le cadrage
+ * parle de « suivi pédagogique », pas d'évaluation. Une note transformerait
+ * l'outil en carnet de correction, et le journal cesserait aussitôt d'être
+ * honnête — personne n'écrit « je suis bloqué depuis trois jours » sous l'œil
+ * de celui qui le notera.
+ */
+export const SUPERVISIONS: Supervision[] = [
+  {
+    projectId: "p-semis",
+    teacherId: "t-randria",
+    cohortId: "c-l3-gl",
+    observation:
+      "Le journal est tenu et lisible. Le blocage sur l'arbitrage des versions " +
+      "est un vrai sujet de recherche, pas un défaut de méthode.",
+    echeance: { libelle: "Rendu intermédiaire", date: ilYA(-14) },
+  },
+  {
+    projectId: "p-supervision",
+    teacherId: "t-randria",
+    cohortId: "c-l3-gl",
+    echeance: { libelle: "Démonstration en salle", date: ilYA(-21) },
+  },
+  {
+    projectId: "p-design-system",
+    teacherId: "t-randria",
+    cohortId: "c-m1-gl",
+    observation: "Rythme régulier. Le périmètre mériterait d'être resserré.",
   },
 ];
