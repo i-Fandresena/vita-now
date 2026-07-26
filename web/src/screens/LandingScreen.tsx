@@ -16,6 +16,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import type { Route } from "@/app/router";
 import { cn } from "@/lib/cn";
 import { EASE, REVEAL_VIEWPORT, reveal, rise, sequence, staggerItem } from "@/lib/motion";
+import { Magnetic } from "@/features/landing/Magnetic";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow, Section, SectionHead } from "@/ui/Editorial";
 import { Surface } from "@/ui/Surface";

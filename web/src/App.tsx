@@ -5,10 +5,9 @@ import { RepositoryProvider } from "./app/repository";
 import { routeKey, spaceOf, useRoute, type Route } from "./app/router";
 import { SearchProvider } from "./app/search-store";
 import { Shell } from "./app/Shell";
-import { SoaProvider } from "./app/soa-store";
 import { useSoa, VitanowProvider } from "./app/vitanow-store";
 import { BandeauSync } from "./features/sync/BandeauSync";
-import { EASE, fade, reduceVariants } from "./lib/motion";
+import { fade, reduceVariants } from "./lib/motion";
 import { ProfileEditScreen } from "./screens/AuthScreens";
 import { CapsuleScreen } from "./screens/CapsuleScreen";
 import {
@@ -135,6 +134,8 @@ function CurrentScreen({
       return <PortfolioScreen id={route.id} navigate={navigate} />;
     case "opportunites":
       return <OpportunitiesScreen navigate={navigate} />;
+    case "profil-edition":
+      return <ProfileEditScreen navigate={navigate} />;
 
     /* Entreprise */
     case "ent-accueil":
