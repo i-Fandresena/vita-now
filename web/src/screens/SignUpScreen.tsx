@@ -74,18 +74,29 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
   const [envoye, setEnvoye] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
+  /* Douze caractères, comme l'API — et non six.
+     Une règle plus permissive côté écran laisse remplir le formulaire, puis
+     essuyer un refus du serveur après coup : l'utilisateur a tout tapé pour
+     rien, et croit d'abord à une panne. La contrainte doit être connue avant
+     la saisie, pas après. */
+  const MDP_MINIMUM = 12;
   const complet =
-    form.email.trim() && form.nom.trim() && form.motDePasse.length >= 6 && form.filiere.trim();
+    form.email.trim() &&
+    form.nom.trim() &&
+    form.motDePasse.length >= MDP_MINIMUM &&
+    form.filiere.trim();
 
-  function soumettre(event: FormEvent) {
+  async function soumettre(event: FormEvent) {
     event.preventDefault();
     if (!complet) {
-      setErreur("Veuillez remplir tous les champs obligatoires (mot de passe 6 caractères min).");
+      setErreur(
+        `Tous les champs sont requis, et le mot de passe doit faire au moins ${MDP_MINIMUM} caractères.`,
+      );
       return;
     }
 
     setEnvoye(true);
-    const resultat = signup({
+    const resultat = await signup({
       nom: form.nom,
       email: form.email,
       motDePasse: form.motDePasse,
@@ -101,7 +112,13 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
     }
 
     setEnvoye(false);
-    setErreur("Un compte existe déjà pour cette adresse. Connecte-toi plutôt.");
+    /* Le serveur sait pourquoi il refuse — adresse prise, mot de passe trop
+       court, champ manquant. Reprendre son message évite d'en inventer un
+       plus vague que la réalité. */
+    setErreur(
+      resultat.message ??
+        "Un compte existe déjà pour cette adresse. Connecte-toi plutôt.",
+    );
   }
 
   function versConnexion(event: { preventDefault: () => void }) {
@@ -182,7 +199,7 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
               type="password"
               name="motdepasse"
               autoComplete="new-password"
-              placeholder="Six caractères au minimum"
+              placeholder="Douze caractères au minimum"
               value={form.motDePasse}
               onChange={(event) => setForm({ ...form, motDePasse: event.target.value })}
             />

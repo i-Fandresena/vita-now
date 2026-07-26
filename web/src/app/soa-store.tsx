@@ -51,7 +51,7 @@ import {
   STUDENTS,
   THREADS,
 } from "@/data/soa-corpus";
-import { API_ACTIVE, api } from "@/data/api";
+import { API_ACTIVE, ErreurApi, api } from "@/data/api";
 import { CLES, charger, enregistrer } from "@/lib/persistence";
 
 import { nouvelUuid, pousser } from "./sync";
@@ -116,8 +116,8 @@ interface SoaApi extends SoaState {
 
   /* M1 — authentification. Voir `domain/soa.ts` : ceci n'est pas de la
      sécurité, c'est une session qui permet de savoir qui est connecté. */
-  login: (email: string, motDePasse: string) => AuthResult;
-  signup: (draft: NewStudent) => AuthResult;
+  login: (email: string, motDePasse: string) => Promise<AuthResult>;
+  signup: (draft: NewStudent) => Promise<AuthResult>;
   logout: () => void;
   updateProfile: (patch: Partial<Student>) => void;
 
@@ -734,22 +734,85 @@ export function SoaProvider({ children }: { children: ReactNode }) {
    * L'écran de connexion l'affiche noir sur blanc — laisser croire à une
    * authentification qui n'existe pas serait pire que ne pas en avoir.
    */
-  const login = useCallback((email: string, motDePasse: string): AuthResult => {
-    const compte = comptesVivants.find(
-      (c) => c.email.toLowerCase() === email.trim().toLowerCase(),
-    );
-    if (!compte) return { ok: false, raison: "inconnu" };
-    if (compte.motDePasse !== motDePasse) return { ok: false, raison: "motDePasse" };
+  /**
+   * Connexion.
+   *
+   * En mode API, c'est le serveur qui tranche : lui seul détient les
+   * empreintes argon2id. Le repli local n'existe que pour le mode
+   * démonstration, où il n'y a pas de serveur du tout.
+   *
+   * C'est le défaut qui a été corrigé ici : les deux chemins existaient, mais
+   * l'écran appelait toujours le local. Le front vérifiait donc les mots de
+   * passe contre une liste embarquée dans son propre paquet, pendant que la
+   * base en contenait d'autres — aucun compte réel ne pouvait fonctionner.
+   */
+  const login = useCallback(
+    async (email: string, motDePasse: string): Promise<AuthResult> => {
+      if (API_ACTIVE) {
+        try {
+          const { etudiant } = await api.connexion(email.trim(), motDePasse);
+          const e = etudiant as Student;
+          setState((s) => ({
+            ...s,
+            sessionId: e.id,
+            students: s.students.some((x) => x.id === e.id)
+              ? s.students.map((x) => (x.id === e.id ? e : x))
+              : [...s.students, e],
+          }));
+          ecrireSession(e.id);
+          return { ok: true };
+        } catch (erreur) {
+          /* Le serveur ne distingue pas « compte inconnu » de « mot de passe
+             incorrect » — c'est délibéré de sa part : l'écart révélerait
+             quelles adresses sont inscrites. On ne peut donc pas inventer la
+             distinction ici. */
+          const statut = erreur instanceof ErreurApi ? erreur.statut : 0;
+          return { ok: false, raison: statut === 401 ? "motDePasse" : "inconnu" };
+        }
+      }
 
-    setState((s) => ({ ...s, sessionId: compte.studentId }));
-    ecrireSession(compte.studentId);
-    return { ok: true };
-  }, []);
+      const compte = comptesVivants.find(
+        (c) => c.email.toLowerCase() === email.trim().toLowerCase(),
+      );
+      if (!compte) return { ok: false, raison: "inconnu" };
+      if (compte.motDePasse !== motDePasse) return { ok: false, raison: "motDePasse" };
 
-  const signup = useCallback((draft: NewStudent): AuthResult => {
+      setState((s) => ({ ...s, sessionId: compte.studentId }));
+      ecrireSession(compte.studentId);
+      return { ok: true };
+    },
+    [],
+  );
+
+  const signup = useCallback(async (draft: NewStudent): Promise<AuthResult> => {
+    if (API_ACTIVE) {
+      try {
+        const { etudiant } = await api.inscription({
+          nom: draft.nom.trim(),
+          email: draft.email.trim(),
+          motDePasse: draft.motDePasse,
+          universite: draft.universite.trim(),
+          niveau: draft.niveau,
+          filiere: draft.filiere.trim(),
+          objectifs: draft.objectifs.trim(),
+        });
+        const e = etudiant as Student;
+        setState((s) => ({ ...s, students: [...s.students, e], sessionId: e.id }));
+        ecrireSession(e.id);
+        return { ok: true };
+      } catch (erreur) {
+        const statut = erreur instanceof ErreurApi ? erreur.statut : 0;
+        /* 409 = adresse déjà prise. 400 = règle non respectée (longueur du mot
+           de passe, champ manquant). L'écran doit pouvoir dire lequel. */
+        return {
+          ok: false,
+          raison: statut === 409 ? "inconnu" : "motDePasse",
+          message: erreur instanceof Error ? erreur.message : undefined,
+        };
+      }
+    }
+
     const email = draft.email.trim().toLowerCase();
-    // Un e-mail déjà pris renvoie la même erreur qu'une connexion sur un
-    // compte inconnu : le formulaire n'a qu'un seul endroit où l'afficher.
     if (comptesVivants.some((c) => c.email.toLowerCase() === email)) {
       return { ok: false, raison: "inconnu" };
     }

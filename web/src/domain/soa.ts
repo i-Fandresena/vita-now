@@ -59,7 +59,12 @@ export type AuthResult =
      sur un vrai service, dire « ce compte n'existe pas » révèle quels e-mails
      sont inscrits. Ici il n'y a rien à protéger, et un jury qui se trompe de
      compte doit comprendre pourquoi en une seconde. */
-  | { ok: false; raison: "inconnu" | "motDePasse" };
+  | {
+      ok: false;
+      raison: "inconnu" | "motDePasse";
+      /** Message du serveur, quand il est plus précis que la raison. */
+      message?: string;
+    };
 
 export interface Student {
   id: string;

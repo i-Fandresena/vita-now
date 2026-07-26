@@ -156,7 +156,7 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
   const [envoye, setEnvoye] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
-  function soumettre(event: FormEvent) {
+  async function soumettre(event: FormEvent) {
     event.preventDefault();
     if (!email.trim() || !motDePasse) {
       setErreur("Veuillez remplir votre adresse e-mail et votre mot de passe.");
@@ -164,7 +164,7 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
     }
 
     setEnvoye(true);
-    const resultat = login(email, motDePasse);
+    const resultat = await login(email, motDePasse);
 
     if (resultat.ok) {
       navigate({ name: "tableau" });
@@ -172,10 +172,12 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
     }
 
     setEnvoye(false);
+    /* Le serveur ne distingue pas les deux cas — l'écart de temps de réponse
+       révélerait quelles adresses sont inscrites. Le message reste donc
+       volontairement unique, et dit quoi faire ensuite. */
     setErreur(
-      resultat.raison === "inconnu"
-        ? "Aucun compte pour cette adresse. Vérifie l'orthographe, ou crée un compte."
-        : "Mot de passe incorrect pour cette adresse.",
+      resultat.message ??
+        "Adresse e-mail ou mot de passe incorrect. Vérifie l'orthographe, ou crée un compte.",
     );
   }
 

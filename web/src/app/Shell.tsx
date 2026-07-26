@@ -7,10 +7,11 @@ import {
   UserRound,
   Users,
   LogOut,
+  Menu,
 } from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/cn";
 import { EASE } from "@/lib/motion";
@@ -250,10 +251,12 @@ function AppTopBar({
   navigate,
   unread,
   titre,
+  onMenu,
 }: {
   navigate: (to: Route) => void;
   unread: number;
   titre: string;
+  onMenu: () => void;
 }) {
   return (
     <header
@@ -265,6 +268,7 @@ function AppTopBar({
       <div className="flex h-14 items-center justify-between gap-3 px-4">
         <span className="font-display text-heading text-ink">{titre}</span>
 
+        <div className="flex items-center">
         <button
           onClick={() => navigate({ name: "notifications" })}
           aria-label={
@@ -281,8 +285,182 @@ function AppTopBar({
             <span className="absolute top-2.5 right-2.5 size-2.5 rounded-full bg-destructive ring-2 ring-background" />
           )}
         </button>
+
+        {/* Le seul accès mobile à la déconnexion et au changement d'espace.
+            Sans lui, ces gestes n'existaient que dans le rail desktop. */}
+        <button
+          onClick={onMenu}
+          aria-label="Ouvrir le menu"
+          aria-haspopup="dialog"
+          className="grid size-11 place-items-center rounded-full text-ink-muted transition-colors duration-150 hover:bg-surface hover:text-ink"
+        >
+          <Menu aria-hidden className="size-5" />
+        </button>
+        </div>
       </div>
     </header>
+  );
+}
+
+
+/**
+ * Menu mobile — ce que le rail latéral porte, et que la barre d'onglets ne
+ * peut pas porter.
+ *
+ * La barre basse est plafonnée à cinq entrées (`bottom-nav-limit`), et ces
+ * cinq places vont aux destinations principales. Tout le reste — déconnexion,
+ * changement d'espace, notifications — n'avait donc **aucun point d'entrée
+ * sous 1024px** : un utilisateur mobile ne pouvait tout simplement pas se
+ * déconnecter, ni rejoindre l'espace entreprise.
+ *
+ * Une feuille plutôt qu'un menu déroulant : à cette largeur, un menu ancré au
+ * coin supérieur droit ouvre ses éléments à l'endroit le plus difficile à
+ * atteindre au pouce. La feuille arrive par le bas, là où la main se trouve.
+ */
+function MenuMobile({
+  ouvert,
+  fermer,
+  navigate,
+  entreprise,
+}: {
+  ouvert: boolean;
+  fermer: () => void;
+  navigate: (to: Route) => void;
+  entreprise: boolean;
+}) {
+  const { me, logout, unread } = useVitanow();
+  const reduced = useReducedMotion() ?? false;
+
+  /* Le défilement de la page derrière la feuille est bloqué tant qu'elle est
+     ouverte : sans cela, faire glisser la feuille entraîne la page dessous. */
+  useEffect(() => {
+    if (!ouvert) return;
+    const avant = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = avant;
+    };
+  }, [ouvert]);
+
+  /* Échap ferme, comme tout ce qui se superpose (`modal-escape`). */
+  useEffect(() => {
+    if (!ouvert) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") fermer();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [ouvert, fermer]);
+
+  const aller = (to: Route) => {
+    fermer();
+    navigate(to);
+  };
+
+  return (
+    <AnimatePresence>
+      {ouvert && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Voile : il isole le contenu et sert de zone de fermeture. */}
+          <motion.button
+            aria-label="Fermer le menu"
+            onClick={fermer}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="absolute inset-0 h-full w-full bg-ink/40"
+          />
+
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            initial={reduced ? { opacity: 0 } : { y: "100%" }}
+            animate={reduced ? { opacity: 1 } : { y: 0 }}
+            exit={reduced ? { opacity: 0 } : { y: "100%" }}
+            transition={{ type: "spring", duration: 0.42, bounce: 0.08 }}
+            className={cn(
+              "absolute inset-x-0 bottom-0 rounded-t-card border-t border-border bg-background",
+              "px-4 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
+            )}
+          >
+            {/* Poignée : elle dit que l'objet vient du bas et peut y retourner. */}
+            <span
+              aria-hidden
+              className="mx-auto mb-4 block h-1 w-10 rounded-full bg-border-strong"
+            />
+
+            <div className="mb-4 flex items-center gap-3 px-2">
+              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-wash font-semibold text-primary">
+                {me.initiales}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-body font-medium text-ink">
+                  {me.nom}
+                </span>
+                <span className="block truncate text-caption text-ink-muted">
+                  {me.niveau} · {me.filiere}
+                </span>
+              </span>
+            </div>
+
+            <ul className="flex flex-col">
+              <li>
+                <button
+                  onClick={() => aller({ name: "notifications" })}
+                  className="flex h-13 w-full items-center gap-3 rounded-sm px-2 text-body text-ink transition-colors duration-150 hover:bg-surface"
+                >
+                  <Bell aria-hidden className="size-5 shrink-0 text-ink-muted" />
+                  Notifications
+                  {unread > 0 && (
+                    <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-caption text-on-primary">
+                      {unread}
+                    </span>
+                  )}
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => aller({ name: "profil-edition" })}
+                  className="flex h-13 w-full items-center gap-3 rounded-sm px-2 text-body text-ink transition-colors duration-150 hover:bg-surface"
+                >
+                  <UserRound aria-hidden className="size-5 shrink-0 text-ink-muted" />
+                  Modifier mon profil
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() =>
+                    aller(entreprise ? { name: "tableau" } : { name: "ent-accueil" })
+                  }
+                  className="flex h-13 w-full items-center gap-3 rounded-sm px-2 text-body text-ink transition-colors duration-150 hover:bg-surface"
+                >
+                  <Building2 aria-hidden className="size-5 shrink-0 text-ink-muted" />
+                  {entreprise ? "Espace étudiant" : "Espace entreprise"}
+                </button>
+              </li>
+
+              {/* `destructive-nav-separation` : la déconnexion change d'état,
+                  contrairement à tout ce qui la précède. Elle est séparée. */}
+              <li className="mt-2 border-t border-border pt-2">
+                <button
+                  onClick={() => {
+                    fermer();
+                    logout();
+                    navigate({ name: "accueil" });
+                  }}
+                  className="flex h-13 w-full items-center gap-3 rounded-sm px-2 text-body text-destructive transition-colors duration-150 hover:bg-destructive/5"
+                >
+                  <LogOut aria-hidden className="size-5 shrink-0" />
+                  Se déconnecter
+                </button>
+              </li>
+            </ul>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -297,6 +475,7 @@ const TITRES: Partial<Record<Route["name"], string>> = {
 };
 
 export function Shell({ route, navigate, children }: ShellProps) {
+  const [menuOuvert, setMenuOuvert] = useState(false);
   const espace = spaceOf(route);
   const { unread, logout, me } = useVitanow();
 
@@ -496,6 +675,7 @@ export function Shell({ route, navigate, children }: ShellProps) {
             navigate={navigate}
             unread={unread}
             titre={TITRES[activeTab(route) ?? route.name] ?? "VITA'NOW"}
+            onMenu={() => setMenuOuvert(true)}
           />
         )}
         {entreprise && (
@@ -515,6 +695,13 @@ export function Shell({ route, navigate, children }: ShellProps) {
       </div>
 
       <TabBar items={items} route={route} navigate={navigate} />
+
+      <MenuMobile
+        ouvert={menuOuvert}
+        fermer={() => setMenuOuvert(false)}
+        navigate={navigate}
+        entreprise={entreprise}
+      />
     </div>
   );
 }
