@@ -423,13 +423,23 @@ function Bandeau() {
           )}
         </div>
 
-        <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-          {DOMAINES.map((domaine) => (
-            <li key={domaine} className="font-heading text-heading text-ink-muted">
-              {domaine}
-            </li>
-          ))}
-        </ul>
+        {/* Défilé centré des domaines — boucle seamless via liste dupliquée */}
+        <div
+          aria-hidden
+          className="flex w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
+        >
+          <motion.ul
+            className="flex shrink-0 gap-x-8"
+            animate={reduced ? {} : { x: ["0%", "-50%"] }}
+            transition={{ duration: 18, ease: "linear", repeat: Infinity }}
+          >
+            {[...DOMAINES, ...DOMAINES].map((domaine, i) => (
+              <li key={i} className="whitespace-nowrap font-heading text-heading text-ink-muted">
+                {domaine}
+              </li>
+            ))}
+          </motion.ul>
+        </div>
 
         <p className="text-center text-caption text-ink-muted">
           Les domaines du corpus de l'ENI Fianarantsoa.
