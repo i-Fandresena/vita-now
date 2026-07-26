@@ -7,6 +7,7 @@ import {
   ExternalLink,
   ListOrdered,
   Lock,
+  RotateCcw,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -30,6 +31,7 @@ import {
 } from "@/domain/soa";
 import { cn } from "@/lib/cn";
 import { rise, sequence } from "@/lib/motion";
+import { reinitialiser } from "@/lib/persistence";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
 import { Avatar, Progress, Stat } from "@/ui/data";
@@ -50,6 +52,70 @@ import { ProjectRow } from "./ProjectScreens";
  */
 
 const ONGLETS = ["Projets", "Compétences", "Reconnaissance"] as const;
+
+/**
+ * Remise à zéro de la démonstration.
+ *
+ * **Pourquoi cet écran a besoin de ce bouton.** Depuis que l'état survit au
+ * rechargement, un navigateur qui a déjà servi garde son état pour toujours :
+ * une correction apportée au corpus dans le code n'apparaît jamais sur le
+ * poste de démonstration, et rien à l'écran n'explique pourquoi. Sans cette
+ * sortie, la seule échappatoire est la console du navigateur — hors de portée
+ * de la plupart des gens qui feront tourner l'outil.
+ *
+ * **Deux temps, jamais un.** L'action est irréversible ; une seule pression
+ * suffirait à effacer une démonstration en cours par erreur, et le geste est
+ * d'autant plus facile sur un écran tactile. Le second bouton est donc explicite
+ * (« Oui, tout effacer ») plutôt qu'un « OK » qu'on presse sans lire, et
+ * « Annuler » reste la sortie la plus large.
+ *
+ * Le vocabulaire évite « localStorage », « cache » et « état » : la phrase dit
+ * ce qui disparaît et ce qui revient, pas où c'était rangé.
+ */
+function RemiseAZero() {
+  const [confirme, setConfirme] = useState(false);
+
+  return (
+    <section className="mt-10 rounded-card border border-border bg-surface p-5">
+      <div className="flex items-start gap-3">
+        <RotateCcw aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-muted" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-body font-semibold text-ink">Repartir de zéro</h2>
+          <p className="mt-1 text-body text-ink-muted">
+            Efface les projets, les entrées de journal et les messages que tu as
+            ajoutés sur cet appareil, et remet l'exemple de départ. Rien n'est
+            envoyé ni supprimé ailleurs — les autres appareils ne changent pas.
+          </p>
+
+          {confirme ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  reinitialiser();
+                  /* Rechargement plutôt que remise à zéro de l'état en React :
+                     deux magasins indépendants sont concernés (l'état applicatif
+                     et les dépôts de la Mémoire), et les relire au démarrage est
+                     le seul chemin déjà éprouvé. */
+                  window.location.reload();
+                }}
+              >
+                Oui, tout effacer
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirme(false)}>
+                Annuler
+              </Button>
+            </div>
+          ) : (
+            <Button variant="ghost" className="mt-4 -ml-3" onClick={() => setConfirme(true)}>
+              Repartir de zéro
+            </Button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export function ProfileScreen({
   id,
@@ -296,6 +362,10 @@ export function ProfileScreen({
           </CardLink>
         </div>
       )}
+
+      {/* Uniquement sur son propre profil : personne ne remet à zéro depuis la
+          fiche de quelqu'un d'autre, et l'y afficher inquiéterait pour rien. */}
+      {moi && <RemiseAZero />}
     </Screen>
   );
 }
