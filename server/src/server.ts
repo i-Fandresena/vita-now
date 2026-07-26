@@ -4,7 +4,9 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { pool } from "./db.js";
 import { env } from "./env.js";
 import { routesAuth } from "./routes/auth.js";
+import { routesCollectif } from "./routes/collectif.js";
 import { routesEcriture } from "./routes/ecriture.js";
+import { routesEtat } from "./routes/etat.js";
 import { routesFiches } from "./routes/fiches.js";
 import { routesProjets } from "./routes/projets.js";
 
@@ -67,9 +69,11 @@ export function construire(): FastifyInstance {
   });
 
   app.register(routesAuth);
+  app.register(routesEtat);
   app.register(routesFiches);
   app.register(routesProjets);
   app.register(routesEcriture);
+  app.register(routesCollectif);
 
   /* Le détail d'une erreur serveur ne sort jamais vers le navigateur : un
      message de PostgreSQL révèle des noms de tables et de colonnes. Il part

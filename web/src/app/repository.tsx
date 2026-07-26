@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
+import { API_ACTIVE } from "@/data/api";
+import { HttpFragmentRepository } from "@/data/HttpFragmentRepository";
 import { InMemoryFragmentRepository } from "@/data/InMemoryFragmentRepository";
 import type { FragmentRepository } from "@/domain/repository";
 
@@ -19,8 +21,13 @@ export function RepositoryProvider({
   children: ReactNode;
   repository?: FragmentRepository;
 }) {
+  /* Le choix se fait ici, et nulle part ailleurs — c'est la promesse du
+     HANDOFF §4 : une seule ligne sépare la démonstration du produit servi,
+     et aucun écran ne sait lequel des deux il utilise. */
   const value = useMemo(
-    () => repository ?? new InMemoryFragmentRepository(),
+    () =>
+      repository ??
+      (API_ACTIVE ? new HttpFragmentRepository() : new InMemoryFragmentRepository()),
     [repository],
   );
 

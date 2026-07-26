@@ -21,6 +21,27 @@ import { exigerSession } from "../session.js";
 const STATUTS = ["Idée", "En cours", "En pause", "Abandonné", "Terminé"] as const;
 const NATURES = ["Décision", "Erreur", "Solution", "Architecture", "Apprentissage"] as const;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Identifiant proposé par le client.
+ *
+ * **Pourquoi l'accepter.** Le front applique ses mutations localement avant
+ * la réponse du serveur — sans quoi chaque geste attendrait un aller-retour —
+ * puis navigue vers la ressource créée. Si le serveur choisissait l'identifiant,
+ * l'URL affichée pointerait vers un objet local qui n'existe nulle part, et un
+ * rechargement donnerait un écran vide.
+ *
+ * **Pourquoi c'est sans risque.** Un UUID v4 est imprévisible ; deviner celui
+ * d'un autre n'apporte rien de plus que le lire dans une URL. Le format est
+ * validé, et une collision violerait la clé primaire — la base refuse, elle ne
+ * mélange pas. Surtout, l'identifiant ne confère aucun droit : l'appartenance
+ * est vérifiée séparément à chaque écriture.
+ */
+function idPropose(valeur: unknown): string | null {
+  return typeof valeur === "string" && UUID.test(valeur) ? valeur : null;
+}
+
 async function estProprietaire(projectId: string, studentId: string): Promise<boolean> {
   const ligne = await queryOne<{ owner_id: string }>(
     "SELECT owner_id FROM projects WHERE id = $1",
@@ -33,6 +54,7 @@ export async function routesEcriture(app: FastifyInstance): Promise<void> {
   /** POST /api/projets — M2. */
   app.post<{
     Body: {
+      id?: string;
       nom?: string;
       description?: string;
       type?: string;
@@ -52,9 +74,10 @@ export async function routesEcriture(app: FastifyInstance): Promise<void> {
 
     const lignes = await query<{ id: string }>(
       `INSERT INTO projects
-         (owner_id, nom, description, type, statut, technos, objectif,
+         (id, owner_id, nom, description, type, statut, technos, objectif,
           duree_semaines, difficulte, derniere_activite)
-       VALUES ($1, $2, $3, $4::projet_type, 'Idée', $5, $6, $7, $8::difficulte, now())
+       VALUES (COALESCE($9::uuid, gen_random_uuid()),
+               $1, $2, $3, $4::projet_type, 'Idée', $5, $6, $7, $8::difficulte, now())
        RETURNING id`,
       [
         moi,
@@ -65,6 +88,7 @@ export async function routesEcriture(app: FastifyInstance): Promise<void> {
         c.objectif?.trim() ?? "",
         c.dureeSemaines ?? 4,
         c.difficulte || "Intermédiaire",
+        idPropose(c.id),
       ],
     );
 
@@ -144,7 +168,13 @@ export async function routesEcriture(app: FastifyInstance): Promise<void> {
    */
   app.post<{
     Params: { id: string };
-    Body: { nature?: string; titre?: string; corps?: string; jalon?: string };
+    Body: {
+      entreeId?: string;
+      nature?: string;
+      titre?: string;
+      corps?: string;
+      jalon?: string;
+    };
   }>("/api/projets/:id/journal", async (requete, reponse) => {
     const moi = await exigerSession(requete, reponse);
     if (!moi) return;
@@ -168,10 +198,18 @@ export async function routesEcriture(app: FastifyInstance): Promise<void> {
 
     const entree = await transaction(async (client) => {
       const { rows } = await client.query<{ id: string; date: string }>(
-        `INSERT INTO journal_entries (project_id, nature, titre, corps, jalon)
-         VALUES ($1, $2::journal_nature, $3, $4, $5)
+        `INSERT INTO journal_entries (id, project_id, nature, titre, corps, jalon)
+         VALUES (COALESCE($6::uuid, gen_random_uuid()),
+                 $1, $2::journal_nature, $3, $4, $5)
          RETURNING id, date`,
-        [requete.params.id, nature, titre.trim(), corps.trim(), jalon?.trim() || null],
+        [
+          requete.params.id,
+          nature,
+          titre.trim(),
+          corps.trim(),
+          jalon?.trim() || null,
+          idPropose(requete.body?.entreeId),
+        ],
       );
 
       await client.query(

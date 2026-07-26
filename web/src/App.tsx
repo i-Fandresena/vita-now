@@ -5,8 +5,11 @@ import { RepositoryProvider } from "./app/repository";
 import { routeKey, spaceOf, useRoute, type Route } from "./app/router";
 import { SearchProvider } from "./app/search-store";
 import { Shell } from "./app/Shell";
+import { SoaProvider } from "./app/soa-store";
 import { useSoa, VitanowProvider } from "./app/vitanow-store";
-import { fade, reduceVariants } from "./lib/motion";
+import { BandeauSync } from "./features/sync/BandeauSync";
+import { EASE, fade, reduceVariants } from "./lib/motion";
+import { ProfileEditScreen } from "./screens/AuthScreens";
 import { CapsuleScreen } from "./screens/CapsuleScreen";
 import {
   ChallengeScreen,
@@ -201,6 +204,10 @@ function Screens() {
           <CurrentScreen route={route} navigate={navigate} />
         </motion.div>
       </AnimatePresence>
+
+      {/* Hors de l'AnimatePresence : un avertissement d'écriture perdue ne doit
+          pas disparaître parce qu'on a changé d'écran entre-temps. */}
+      <BandeauSync />
     </Shell>
   );
 }

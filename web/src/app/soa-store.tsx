@@ -51,7 +51,10 @@ import {
   STUDENTS,
   THREADS,
 } from "@/data/soa-corpus";
+import { API_ACTIVE, api } from "@/data/api";
 import { CLES, charger, enregistrer } from "@/lib/persistence";
+
+import { nouvelUuid, pousser } from "./sync";
 
 /**
  * soa-store.tsx — l'état applicatif de la démonstration.
@@ -247,6 +250,52 @@ export function SoaProvider({ children }: { children: ReactNode }) {
     enregistrer(CLES.etat, state);
   }, [state]);
 
+  /**
+   * Hydratation depuis le serveur, quand il existe.
+   *
+   * Un seul appel remplace toutes les collections (`/api/etat` épouse la forme
+   * de `SoaState`). Les réglages de canaux restent locaux : ils n'ont pas de
+   * table, et rien ne justifie d'en créer une pour trois booléens.
+   *
+   * **En cas d'échec, on ne vide rien.** Le corpus déjà en place — celui du
+   * code ou celui relu du navigateur — reste affiché. Une API injoignable doit
+   * dégrader le produit vers la démonstration, jamais vers un écran blanc :
+   * c'est la différence entre « le serveur est tombé » et « la soutenance est
+   * finie ».
+   */
+  useEffect(() => {
+    if (!API_ACTIVE) return;
+
+    const controleur = new AbortController();
+
+    void api
+      .etat(controleur.signal)
+      .then((distant) => {
+        setState((s) => ({
+          ...s,
+          students: distant.students as SoaState["students"],
+          projects: distant.projects as SoaState["projects"],
+          journal: distant.journal as SoaState["journal"],
+          threads: distant.threads as SoaState["threads"],
+          challenges: distant.challenges as SoaState["challenges"],
+          ideas: distant.ideas as SoaState["ideas"],
+          opportunities: distant.opportunities as SoaState["opportunities"],
+          mentorRequests: distant.mentorRequests as SoaState["mentorRequests"],
+          notifications: distant.notifications as SoaState["notifications"],
+          sessionId: distant.sessionId,
+        }));
+      })
+      .catch((erreur: unknown) => {
+        if (controleur.signal.aborted) return;
+        console.error(
+          "[etat] serveur injoignable — la démonstration continue en local",
+          erreur,
+        );
+      });
+
+    return () => controleur.abort();
+  }, []);
+
   const me =
     state.students.find((s) => s.id === (state.sessionId ?? CURRENT_STUDENT_ID)) ??
     state.students[0]!;
@@ -420,19 +469,37 @@ export function SoaProvider({ children }: { children: ReactNode }) {
 
   /* ── Mutations ────────────────────────────────────────────────────────── */
 
-  const createProject = useCallback((draft: NewProject): Project => {
-    const projet: Project = {
-      id: nouvelId("p"),
-      ...draft,
-      status: "Idée",
-      debut: new Date().toISOString(),
-      ownerId: CURRENT_STUDENT_ID,
-      derniereActivite: new Date().toISOString(),
-      public: false,
-    };
-    setState((s) => ({ ...s, projects: [projet, ...s.projects] }));
-    return projet;
-  }, []);
+  /* Chaque création génère son identifiant **avant** d'écrire, et l'envoie au
+     serveur. L'écran navigue vers cet identifiant dans la foulée : le laisser
+     choisir au serveur ferait pointer l'URL vers un objet local, introuvable
+     au rechargement. Hors mode API, `nouvelId` suffit et reste lisible en
+     débogage. */
+  const idNeuf = useCallback(
+    (prefixe: string) => (API_ACTIVE ? nouvelUuid() : nouvelId(prefixe)),
+    [],
+  );
+
+  const createProject = useCallback(
+    (draft: NewProject): Project => {
+      const projet: Project = {
+        id: idNeuf("p"),
+        ...draft,
+        status: "Idée",
+        debut: new Date().toISOString(),
+        ownerId: state.sessionId ?? CURRENT_STUDENT_ID,
+        derniereActivite: new Date().toISOString(),
+        public: false,
+      };
+      setState((s) => ({ ...s, projects: [projet, ...s.projects] }));
+
+      pousser(
+        () => api.creerProjet({ ...draft, id: projet.id }),
+        `créer le projet « ${draft.nom} »`,
+      );
+      return projet;
+    },
+    [idNeuf, state.sessionId],
+  );
 
   const setProjectStatus = useCallback(
     (projectId: string, status: ProjectStatus, raison?: string) => {
@@ -453,28 +520,48 @@ export function SoaProvider({ children }: { children: ReactNode }) {
             : p,
         ),
       }));
+
+      pousser(
+        () => api.changerStatut(projectId, status, raison),
+        `passer le projet en « ${status} »`,
+      );
     },
     [],
   );
 
-  const addJournalEntry = useCallback((draft: NewJournalEntry): JournalEntry => {
-    const entree: JournalEntry = {
-      id: nouvelId("j"),
-      ...draft,
-      date: new Date().toISOString(),
-    };
-    setState((s) => ({
-      ...s,
-      journal: [entree, ...s.journal],
-      // Écrire dans le journal, c'est travailler : le projet sort du sommeil.
-      projects: s.projects.map((p) =>
-        p.id === draft.projectId
-          ? { ...p, derniereActivite: entree.date, status: p.status === "Idée" ? "En cours" : p.status }
-          : p,
-      ),
-    }));
-    return entree;
-  }, []);
+  const addJournalEntry = useCallback(
+    (draft: NewJournalEntry): JournalEntry => {
+      const entree: JournalEntry = {
+        id: idNeuf("j"),
+        ...draft,
+        date: new Date().toISOString(),
+      };
+      setState((s) => ({
+        ...s,
+        journal: [entree, ...s.journal],
+        // Écrire dans le journal, c'est travailler : le projet sort du sommeil.
+        projects: s.projects.map((p) =>
+          p.id === draft.projectId
+            ? { ...p, derniereActivite: entree.date, status: p.status === "Idée" ? "En cours" : p.status }
+            : p,
+        ),
+      }));
+
+      pousser(
+        () =>
+          api.ecrireJournal(draft.projectId, {
+            entreeId: entree.id,
+            nature: draft.kind,
+            titre: draft.titre,
+            corps: draft.corps,
+            jalon: draft.jalon,
+          }),
+        "écrire au journal",
+      );
+      return entree;
+    },
+    [idNeuf],
+  );
 
   const replyToThread = useCallback((threadId: string, corps: string) => {
     setState((s) => ({
@@ -497,19 +584,26 @@ export function SoaProvider({ children }: { children: ReactNode }) {
           : t,
       ),
     }));
+
+    pousser(() => api.repondreSujet(threadId, corps), "répondre au sujet");
   }, []);
 
   const createThread = useCallback((draft: NewThread): ForumThread => {
     const sujet: ForumThread = {
-      id: nouvelId("t"),
+      id: idNeuf("t"),
       ...draft,
       auteurId: CURRENT_STUDENT_ID,
       date: new Date().toISOString(),
       reponses: [],
     };
     setState((s) => ({ ...s, threads: [sujet, ...s.threads] }));
+
+    pousser(
+      () => api.creerSujet({ ...draft, id: sujet.id }),
+      `publier « ${draft.titre} »`,
+    );
     return sujet;
-  }, []);
+  }, [idNeuf]);
 
   const voteIdea = useCallback((ideaId: string, sens: "pour" | "reserve") => {
     setState((s) => ({
@@ -527,6 +621,8 @@ export function SoaProvider({ children }: { children: ReactNode }) {
         return { ...i, votesPour: pour, votesReserve: reserve };
       }),
     }));
+
+    pousser(() => api.voterIdee(ideaId, sens), "enregistrer le vote");
   }, []);
 
   const joinChallenge = useCallback((challengeId: string) => {
@@ -544,6 +640,8 @@ export function SoaProvider({ children }: { children: ReactNode }) {
           : c,
       ),
     }));
+
+    pousser(() => api.rejoindreChallenge(challengeId), "rejoindre le challenge");
   }, []);
 
   const checkChallengeWeek = useCallback((challengeId: string, semaine: number) => {
@@ -563,6 +661,11 @@ export function SoaProvider({ children }: { children: ReactNode }) {
         };
       }),
     }));
+
+    pousser(
+      () => api.cocherSemaine(challengeId, semaine),
+      "cocher la semaine",
+    );
   }, []);
 
   const markNotificationRead = useCallback((id: string) => {
@@ -577,6 +680,8 @@ export function SoaProvider({ children }: { children: ReactNode }) {
       ...s,
       notifications: s.notifications.map((n) => ({ ...n, lu: true })),
     }));
+
+    pousser(() => api.toutLu(), "marquer les notifications lues");
   }, []);
 
   /**
@@ -604,7 +709,7 @@ export function SoaProvider({ children }: { children: ReactNode }) {
       }),
       journal: [
         {
-          id: nouvelId("j"),
+          id: idNeuf("j"),
           projectId,
           kind: "Décision",
           titre: "Reprise du projet",
@@ -617,8 +722,10 @@ export function SoaProvider({ children }: { children: ReactNode }) {
         ...s.journal,
       ],
     }));
+
+    pousser(() => api.reprendreProjet(projectId), "reprendre le projet");
     return repris;
-  }, []);
+  }, [idNeuf]);
 
   /* ── M1 — Authentification ────────────────────────────────────────────── */
 
@@ -682,6 +789,7 @@ export function SoaProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setState((s) => ({ ...s, sessionId: null }));
     ecrireSession(null);
+    pousser(() => api.deconnexion(), "se déconnecter");
   }, []);
 
   const updateProfile = useCallback((patch: Partial<Student>) => {
@@ -691,6 +799,11 @@ export function SoaProvider({ children }: { children: ReactNode }) {
         e.id === (s.sessionId ?? CURRENT_STUDENT_ID) ? { ...e, ...patch } : e,
       ),
     }));
+
+    pousser(
+      () => api.majProfil(patch as Record<string, unknown>),
+      "enregistrer le profil",
+    );
   }, []);
 
   /* ── M12 — Points ─────────────────────────────────────────────────────── */
@@ -725,13 +838,15 @@ export function SoaProvider({ children }: { children: ReactNode }) {
           : i,
       ),
     }));
+
+    pousser(() => api.commenterIdee(ideaId, corps), "publier le commentaire");
   }, []);
 
   /* ── M18 — Mise en relation ───────────────────────────────────────────── */
 
   const askMentor = useCallback((mentorId: string, blocage: string): MentorRequest => {
     const demande: MentorRequest = {
-      id: nouvelId("mr"),
+      id: idNeuf("mr"),
       mentorId,
       studentId: CURRENT_STUDENT_ID,
       blocage,
@@ -746,7 +861,7 @@ export function SoaProvider({ children }: { children: ReactNode }) {
       // sait pas si le geste a abouti.
       notifications: [
         {
-          id: nouvelId("n"),
+          id: idNeuf("n"),
           kind: "mentorat",
           titre: "Demande envoyée",
           corps: blocage.slice(0, 90) + (blocage.length > 90 ? "…" : ""),
@@ -757,8 +872,13 @@ export function SoaProvider({ children }: { children: ReactNode }) {
         ...s.notifications,
       ],
     }));
+
+    pousser(
+      () => api.demanderMentor(mentorId, blocage),
+      "envoyer la demande au mentor",
+    );
     return demande;
-  }, []);
+  }, [idNeuf]);
 
   const answerMentorRequest = useCallback((requestId: string, corps: string) => {
     setState((s) => ({
@@ -780,6 +900,11 @@ export function SoaProvider({ children }: { children: ReactNode }) {
           : d,
       ),
     }));
+
+    pousser(
+      () => api.repondreMentor(requestId, corps),
+      "envoyer la réponse",
+    );
   }, []);
 
   /* ── M13 — Un étudiant publie aussi ───────────────────────────────────── */
@@ -789,7 +914,7 @@ export function SoaProvider({ children }: { children: ReactNode }) {
       ...s,
       opportunities: [
         {
-          id: nouvelId("o"),
+          id: idNeuf("o"),
           ...draft,
           studentId: s.sessionId ?? CURRENT_STUDENT_ID,
           publieeLe: new Date().toISOString(),
@@ -797,7 +922,12 @@ export function SoaProvider({ children }: { children: ReactNode }) {
         ...s.opportunities,
       ],
     }));
-  }, []);
+
+    pousser(
+      () => api.publierOpportunite({ ...draft }),
+      `publier « ${draft.titre} »`,
+    );
+  }, [idNeuf]);
 
   /* ── M17 — Présentation ───────────────────────────────────────────────── */
 
