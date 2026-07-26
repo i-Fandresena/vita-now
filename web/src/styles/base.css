@@ -188,6 +188,40 @@
     mask-image: radial-gradient(ellipse 70% 60% at 55% 45%, black 20%, transparent 75%);
   }
 
+  /* Frappe au clavier sur un mot.
+     Le mot apparaît par pas — `steps()` et non une courbe — parce qu'une frappe
+     est discrète : une lettre est là ou elle ne l'est pas. Un fondu continu
+     donnerait une apparition, pas une saisie.
+
+     Le découpage passe par `clip-path` et non par la largeur. Animer la largeur
+     remettrait en page tout ce qui suit à chaque image, et sur un titre qui
+     occupe une ligne entière cela ferait sauter le bloc de texte. `clip-path`
+     ne touche qu'à la peinture : la place est réservée dès le premier rendu.
+
+     Le nombre de pas est passé depuis le composant — il vaut le nombre de
+     lettres, et seul l'appelant le connaît. */
+  .type-in {
+    animation: type-loop var(--type-cycle, 6s) steps(var(--type-steps, 10), end)
+      var(--type-delay, 0.4s) infinite both;
+  }
+
+  /* Le curseur. Deux animations sur le même élément : l'une le fait suivre le
+     bord du texte, l'autre le fait clignoter. Le clignotement a son propre
+     rythme, indépendant du cycle de frappe — un curseur bat à sa cadence, il
+     n'accélère pas parce qu'on écrit.
+
+     Il est invisible par défaut, ce qui règle deux cas d'un coup : avant le
+     premier cycle, et sous `prefers-reduced-motion`, où toute animation est
+     coupée plus bas dans ce fichier et où un curseur figé au milieu du mot
+     serait une barre parasite. */
+  .type-caret {
+    opacity: 0;
+    animation:
+      type-caret-loop var(--type-cycle, 6s) steps(var(--type-steps, 10), end)
+        var(--type-delay, 0.4s) infinite both,
+      type-caret-blink 0.75s steps(2, end) var(--type-delay, 0.4s) infinite;
+  }
+
   /* Le mot posé sur un bloc plein — le geste central du modèle. La rotation
      est infime : à un degré on lit un bloc posé à la main, à trois on lit un
      accident de mise en page.
@@ -234,21 +268,22 @@
     );
   }
 
-  /* Le bandeau de pastilles — la frise du modèle de l'appel final.
-     Un seul dégradé radial répété : à 22px de pas sur 7rem de haut, cela fait
-     près de six cents cercles, qui ne coûtent ni un nœud du DOM ni une requête.
-     Le modèle y découpe des portraits ; ici les pastilles sont vides, et c'est
-     délibéré — voir le commentaire de `AppelFinal`.
+  /* L'onde qui traverse la frise de pastilles.
+     Chaque colonne reçoit le même mouvement, retardé par son rang : le décalage
+     transforme une pulsation simultanée en vague qui se déplace. C'est le
+     retard, et lui seul, qui fait le déplacement — les points ne bougent pas
+     d'un pixel latéralement.
 
-     `currentColor` plutôt qu'un token en dur : le bandeau prend la couleur du
-     texte de son conteneur, donc il suit l'inversion de la bande sombre sans
-     seconde définition. Le masque efface les deux extrémités, sans quoi la
-     frise se termine sur une rangée coupée net. */
-  .dot-band {
-    background-image: radial-gradient(circle at center, currentColor 42%, transparent 44%);
-    background-size: 1.375rem 1.375rem;
-    -webkit-mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
-    mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
+     La phase allumée est courte, moins d'un cinquième du cycle. Une pulsation
+     symétrique donnerait un clignotement ; une crête brève donne un passage.
+
+     Sous `prefers-reduced-motion`, l'animation est coupée plus bas dans ce
+     fichier et les points retombent sur l'opacité de leur classe. Le mot reste
+     donc lisible sans le moindre mouvement — c'est pourquoi les points pleins
+     portent déjà une opacité franche en statique. */
+  .dot-wave {
+    animation: dot-wave 3.4s ease-in-out infinite;
+    animation-delay: calc(var(--dot-col, 0) * 22ms);
   }
 
   /* Le mot sélectionné — troisième et dernier traitement de mot du produit,

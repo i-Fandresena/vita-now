@@ -9,7 +9,11 @@ import {
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
+import { motion } from "framer-motion";
+
 import { cn } from "@/lib/cn";
+import { EASE } from "@/lib/motion";
+import { useSectionActive } from "@/lib/use-section-active";
 import { useSoa } from "@/app/soa-store";
 import { Button } from "@/ui/Button";
 import { activeTab, hrefFor, spaceOf, type Route } from "./router";
@@ -78,11 +82,14 @@ const COMPANY_NAV: NavItem[] = [
 ];
 
 const LANDING_LINKS = [
-  { label: "Le problème", href: "#probleme" },
-  { label: "Comment ça marche", href: "#methode" },
-  { label: "Communauté", href: "#communaute" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Le problème", id: "probleme" },
+  { label: "Comment ça marche", id: "methode" },
+  { label: "Communauté", id: "communaute" },
+  { label: "FAQ", id: "faq" },
 ];
+
+/** Les ancres suivies par la barre publique, dans l'ordre de la page. */
+const LANDING_IDS = LANDING_LINKS.map((lien) => lien.id);
 
 function Wordmark({
   onClick,
@@ -286,7 +293,12 @@ const TITRES: Partial<Record<Route["name"], string>> = {
 
 export function Shell({ route, navigate, children }: ShellProps) {
   const espace = spaceOf(route);
-  const { unread, logout } = useSoa();
+  const { unread } = useSoa();
+
+  /* Appelé sans condition, comme tout hook — mais avec une liste vide hors de
+     la landing, ce qui démonte l'observateur au lieu de le laisser tourner sur
+     des écrans qui n'ont aucune de ces sections. */
+  const sectionActive = useSectionActive(espace === "public" ? LANDING_IDS : []);
 
   const skip = (
     <a
@@ -310,22 +322,53 @@ export function Shell({ route, navigate, children }: ShellProps) {
             passe dessous et une barre réellement transparente deviendrait
             illisible. En haut de page, où la référence se juge, le rendu est
             identique à un fond nu. */}
-        <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md">
+        <motion.header
+          className="sticky top-0 z-30 bg-background/85 backdrop-blur-md"
+          /* La barre descend de sa propre hauteur à l'ouverture. Elle est le
+             premier élément peint : la voir se poser situe le haut de la page
+             avant même que le héros ait fini d'arriver. */
+          initial={{ y: -72, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.35, ease: EASE.outExpo }}
+        >
           <div className="page-measure flex h-18 items-center gap-6">
             <Wordmark onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
 
             {/* Les liens se rangent contre la marque, pas au centre : c'est ce
                 qui laisse le vide de la référence entre eux et les actions. */}
             <nav aria-label="Sections" className="hidden flex-1 items-center gap-1 md:flex">
-              {LANDING_LINKS.map((lien) => (
-                <a
-                  key={lien.href}
-                  href={lien.href}
-                  className="rounded-full px-3.5 py-2 text-caption font-medium text-ink-muted transition-colors duration-150 hover:bg-surface hover:text-ink"
-                >
-                  {lien.label}
-                </a>
-              ))}
+              {LANDING_LINKS.map((lien) => {
+                const courant = sectionActive === lien.id;
+
+                return (
+                  <a
+                    key={lien.id}
+                    href={`#${lien.id}`}
+                    aria-current={courant ? "true" : undefined}
+                    className={cn(
+                      "relative rounded-full px-3.5 py-2 text-caption font-medium",
+                      "transition-colors duration-150",
+                      courant ? "text-ink" : "text-ink-muted hover:text-ink",
+                    )}
+                  >
+                    {/* La pastille active glisse d'un lien à l'autre au lieu de
+                        se rallumer sur place. Un seul `layoutId` partagé par les
+                        quatre liens suffit : Framer Motion reconnaît le même
+                        élément d'un lien à l'autre et anime le déplacement. Elle
+                        est **derrière** le libellé — d'où `-z-10` — sans quoi
+                        elle le recouvrirait pendant le trajet. */}
+                    {courant && (
+                      <motion.span
+                        aria-hidden
+                        layoutId="nav-section-active"
+                        className="absolute inset-0 -z-10 rounded-full bg-surface"
+                        transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                      />
+                    )}
+                    {lien.label}
+                  </a>
+                );
+              })}
             </nav>
 
             {/* Les deux boutons de la référence : le premier en pilule claire
@@ -350,7 +393,7 @@ export function Shell({ route, navigate, children }: ShellProps) {
               </Button>
             </div>
           </div>
-        </header>
+        </motion.header>
         <main id="contenu" tabIndex={-1} className="flex-1 focus:outline-none">
           {children}
         </main>

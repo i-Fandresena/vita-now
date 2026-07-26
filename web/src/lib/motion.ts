@@ -83,6 +83,77 @@ export const sequence = (stagger = 0.035): Variants => ({
   exit: {},
 });
 
+/* ── Défilement — la landing publique uniquement ────────────────────────── */
+
+/**
+ * Apparition au défilement, section par section.
+ *
+ * **Ce geste est une dérogation, et il faut la connaître.** La règle du projet
+ * dit « pas de reveal-au-scroll » : sur un outil qu'on ouvre tous les jours, du
+ * contenu qui attend d'être vu pour s'afficher se paie à chaque visite. La
+ * landing publique, elle, se parcourt une fois, d'un bout à l'autre, et le
+ * défilement y est le geste principal — c'est le seul endroit où l'argument ne
+ * tient pas.
+ *
+ * Elle reste donc bornée par ce que la règle protégeait :
+ *
+ *   · `transform` et `opacity` seuls, jamais une propriété qui repeint ;
+ *   · 12px de montée, pas 40 — on lit une arrivée, pas un défilé ;
+ *   · une seule fois par section (`once`), sinon la page rejoue son animation
+ *     à chaque remontée et devient impraticable pendant une démonstration ;
+ *   · rien en cascade à l'intérieur d'une section : c'est la section qui
+ *     arrive, pas ses dix enfants l'un après l'autre.
+ *
+ * Sous `prefers-reduced-motion`, l'appelant doit sauter ces variantes
+ * entièrement — voir `Section`. Le contenu s'affiche alors sans condition.
+ */
+export const revealTransition: Transition = {
+  duration: 0.45,
+  ease: EASE.outExpo,
+};
+
+export const reveal: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: revealTransition },
+};
+
+/**
+ * Seuil de déclenchement : la section s'anime quand 15 % en est visible.
+ *
+ * Plus haut, une section plus grande que la fenêtre ne se déclencherait jamais
+ * — son sommet touche déjà le bas de l'écran alors que le seuil n'est pas
+ * atteint, et elle resterait invisible. 15 % passe sur toutes les hauteurs.
+ */
+export const REVEAL_VIEWPORT = { once: true, amount: 0.15 } as const;
+
+/**
+ * Arrivée d'un élément dans une liste, décalée par son rang.
+ *
+ * Les éléments héritent des états `hidden` / `visible` de leur section — Framer
+ * Motion propage le nom de l'état à ses descendants animés — donc aucun d'eux
+ * n'a besoin de son propre déclencheur au défilement, et aucun ne peut arriver
+ * avant la section qui le contient.
+ *
+ * **Aucune opacité, jamais.** Le fondu appartient à la section. Le doubler
+ * donnerait des éléments qui s'éclaircissent à l'intérieur d'un bloc qui
+ * s'éclaircit : le fondu paraît alors sale, et c'est l'erreur la plus courante
+ * dès qu'on empile deux niveaux d'animation.
+ *
+ * Le pas se choisit à l'usage, et il porte du sens :
+ *   · ~50 ms pour une grille, où l'ordre ne dit rien — on veut seulement que
+ *     les cellules ne tombent pas toutes d'un bloc ;
+ *   · ~130 ms pour une séquence, où l'ordre **est** l'information.
+ * Un pas long sur une liste sans ordre fait attendre le dernier élément pour
+ * rien.
+ */
+export const staggerItem = (pas = 0.07, distance = 14): Variants => ({
+  hidden: { y: distance },
+  visible: (index: number) => ({
+    y: 0,
+    transition: { duration: 0.42, ease: EASE.outExpo, delay: index * pas },
+  }),
+});
+
 /* ── Accessibilité ──────────────────────────────────────────────────────── */
 
 /**

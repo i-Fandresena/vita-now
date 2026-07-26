@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import {
   ArrowUpRight,
   Brain,
@@ -11,11 +11,11 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 
 import type { Route } from "@/app/router";
 import { cn } from "@/lib/cn";
-import { rise, sequence } from "@/lib/motion";
+import { EASE, REVEAL_VIEWPORT, reveal, rise, sequence, staggerItem } from "@/lib/motion";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow, Section, SectionHead } from "@/ui/Editorial";
 import { Surface } from "@/ui/Surface";
@@ -42,26 +42,42 @@ import { Surface } from "@/ui/Surface";
 
 const DOMAINES = ["Java", "PHP", "React", "IA", "Base de données", "Réseau"];
 
+/** Trois cartes lues de gauche à droite : un pas court suffit. */
+const CARTE_PILIER = staggerItem(0.07);
+
 const PILIERS = [
   {
     icon: Brain,
     titre: "Mémoire de projet",
     corps:
       "Chaque décision, chaque impasse, chaque raison d'un choix reste attachée au projet. Tu reprends sans relire trois semaines de code.",
+    mascotte: "/mascotte1.png",
   },
   {
     icon: RotateCcw,
     titre: "Reprise guidée",
     corps:
       "Après une pause, VITA'NOW te rend où tu en étais, ce qui bloquait, et une seule action de dix minutes pour repartir.",
+    mascotte: "/mascotte2.png",
   },
   {
     icon: MessageCircle,
     titre: "Communauté vivante",
     corps:
       "Les mémoires et les projets de l'école deviennent consultables. Quelqu'un a déjà résolu ce sur quoi tu bloques.",
+    mascotte: "/mascotte3.png",
   },
 ] as const;
+
+
+/**
+ * Le pas le plus long de la page — 130 ms contre 70 pour les piliers.
+ *
+ * C'est le seul endroit où l'ordre d'arrivée **veut dire quelque chose** : ces
+ * trois cartes sont une séquence, et les voir se poser une à une dit la même
+ * chose que leurs numéros.
+ */
+const CARTE_ETAPE = staggerItem(0.13, 16);
 
 const ETAPES = [
   {
@@ -105,7 +121,23 @@ const FAQ = [
 
 /* ── Héros ──────────────────────────────────────────────────────────────── */
 
+/**
+ * Les mots frappés au clavier dans le titre, dans l'ordre.
+ *
+ * Ils se lisent tous à la suite de « Termine ce que tu » et disent trois états
+ * du même échec : ce qu'on a commencé, ce qu'on a seulement imaginé, ce qu'on a
+ * lancé. La longueur de chacun pilote le nombre de pas de sa frappe.
+ */
+const MOTS_TAPES = ["Commences", "Imagines", "Lances"] as const;
+
 function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: boolean }) {
+  /* Sous `prefers-reduced-motion`, l'animation ne tourne pas, donc
+     `onAnimationIteration` ne se déclenche jamais : le titre reste sur le
+     premier mot. C'est le comportement voulu — un mot qui change tout seul est
+     exactement ce que ce réglage demande d'éviter. */
+  const [motIndex, setMotIndex] = useState(0);
+  const mot = MOTS_TAPES[motIndex]!;
+
   /* La hauteur du héros est commandée par son contenu, pas par l'écran.
      La référence est dense : le collage borde le titre, rien ne flotte au
      milieu d'un vide. Une hauteur d'écran imposée à un contenu court produit
@@ -161,8 +193,47 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
                 fixes le feraient toucher le bloc au petit bout de l'échelle et
                 flotter au loin au grand. En `em`, il garde le même rapport à
                 toutes les tailles. */}
-            <span className="relative inline-block">
-              <span className="mark-block">Commences</span>
+            {/* Le mot se tape, lettre par lettre, puis s'efface et le suivant
+                prend sa place. Le nombre de pas est le nombre de lettres du mot
+                courant : il est passé en variable CSS plutôt qu'écrit dans la
+                feuille de style, parce que les trois mots n'ont pas la même
+                longueur — un compte figé donnerait une frappe qui saute sur le
+                mot court et qui s'arrête avant la fin sur le long.
+
+                Le cycle dure 6,5 s dont un peu plus de la moitié en pause, mot
+                écrit. C'est le rapport qui décide si l'on lit une phrase qu'on
+                écrit ou un mot qui clignote. */}
+            <span
+              className="relative inline-block"
+              style={
+                {
+                  "--type-steps": mot.length,
+                  "--type-cycle": "6.5s",
+                  "--type-delay": "0.5s",
+                } as CSSProperties
+              }
+            >
+              {/* Le mot change à la **fin** du cycle, jamais pendant.
+                  À cet instant l'effacement est terminé : le bloc est
+                  entièrement découpé, la substitution est donc invisible, et la
+                  première lettre du mot suivant n'apparaît qu'une seconde et
+                  demie plus tard. Aucune clé React ici — en changer une
+                  relancerait l'animation depuis zéro et produirait un à-coup. */}
+              <span
+                className="mark-block type-in"
+                onAnimationIteration={() =>
+                  setMotIndex((index) => (index + 1) % MOTS_TAPES.length)
+                }
+              >
+                {mot}
+              </span>
+
+              {/* Le curseur, posé sur le bord du texte révélé. */}
+              <span
+                aria-hidden
+                className="type-caret absolute top-[0.06em] bottom-[0.06em] w-[0.05em] bg-primary"
+              />
+
               <span
                 aria-hidden
                 className="absolute -top-[0.08em] -right-[0.42em] font-sans text-[0.26em] leading-none text-primary"
@@ -260,6 +331,13 @@ const GLYPHES: Record<string, readonly string[]> = {
   /* Une seule colonne, deux cases hautes : à deux colonnes l'apostrophe pèse
      autant qu'une lettre et coupe le mot en deux. */
   "'": ["1", "1", "0", "0", "0"],
+  /* L'espace de mot. Deux colonnes vides, plus les deux séparateurs que
+     `tracerMot` ajoute de part et d'autre : quatre colonnes en tout, soit
+     presque une lettre. En dessous, « NOW 2026 » se lit « NOW2026 ». */
+  " ": ["00", "00", "00", "00", "00"],
+  "0": ["11111", "10001", "10001", "10001", "11111"],
+  "2": ["11111", "00001", "11111", "10000", "11111"],
+  "6": ["11111", "10000", "11111", "10001", "11111"],
   N: ["10001", "11001", "10101", "10011", "10001"],
   O: ["01110", "10001", "10001", "10001", "01110"],
   W: ["10001", "10001", "10101", "10101", "01010"],
@@ -280,41 +358,68 @@ function tracerMot(mot: string): string[] {
 const MOT_TRACE = tracerMot(MOT);
 
 /**
- * Bandeau — grille VITA'NOW centrée + défilé des domaines.
+ * Bandeau — la grille façon graphe de contributions.
  *
- * La grille pixel reproduit le nom du produit façon graphe de contributions,
- * sans sémantique de streak : les cases ne mesurent rien, elles dessinent.
- * En dessous, les domaines du corpus défilent en boucle seamless : la liste
- * est dupliquée et `marquee` translate de -50%, ramenant exactement au point
- * de départ. Le masque en dégradé adoucit les bords gauche et droite.
+ * **Ce que cette grille ne fait pas, et pourquoi.** La référence visuelle
+ * apportée par l'équipe est un graphe de contributions GitHub. Le geste
+ * graphique est repris ; sa sémantique ne l'est pas. La lettre source du
+ * hackathon écarte nommément cette classe de produits — « tu penses peut-être à
+ * me refaire un nouveau GitHub ou un Notion revisité : j'en ai déjà testé des
+ * centaines. Ils dorment tous, eux aussi. » (AURA_cadrage.md, Contexte du
+ * sujet) — et pose l'absence de streak comme partie du problème vécu, pas comme
+ * un manque à combler.
+ *
+ * Les cases ne mesurent donc **rien** : elles dessinent le nom du produit.
+ * Aucune régularité quotidienne n'est affichée, aucune assiduité n'est notée, et
+ * surtout aucun chiffre de corpus n'est inventé — le corpus de démonstration
+ * compte 5 mémoires et 10 projets, une grille dense « remplie » mentirait sur
+ * son volume.
+ *
+ * Les domaines, eux, restent écrits : c'est l'information que le bandeau
+ * portait, et la note manuscrite du héros pointe vers eux.
  */
 function Bandeau() {
+  /* Trois intensités, choisies par une fonction de la position : le moucheté de
+     la référence sans `Math.random`, qui redistribuerait les cases à chaque
+     rendu et casserait le déterminisme de la démonstration. */
   const intensites = ["bg-primary", "bg-primary/70", "bg-primary/45"] as const;
+  const reduced = useReducedMotion() ?? false;
 
   return (
+    /* Le bandeau n'est pas une `Section` — il n'a ni la mesure de page ni les
+       marges verticales des autres — mais il est pris entre deux blocs qui
+       arrivent au défilement. Sans le même geste, sa fixité se lirait comme un
+       défaut plutôt que comme un choix. */
     <div className="border-y border-border bg-surface py-10">
-      <div className="flex flex-col items-center gap-6">
-        {/* Grille VITA'NOW — centrée */}
-        <div className="page-measure flex justify-center">
-          <div
-            role="img"
-            aria-label={MOT}
-            className="grid w-full max-w-xl gap-[2px] sm:max-w-3xl sm:gap-[3px]"
-            style={{ gridTemplateColumns: `repeat(${MOT_TRACE[0]!.length}, minmax(0, 1fr))` }}
-          >
-            {MOT_TRACE.map((ligne, y) =>
-              [...ligne].map((cellule, x) => (
-                <span
-                  key={`${y}-${x}`}
-                  aria-hidden
-                  className={cn(
-                    "aspect-square rounded-[2px] sm:rounded-[3px]",
-                    cellule === "1" ? intensites[(y * 5 + x * 3) % 3] : "bg-primary/[0.07]",
-                  )}
-                />
-              )),
-            )}
-          </div>
+      <motion.div
+        className="page-measure flex flex-col items-center gap-6"
+        {...(reduced
+          ? {}
+          : {
+              variants: reveal,
+              initial: "hidden" as const,
+              whileInView: "visible" as const,
+              viewport: REVEAL_VIEWPORT,
+            })}
+      >
+        <div
+          role="img"
+          aria-label={MOT}
+          className="grid w-full max-w-xl gap-[2px] sm:max-w-3xl sm:gap-[3px]"
+          style={{ gridTemplateColumns: `repeat(${MOT_TRACE[0]!.length}, minmax(0, 1fr))` }}
+        >
+          {MOT_TRACE.map((ligne, y) =>
+            [...ligne].map((cellule, x) => (
+              <span
+                key={`${y}-${x}`}
+                aria-hidden
+                className={cn(
+                  "aspect-square rounded-[2px] sm:rounded-[3px]",
+                  cellule === "1" ? intensites[(y * 5 + x * 3) % 3] : "bg-primary/[0.07]",
+                )}
+              />
+            )),
+          )}
         </div>
 
         {/* Défilé centré des domaines — 4 répétitions par bande pour couvrir les grands écrans sans trou */}
@@ -342,7 +447,7 @@ function Bandeau() {
         <p className="text-center text-caption text-ink-muted">
           Les domaines du corpus de l'ENI Fianarantsoa.
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -383,31 +488,78 @@ function Piliers() {
           `md:` uniquement : empilées sur téléphone, des rotations alternées
           donneraient une colonne qui zigzague. */}
       <ul className="mt-14 grid gap-8 md:grid-cols-3 md:gap-6">
-        {PILIERS.map(({ icon: Icon, titre, corps }, index) => (
-          <li
-            key={titre}
-            className={cn(
-              "md:transition-transform md:duration-150",
-              index === 0 && "md:-rotate-1",
-              index === 1 && "md:mt-8",
-              index === 2 && "md:rotate-1",
-            )}
-          >
-            <Surface
-              tone="hard"
-              padding="lg"
-              className="flex h-full flex-col items-center gap-4 text-center"
+        {PILIERS.map(({ icon: Icon, titre, corps, mascotte }, index) => {
+          return (
+            /* Deux éléments imbriqués, et c'est délibéré : Framer Motion écrit
+               la transformation en style en ligne, ce qui écrase toute classe
+               `rotate-*` ou `translate-*` posée sur le même nœud. L'arrivée vit
+               donc sur le `li`, l'inclinaison et le survol sur le `div` — les
+               deux transformations se composent au lieu de se disputer. */
+            <motion.li
+              key={titre}
+              variants={CARTE_PILIER}
+              custom={index}
+              className={cn(index === 1 && "md:mt-8")}
             >
-              <h3 className="font-heading text-heading text-ink">{titre}</h3>
-              <p className="text-body text-ink-muted">{corps}</p>
-              {/* L'icône passe sous le texte, comme l'illustration du modèle :
-                  elle referme la carte au lieu de l'annoncer. */}
-              <span aria-hidden className="mt-auto pt-2 text-primary">
-                <Icon className="size-10" />
-              </span>
-            </Surface>
-          </li>
-        ))}
+              <div
+                className={cn(
+                  "group relative h-full transition-transform duration-150 ease-out",
+                  index === 0 && "md:-rotate-1",
+                  index === 2 && "md:rotate-1",
+                  /* Au survol, la carte se redresse et se soulève : on la
+                     ramasse. Bornée à `md` — sur un écran tactile il n'y a pas
+                     de survol, et l'état resterait collé après le premier
+                     appui. */
+                  "md:hover:-translate-y-1 md:hover:rotate-0",
+                )}
+              >
+                {/* La mascotte, derrière la carte.
+                    Tout se joue au survol, donc en CSS : ni état, ni
+                    `AnimatePresence`, ni rendu conditionnel. L'image est
+                    toujours dans le document — elle est donc déjà chargée quand
+                    on survole, et sort sans le temps de latence qu'aurait une
+                    image montée au dernier moment.
+
+                    Elle monte en se dépliant depuis le bas, donc de derrière la
+                    carte, au lieu d'apparaître en fondu sur place : c'est ce
+                    qui fait lire « elle était cachée là ». `origin-bottom` est
+                    ce qui l'y maintient — avec l'origine au centre,
+                    l'agrandissement l'écarterait de sa cachette.
+
+                    Rien ne masque le bas du personnage : c'est la carte
+                    elle-même, opaque et au-dessus, qui le cache. */}
+                <div className="pointer-events-none absolute inset-x-0 -top-32 z-0 flex justify-center">
+                  <img
+                    src={mascotte}
+                    alt=""
+                    aria-hidden
+                    className={cn(
+                      "w-32 origin-bottom md:w-36",
+                      "translate-y-10 scale-90 opacity-0",
+                      "transition-[opacity,transform] duration-300 ease-out",
+                      "group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100",
+                    )}
+                  />
+                </div>
+
+                <Surface
+                  tone="hard"
+                  padding="lg"
+                  className="relative z-10 flex h-full flex-col items-center gap-4 text-center transition-shadow duration-150 ease-out md:group-hover:shadow-hard-lift"
+                >
+                  <h3 className="font-heading text-heading text-ink">{titre}</h3>
+                  <p className="text-body text-ink-muted">{corps}</p>
+                  {/* L'icône passe sous le texte, comme l'illustration du
+                      modèle : elle referme la carte au lieu de l'annoncer. */}
+                  <span aria-hidden className="mt-auto pt-2 text-primary">
+                    <Icon className="size-10" />
+                  </span>
+                </Surface>
+
+              </div>
+            </motion.li>
+          );
+        })}
       </ul>
     </Section>
   );
@@ -426,21 +578,29 @@ function Methode() {
       <ol className="mt-14 grid gap-6 md:grid-cols-3">
         {ETAPES.map(({ titre, corps, apercu }, index) => {
           /* Le modèle met sa carte du milieu en vedette. Ici c'est la
-             troisième, et le déplacement n'est pas cosmétique : ces cartes
-             décrivent une séquence, pas trois offres au choix. Souligner
-             l'étape 2 dirait qu'elle compte plus que la 1 et la 3, ce que le
-             chapô de la section contredit mot pour mot. La troisième, elle,
-             est la destination — c'est le moment où le travail d'un étudiant
-             se met à servir quelqu'un d'autre, et donc le propos du produit. */
-          const vedette = index === ETAPES.length - 1;
+             deuxième, comme dans le modèle — arbitrage de l'équipe.
+
+             La réserve qui avait fait choisir la troisième reste valable et
+             mérite d'être connue : ces cartes décrivent une séquence, pas trois
+             offres au choix. Mettre l'étape 2 en avant peut se lire comme
+             « c'est celle qui compte », alors que le chapô de la section dit
+             l'inverse — « sauter une étape casse la suivante ». C'est un risque
+             de lecture, pas une faute : le numéro reste visible sur chaque
+             carte, et c'est lui qui porte l'ordre. */
+          const vedette = index === 1;
 
           return (
-            <li key={titre}>
+            <motion.li key={titre} variants={CARTE_ETAPE} custom={index}>
+              {/* L'élément intermédiaire porte le survol, jamais le `li` :
+                  Framer Motion y écrit déjà la transformation de l'arrivée en
+                  style en ligne, et une classe `translate-*` posée au même
+                  endroit serait purement et simplement ignorée. */}
+              <div className="group h-full transition-transform duration-150 ease-out md:hover:-translate-y-1">
               <Surface
                 tone="hard"
                 padding="lg"
                 className={cn(
-                  "flex h-full flex-col gap-4",
+                  "flex h-full flex-col gap-4 transition-shadow duration-150 ease-out md:group-hover:shadow-hard-lift",
                   vedette && "bg-primary text-on-primary",
                 )}
               >
@@ -487,7 +647,8 @@ function Methode() {
                   ))}
                 </ChipRow>
               </Surface>
-            </li>
+              </div>
+            </motion.li>
           );
         })}
       </ol>
@@ -509,51 +670,59 @@ const DOMAINES_PRODUIT = [
     titre: "Projets",
     corps:
       "Idée, en cours, en pause, abandonné, terminé. Avec le journal horodaté des décisions, des erreurs et des solutions.",
-    modules: "M1 – M3 · M19",
   },
   {
     titre: "Mémoire IA",
     corps:
       "Le corpus de l'école, cherchable par problème résolu. Résumé de projet, capsule de reprise, renaissance des projets arrêtés.",
-    modules: "M4 – M7 · M15",
   },
   {
     titre: "Communauté",
     corps:
       "Forum par domaine, compagnons de progression, challenges, validation d'idée, mentorat par les alumni.",
-    modules: "M8 – M10 · M14 · M18",
   },
   {
     titre: "Reconnaissance",
     corps:
       "Portfolio généré à partir des projets livrés, présentation de projet, badges et classements — volontairement à l'écart du chemin de travail.",
-    modules: "M11 · M12 · M16 · M17 · M20",
   },
   {
     titre: "Entreprises",
     corps:
       "Recrutement sur preuves, fiabilité projet, talent discovery, challenges sponsorisés, marketplace de prototypes.",
-    modules: "M13 · E1 – E10",
   },
 ] as const;
+
+/** Six cellules sans ordre de lecture imposé : pas court. */
+const CELLULE_DOMAINE = staggerItem(0.05, 12);
 
 /** Une cellule de la grille des domaines. */
 function CelluleDomaine({
   rang,
-  etiquette,
   titre,
   corps,
   regle = false,
 }: {
   rang: number;
-  etiquette: string;
   titre: string;
   corps: string;
-  /** La contrainte du cadrage, pas un domaine : sa pastille porte le jaune. */
+  /**
+   * La contrainte du cadrage, pas un domaine. Elle ne se signale plus que par
+   * la couleur de sa pastille : les étiquettes ont été retirées de la grille,
+   * et en laisser une sur la seule cellule qui en avait encore aurait attiré
+   * l'œil sur elle au lieu de la distinguer discrètement.
+   */
   regle?: boolean;
 }) {
   return (
-    <li className="flex flex-col gap-3 bg-background p-8">
+    /* Le rang sert deux fois : il numérote la cellule et il décale son arrivée.
+       Un pas court — l'ordre de lecture d'une grille ne porte aucun sens, on
+       veut seulement que les six cellules ne tombent pas d'un bloc. */
+    <motion.li
+      variants={CELLULE_DOMAINE}
+      custom={rang - 1}
+      className="flex flex-col gap-3 bg-background p-8"
+    >
       <span
         aria-hidden
         className={cn(
@@ -565,11 +734,7 @@ function CelluleDomaine({
       </span>
       <h3 className="font-heading text-heading text-ink">{titre}</h3>
       <p className="text-body text-ink-muted">{corps}</p>
-      {/* Le modèle s'arrête à la description. On garde une ligne de plus :
-          les numéros de modules du cadrage. C'est ce qui permet à un jury de
-          vérifier que les trente et un modules annoncés existent vraiment. */}
-      <span className="label-eyebrow mt-auto pt-2">{etiquette}</span>
-    </li>
+    </motion.li>
   );
 }
 
@@ -593,14 +758,8 @@ function Perimetre() {
           d'épaisseur. Ici il n'y en a jamais qu'un, et le tracé reste juste à
           tous les points de rupture, sans une seule règle conditionnelle. */}
       <ul className="mt-14 grid gap-px border-y border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-        {DOMAINES_PRODUIT.map(({ titre, corps, modules }, index) => (
-          <CelluleDomaine
-            key={titre}
-            rang={index + 1}
-            etiquette={modules}
-            titre={titre}
-            corps={corps}
-          />
+        {DOMAINES_PRODUIT.map(({ titre, corps }, index) => (
+          <CelluleDomaine key={titre} rang={index + 1} titre={titre} corps={corps} />
         ))}
 
         {/* La sixième cellule n'est pas un module : c'est la contrainte que le
@@ -610,7 +769,6 @@ function Perimetre() {
         <CelluleDomaine
           regle
           rang={DOMAINES_PRODUIT.length + 1}
-          etiquette="La règle du cadrage"
           titre="L'entreprise arrive après"
           corps="Aucune offre, aucun recruteur, aucun score de fiabilité n'apparaît dans le parcours d'un étudiant tant qu'il n'a pas terminé ou repris un projet."
         />
@@ -655,11 +813,83 @@ function Lettre() {
           </blockquote>
         </div>
 
-        <div aria-hidden className="dot-band h-28 w-full text-background/20" />
+        <FriseSignature />
       </figure>
     </Section>
   );
 }
+
+/** Le mot tracé par la frise de la citation. */
+const MOT_FRISE = "VITA'NOW 2026";
+const FRISE_TRACE = tracerMot(MOT_FRISE);
+
+/**
+ * La frise de pastilles qui referme la citation — et qui écrit la signature.
+ *
+ * Elle remplace le dégradé répété qui occupait cette place : un fond ne se
+ * découpe pas en lettres. Chaque point est désormais une cellule, ce qui coûte
+ * trois cent soixante-cinq nœuds — le prix à payer pour que la frise dise
+ * quelque chose au lieu de meubler.
+ *
+ * Les points pleins portent déjà une opacité franche **avant** toute animation.
+ * L'onde ne fait que les traverser ; elle ne les révèle pas. C'est ce qui rend
+ * le mot lisible sans mouvement, et donc sous `prefers-reduced-motion`.
+ */
+function FriseSignature() {
+  const colonnes = FRISE_TRACE[0]!.length;
+
+  return (
+    <div
+      role="img"
+      aria-label={MOT_FRISE}
+      className="grid w-full gap-[3px] px-6 pb-8 sm:gap-1 sm:px-10"
+      style={{ gridTemplateColumns: `repeat(${colonnes}, minmax(0, 1fr))` }}
+    >
+      {FRISE_TRACE.map((ligne, y) =>
+        [...ligne].map((cellule, x) => {
+          const plein = cellule === "1";
+
+          return (
+            <span
+              key={`${y}-${x}`}
+              aria-hidden
+              /* Le rang de colonne est passé en variable CSS : c'est lui qui
+                 retarde l'onde, et il n'existe qu'ici. Le mettre dans la
+                 feuille de style demanderait une règle par colonne. */
+              style={{ "--dot-col": x } as CSSProperties}
+              className={cn(
+                "aspect-square rounded-full",
+                plein ? "dot-wave bg-background/80" : "bg-background/15",
+              )}
+            />
+          );
+        }),
+      )}
+    </div>
+  );
+}
+
+/**
+ * Les cartes flottantes du mockup — celles qui annoncent quelque chose.
+ *
+ * Ressort plutôt que courbe : une notification arrive, elle ne glisse pas. Le
+ * ressort est court et bien amorti, donc il se pose sans rebondir deux fois.
+ *
+ * C'est le seul endroit de la page où l'opacité est animée en plus de la
+ * section — et c'est le retard qui l'autorise : quand ces cartes commencent à
+ * paraître, la section est opaque depuis longtemps, il n'y a donc aucun fondu
+ * qui s'empile sur un autre.
+ */
+const CARTE_FLOTTANTE: Variants = {
+  hidden: { opacity: 0, scale: 0.9, y: 10, rotate: 0 },
+  visible: ({ rotation, delai }: { rotation: number; delai: number }) => ({
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    rotate: rotation,
+    transition: { type: "spring", stiffness: 320, damping: 24, delay: delai },
+  }),
+};
 
 /** La trame du heatmap — 5 rangées, intensités déterministes. */
 const HEATMAP_RANGEES = 5;
@@ -694,6 +924,7 @@ function Heatmap() {
 function Anneau({ pourcentage }: { pourcentage: number }) {
   const rayon = 26;
   const circonference = 2 * Math.PI * rayon;
+  const reduced = useReducedMotion() ?? false;
 
   return (
     <svg aria-hidden viewBox="0 0 64 64" className="size-16 -rotate-90">
@@ -706,17 +937,42 @@ function Anneau({ pourcentage }: { pourcentage: number }) {
         strokeWidth="7"
         className="text-primary/15"
       />
-      <circle
-        cx="32"
-        cy="32"
-        r={rayon}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="7"
-        strokeLinecap="round"
-        strokeDasharray={`${(circonference * pourcentage) / 100} ${circonference}`}
-        className="text-primary"
-      />
+      {/* L'arc se trace au lieu d'être posé. `pathLength` est la propriété que
+          Framer Motion sait animer sur un tracé SVG : 0 = rien, 1 = le cercle
+          entier. Elle évite d'avoir à animer `strokeDashoffset` à la main, et
+          surtout de recalculer la circonférence si le rayon change un jour.
+
+          Sous `prefers-reduced-motion`, un cercle nu porte directement les
+          72 % : la jauge doit rester juste, c'est une donnée. Seul son tracé
+          disparaît, pas sa valeur. */}
+      {reduced ? (
+        <circle
+          cx="32"
+          cy="32"
+          r={rayon}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={`${(circonference * pourcentage) / 100} ${circonference}`}
+          className="text-primary"
+        />
+      ) : (
+        <motion.circle
+          cx="32"
+          cy="32"
+          r={rayon}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="7"
+          strokeLinecap="round"
+          className="text-primary"
+          initial={{ pathLength: 0 }}
+          whileInView={{ pathLength: pourcentage / 100 }}
+          viewport={REVEAL_VIEWPORT}
+          transition={{ duration: 0.9, ease: EASE.outExpo, delay: 0.25 }}
+        />
+      )}
     </svg>
   );
 }
@@ -917,13 +1173,32 @@ function Dashboard() {
 
         {/* Les deux cartes flottantes de la maquette, posées à cheval sur le
             cadre. Masquées sous `md` : à cette largeur elles couvriraient le
-            contenu qu'elles sont censées commenter. */}
-        <span className="absolute -top-6 left-4 z-10 hidden max-w-[16rem] -rotate-3 flex-col gap-1 rounded-card border border-border bg-card p-4 shadow-float md:flex">
+            contenu qu'elles sont censées commenter.
+
+            Elles surgissent après le panneau, pas avec lui. Ce sont des
+            notifications : elles doivent arriver *sur* une interface déjà
+            posée, sinon elles n'ont rien à annoncer. D'où les retards de 0,5 s
+            et 0,8 s, qui les font aussi se succéder au lieu de tomber ensemble.
+
+            L'inclinaison est dans la variante, jamais en classe `rotate-*` :
+            Framer écrit la transformation en style en ligne et l'écraserait —
+            les cartes arriveraient bien droites. Elle part de zéro et se pose
+            sur sa valeur, ce qui donne le petit basculement d'une carte qu'on
+            lâche. */}
+        <motion.span
+          variants={CARTE_FLOTTANTE}
+          custom={{ rotation: -3, delai: 0.5 }}
+          className="absolute -top-6 left-4 z-10 hidden max-w-[16rem] flex-col gap-1 rounded-card border border-border bg-card p-4 shadow-float md:flex"
+        >
           <span className="label-eyebrow">Notifications</span>
           <span className="text-body text-ink">Marc a commenté ton projet ✨</span>
-        </span>
+        </motion.span>
 
-        <span className="absolute -bottom-6 right-4 z-10 hidden max-w-[18rem] rotate-2 flex-col gap-1 rounded-card border border-border bg-card p-4 shadow-float md:flex">
+        <motion.span
+          variants={CARTE_FLOTTANTE}
+          custom={{ rotation: 2, delai: 0.8 }}
+          className="absolute -bottom-6 right-4 z-10 hidden max-w-[18rem] flex-col gap-1 rounded-card border border-border bg-card p-4 shadow-float md:flex"
+        >
           <span className="flex items-center gap-2 text-body font-semibold text-ink">
             <Trophy aria-hidden className="size-4 text-accent" />
             Badge débloqué
@@ -931,11 +1206,14 @@ function Dashboard() {
           <span className="text-caption text-ink-muted">
             « Finisher » — 5 projets livrés
           </span>
-        </span>
+        </motion.span>
       </div>
     </Section>
   );
 }
+
+/** Une pile de questions : pas très court, sinon la liste ondule. */
+const QUESTION_FAQ = staggerItem(0.04, 10);
 
 function Faq() {
   const [ouvert, setOuvert] = useState<number | null>(0);
@@ -951,7 +1229,7 @@ function Faq() {
         {FAQ.map(({ q, r }, index) => {
           const actif = ouvert === index;
           return (
-            <li key={q}>
+            <motion.li key={q} variants={QUESTION_FAQ} custom={index}>
               <Surface tone="card" padding="none">
                 <h3>
                   <button
@@ -979,7 +1257,7 @@ function Faq() {
                   </p>
                 )}
               </Surface>
-            </li>
+            </motion.li>
           );
         })}
       </ul>
@@ -1040,7 +1318,14 @@ function PiedDePage() {
     <footer className="border-t border-border bg-surface py-14">
       <div className="page-measure flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
         <div className="flex max-w-sm flex-col gap-3">
-          <span className="font-display text-heading text-ink">VITA'NOW</span>
+          {/* Emblème et nom sur une même ligne, comme dans la barre du haut :
+              le pied de page referme la lecture sur la marque qui l'a ouverte.
+              L'emblème est contraint en hauteur et non en carré — la source
+              fait 755×699, un `size-*` l'écraserait de 8 %. */}
+          <span className="flex items-center gap-2.5">
+            <img src="/logo-vita-now.png" alt="" className="h-9 w-auto shrink-0" />
+            <span className="font-display text-heading text-ink">VITA'NOW</span>
+          </span>
           <p className="text-caption text-ink-muted">
             Pour que les efforts des étudiants ne disparaissent pas dans le
             silence. ENI Fianarantsoa.

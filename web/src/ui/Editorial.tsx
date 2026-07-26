@@ -1,6 +1,8 @@
+import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
 import type { HTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
+import { REVEAL_VIEWPORT, reveal } from "@/lib/motion";
 
 /**
  * Editorial.tsx — les éléments de structure partagés par la landing et l'app.
@@ -125,6 +127,17 @@ export function EditorialLayout({
  * Section de page. Le template alterne fond blanc et fond `surface` pour
  * découper la landing — c'est ce qui remplace les filets de l'ancienne
  * direction.
+ *
+ * Chaque section arrive au défilement. Le geste est porté ici, et non répété
+ * dans chaque écran, pour une raison précise : c'est ce qui garantit que les
+ * sections arrivent toutes de la même façon. Une animation posée section par
+ * section dérive en trois semaines — l'une monte de 12px, la suivante de 40,
+ * une troisième ajoute une échelle — et la page se met à bégayer.
+ *
+ * Sous `prefers-reduced-motion`, on ne rend pas un `motion.section` inerte : on
+ * rend une `section` nue. Le contenu est alors visible sans dépendre d'un
+ * observateur d'intersection, ce qui est la seule version dont on est certain
+ * qu'elle s'affiche.
  */
 export function Section({
   children,
@@ -134,6 +147,7 @@ export function Section({
 }: HTMLAttributes<HTMLElement> & {
   tone?: "background" | "surface" | "ink" | "primary";
 }) {
+  const reduced = useReducedMotion() ?? false;
   const tones = {
     background: "bg-background",
     surface: "bg-surface",
@@ -143,10 +157,27 @@ export function Section({
     primary: "bg-primary text-on-primary",
   } as const;
 
+  const classes = cn("py-20 md:py-28", tones[tone], className);
+
+  if (reduced) {
+    return (
+      <section className={classes} {...props}>
+        <div className="page-measure">{children}</div>
+      </section>
+    );
+  }
+
   return (
-    <section className={cn("py-20 md:py-28", tones[tone], className)} {...props}>
+    <motion.section
+      className={classes}
+      variants={reveal}
+      initial="hidden"
+      whileInView="visible"
+      viewport={REVEAL_VIEWPORT}
+      {...(props as HTMLMotionProps<"section">)}
+    >
       <div className="page-measure">{children}</div>
-    </section>
+    </motion.section>
   );
 }
 

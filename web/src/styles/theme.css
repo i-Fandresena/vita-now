@@ -121,6 +121,11 @@
      du modèle brutaliste de la landing, et il ne se mélange pas aux autres —
      une carte porte l'une ou l'autre, jamais les deux. */
   --shadow-hard: 5px 5px 0 0 var(--color-ink);
+  /* La même ombre, portée plus loin — l'état survolé d'une carte à bord franc.
+     Une ombre franche ne peut pas s'adoucir pour signaler le survol comme le
+     ferait une ombre floue : elle n'a rien à adoucir. Elle s'éloigne, ce qui
+     revient à décoller l'objet de la page. */
+  --shadow-hard-lift: 9px 9px 0 0 var(--color-ink);
 
   /* ── Mouvement (DESIGN.md §2.4) ──────────────────────────────────────── */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -174,6 +179,87 @@
   to {
     /* Le bandeau duplique sa liste : -50% ramène exactement au point de départ. */
     transform: translateX(-50%);
+  }
+}
+
+/* Frappe au clavier, en boucle : on tape, on laisse lire, on efface, on
+   recommence. Le mot est découpé, jamais retiré du document — le texte reste
+   lisible par un lecteur d'écran pendant tout le cycle, et aucune largeur ne
+   change, donc rien ne se remet en page derrière.
+
+   Les quatre temps sont dans les pourcentages, pas dans quatre animations
+   séparées : c'est ce qui les garde en phase, et ce qui permet à la pause de
+   durer plus longtemps que la frappe. La pause est de loin le temps le plus
+   long — sans elle on lit un mot qui clignote, pas une phrase qu'on écrit.
+
+   La fonction de progression s'applique à **chaque intervalle** entre deux
+   images-clés, jamais à l'animation entière. Le `steps(9)` posé sur l'élément
+   découpe donc la frappe en neuf lettres, et découpe aussi la pause en neuf
+   pas — invisibles, puisque la valeur n'y change pas. C'est ce qui autorise un
+   seul `steps()` pour un cycle à quatre temps. */
+@keyframes type-loop {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  22% {
+    clip-path: inset(0 0 0 0);
+  }
+  78% {
+    clip-path: inset(0 0 0 0);
+  }
+  95% {
+    clip-path: inset(0 100% 0 0);
+  }
+  100% {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+/* Le curseur suit le bord du texte, à l'écriture comme à l'effacement. Mêmes
+   pourcentages, même durée, même nombre de pas que la frappe : c'est ce qui les
+   garde synchrones sans la moindre ligne de JavaScript. */
+@keyframes type-caret-loop {
+  0% {
+    left: 0;
+  }
+  22% {
+    left: 100%;
+  }
+  78% {
+    left: 100%;
+  }
+  95% {
+    left: 0;
+  }
+  100% {
+    left: 0;
+  }
+}
+
+/* `steps(2)` donne le clignotement franc d'un curseur, jamais un fondu. */
+@keyframes type-caret-blink {
+  0% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* La crête de l'onde. `scale` et `opacity` seuls : ce sont les deux propriétés
+   qu'un navigateur anime sans recalculer la mise en page, ce qui compte quand
+   trois cent soixante-cinq points s'animent en même temps. */
+@keyframes dot-wave {
+  0%,
+  38%,
+  100% {
+    opacity: 0.32;
+    transform: scale(0.78);
+  }
+  14% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
