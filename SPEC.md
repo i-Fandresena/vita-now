@@ -95,11 +95,11 @@ et les mutations qui s'y rattachent fonctionnent. Pas : persisté côté serveur
 
 | # | Module | Route | État |
 |---|---|---|---|
-| M1 | Comptes et profils étudiants | `#/profil`, `#/profil/:id` | 🟡 — profil complet, **pas d'authentification** (utilisateur codé en dur) |
+| M1 | Comptes et profils étudiants | `#/connexion`, `#/inscription`, `#/profil`, `#/profil/:id`, `#/profil/edition` | ✅ — les 4 fournisseurs du cadrage, édition complète, déconnexion. Aucun mot de passe n'est vérifié, et l'écran le dit. |
 | M2 | Gestion de projets | `#/projets`, `#/projets/nouveau`, `#/projets/:id` | ✅ |
 | M3 | Journal de progression | `#/projets/:id/journal` | ✅ — 5 natures d'entrée, horodatage, jalons |
-| M19 | Analytics personnel | `#/tableau` | ✅ |
-| M20 | Notifications | `#/notifications` | 🟡 — canal web seul ; e-mail et push hors périmètre |
+| M19 | Analytics personnel | `#/tableau` | ✅ — dont la « progression moyenne », calculée sur les projets non terminés |
+| M20 | Notifications | `#/notifications` | 🟡 — les 3 canaux du cadrage sont des réglages ; seul le web fonctionne, les deux autres exigent un serveur |
 
 **Statuts de projet** (du cadrage, ne pas en inventer d'autres) :
 `Idée` · `En cours` · `En pause` · `Abandonné` · `Terminé`
@@ -114,7 +114,7 @@ et les mutations qui s'y rattachent fonctionnent. Pas : persisté côté serveur
 | M4 | Intégration GitHub / GitLab | `#/projets/:id/depot` | 🟡 — écran réel, **aucune requête réseau**, données de démonstration |
 | M5 | Résumé intelligent | bloc sur `#/projets/:id` | 🟡 — déduit du journal par règles explicites, pas par l'API Claude |
 | M6 | Assistant de reprise | `#/reprise` | ✅ — capsule dérivée du journal, pas saisie |
-| M15 | Projet abandonné / Renaissance | `#/renaissance` | ✅ — reprise réelle : le projet change de propriétaire et **garde** son journal |
+| M15 | Projet abandonné / Renaissance | `#/renaissance` | ✅ — état (%, raison) comme l'exige le cadrage ; la reprise garde le journal |
 | — | Recherche dans le corpus | `#/memoire`, `#/fragment/:id` | ✅ — classement déterministe en mémoire |
 
 **M5 — contrat de sortie**, à respecter le jour où l'API Claude le produit :
@@ -128,18 +128,18 @@ et les mutations qui s'y rattachent fonctionnent. Pas : persisté côté serveur
 | M8 | Forum | `#/communaute`, `#/communaute/sujet/:id` | ✅ — 6 catégories du cadrage, réponses fonctionnelles |
 | M9 | Compagnons | `#/compagnons` | ✅ — matching par techno / intérêt / disponibilité / niveau, **avec ses raisons** |
 | M10 | Challenges | `#/challenges`, `#/challenges/:id` | ✅ — inscription et suivi hebdomadaire réels |
-| M14 | Validation d'idée | `#/idees` | ✅ — vote pour / réserve, exclusif et réversible |
-| M18 | Mentorat | `#/mentorat` | ✅ |
+| M14 | Validation d'idée | `#/idees` | ✅ — vote pour / réserve **et** commentaires |
+| M18 | Mentorat | `#/mentorat` | ✅ — annuaire **et** demande d'aide avec fil de réponses |
 
 ### 4.4 Reconnaissance — secondaire par construction (§2bis)
 
 | # | Module | Route | État |
 |---|---|---|---|
 | M7 | Anti-abandon | `#/tableau` + `#/reprise` | 🟡 — seuil de 7 jours appliqué, mais sur horodatage simulé |
-| M11 | Classements | `#/classements` | ✅ — sans podium ni médaille, rang numéroté seul |
-| M12 | Badges | `#/profil` onglet Reconnaissance | ✅ |
+| M11 | Classements | `#/classements` | ✅ — les 3 du cadrage, dont « académique (meilleur projet par catégorie) » qui compare des projets, jamais des personnes |
+| M12 | Badges **et points SOA** | `#/profil` onglet Reconnaissance | ✅ — journal de points (4 gestes du cadrage), pas un compteur nu |
 | M16 | Portfolio automatique | `#/portfolio/:id` | ✅ — inclut les projets **arrêtés** et leur raison |
-| M17 | Présentation de projet | `#/projets/:id/presentation` | 🟡 — structure complète, envoi d'images absent |
+| M17 | Présentation de projet | `#/projets/:id/presentation` | ✅ — éditable, avec vidéo de démo (lien). L'envoi d'images attend le serveur. |
 | — | Retour à l'auteur | `#/signal/:id` | ✅ |
 
 **Règle d'implantation tenue :** M11 et M12 ne sont accessibles que depuis
@@ -151,13 +151,13 @@ les affiche.
 | # | Module | Route | État |
 |---|---|---|---|
 | E1 | Profil entreprise | `#/entreprise` | ✅ |
-| E2 | Publication d'opportunités | `#/entreprise/opportunites` | 🟡 — consultation ✅, publication non câblée |
+| E2 | Publication d'opportunités | `#/entreprise/opportunites`, `#/opportunites` | ✅ — entreprises **et étudiants** publient (M13) |
 | E3 | Recrutement sur preuves | `#/entreprise/talents/:id` | ✅ |
 | E4 | Project Reliability Score | bloc sur la fiche talent | ✅ — 5 composantes du cadrage, **jamais affiché sans son détail** |
 | E5 | Talent Discovery | `#/entreprise/talents` | ✅ — filtres techno / niveau / projets terminés, correspondance motivée |
-| E6 | Entreprise Mentor | `#/entreprise/challenges` | 🟡 |
+| E6 | Entreprise Mentor | `#/entreprise/challenges` | 🟡 — challenges sponsorisés ✅, encadrement par des seniors non modélisé |
 | E7 | Challenges sponsorisés | `#/entreprise/challenges` | ✅ |
-| E8 | Stage et recrutement direct | fiche talent | 🟡 — actions présentes, non câblées |
+| E8 | Stage et recrutement direct | fiche talent | ✅ — la proposition d'entretien crée une notification réelle |
 | E9 | Validation de compétence | badge sur profil et portfolio | ✅ |
 | E10 | Marketplace de prototypes | `#/entreprise/marketplace` | ✅ |
 | M13 | Appels à projets (étudiant) | `#/opportunites` | ✅ |
@@ -167,35 +167,64 @@ avertissement explicite tant que l'étudiant n'a aucun projet terminé, et
 l'espace entreprise a sa propre navigation — il n'existe aucun bandeau
 entreprise dans l'application étudiante.
 
-### 4.6 Hors périmètre code
+### 4.6 Universités — la branche du schéma d'architecture
+
+Elle n'apparaît dans **aucun** des 21 modules numérotés, seulement dans le
+schéma d'architecture (§3). C'est ce qui explique qu'elle ait été omise du
+premier découpage, ici comme dans le brainstorm.
+
+| Usage du schéma | Route | État |
+|---|---|---|
+| Suivi pédagogique | `#/universite` onglet 1 | ✅ — santé par promotion, et surtout la liste des étudiants sans activité |
+| Projets académiques | `#/universite` onglet 2 | ✅ — encadrement, échéances, observation de l'enseignant |
+| Classements | `#/universite` onglet 3 | ✅ — par promotion, sur des projets |
+
+**Règle structurante : aucune note n'est saisissable.** Le cadrage parle de
+*suivi pédagogique*, pas d'évaluation. Un journal relu comme une copie cesse
+d'être honnête, et un journal malhonnête ne sert plus à reprendre un projet —
+l'outil perdrait en une semaine ce qui le rend utile. L'enseignant voit qui
+décroche et depuis quand ; il n'évalue pas.
+
+### 4.7 Hors périmètre code
 
 | # | Module | Décision |
 |---|---|---|
 | M21 | Application mobile native | Le web est **mobile d'abord** (barre d'onglets, zones de sécurité, cibles de 44 px). L'app native reste une slide de roadmap. |
 
-### 4.7 Récapitulatif
+### 4.8 Récapitulatif
 
 | | Complets | Partiels | Absents |
 |---|---|---|---|
-| Modules étudiants (M1–M20) | 13 | 7 | 0 |
-| Modules entreprise (E1–E10) | 7 | 3 | 0 |
-| **Total (31)** | **20** | **10** | **0** (+ M21 hors périmètre) |
+| Modules étudiants (M1–M20) | 17 | 3 | 0 |
+| Modules entreprise (E1–E10) | 9 | 1 | 0 |
+| Branche Universités (3 usages) | 3 | 0 | 0 |
+| **Total (31 modules + 3 usages)** | **29** | **4** | **0** (+ M21 hors périmètre) |
 
-Les 10 partiels le sont tous pour la même raison, et une seule : **l'absence de
-backend**. Aucun n'est bloqué par un problème d'interface.
+Les 4 partiels restants — M4 (dépôt Git), M5 (résumé), M7 (inactivité), M20
+(canaux e-mail et push), E6 (encadrement senior) — le sont tous pour la même
+raison, et une seule : **l'absence de backend**. Aucun n'est bloqué par un
+problème d'interface.
+
+**Correction d'un point de méthode :** la version précédente de ce tableau
+annonçait 20 modules complets. C'était trop généreux — sept points du texte du
+cadrage étaient comptés comme faits sans l'être (points SOA, classement
+académique, commentaires d'idée, mise en relation de mentorat, publication
+étudiante, pourcentage d'état, progression moyenne). Ils le sont désormais.
 
 ## 5. Ce qui existe réellement aujourd'hui
 
 Front React/Vite déployé sur https://aura.icpp-conformite.cloud/, **sans backend**.
 
-**33 routes**, toutes atteignables par URL directe (vérifié par un aller-retour
-`hrefFor` → `parseRoute` sur chacune). Trois espaces :
+**37 routes**, toutes atteignables par URL directe (vérifié par un aller-retour
+`hrefFor` → `parseRoute` sur chacune). Quatre espaces, chacun avec sa propre
+navigation :
 
 | Espace | Navigation | Routes |
 |---|---|---|
-| Public | En-tête marketing | `#/` |
-| Étudiant | 5 onglets — Tableau · Projets · Mémoire · Communauté · Profil | 21 |
+| Public | En-tête marketing, connexion, inscription | 3 |
+| Étudiant | 5 onglets — Tableau · Projets · Mémoire · Communauté · Profil | 27 |
 | Entreprise | 5 onglets propres | 6 |
+| Université | Espace enseignant, 3 onglets internes | 1 |
 
 ### Architecture
 
@@ -204,29 +233,34 @@ src/
   domain/soa.ts          le modèle, module par module du cadrage
   data/soa-corpus.ts     corpus de démonstration (8 étudiants, 10 projets,
                          12 entrées de journal, 6 sujets, 3 challenges,
-                         3 idées, 3 entreprises, 3 opportunités)
+                         3 idées, 3 entreprises, 4 comptes, 17 points,
+                         1 enseignant, 2 promotions, 3 encadrements)
   data/corpus.ts         le corpus de fragments de la Mémoire IA
   app/soa-store.tsx      l'état applicatif + les mutations
-  app/router.ts          33 routes, aller-retour vérifié
-  app/Shell.tsx          trois chromes ; barre d'onglets < 1024px, rail ≥ 1024px
+  app/router.ts          37 routes, aller-retour vérifié
+  app/Shell.tsx          quatre chromes ; onglets < 1024px, rail ≥ 1024px
   ui/                    primitives (Button, Surface, Field, data, layout)
   screens/               les écrans, groupés par parcours
 ```
 
 ### Ce qui fonctionne réellement
 
-Les mutations ne sont pas décoratives : créer un projet, écrire au journal,
-arrêter un projet avec sa raison, reprendre le projet d'un autre, répondre au
-forum, ouvrir un sujet, voter une idée, rejoindre un challenge, cocher une
-semaine, marquer une notification — tout modifie l'état et se répercute partout
-(le tableau de bord, le résumé IA et l'avancement se recalculent).
+Les mutations ne sont pas décoratives. Se connecter, s'inscrire, modifier son
+profil, créer un projet, écrire au journal, arrêter un projet avec sa raison,
+reprendre celui d'un autre, répondre au forum, commenter une idée, demander de
+l'aide à un mentor et y répondre, publier un appel, rejoindre un challenge,
+cocher une semaine, valider une compétence, proposer un entretien — tout
+modifie l'état et se répercute partout (le tableau de bord, le résumé, les
+points et l'avancement se recalculent).
 
 ### Ce qui n'existe pas
 
 - **Aucun backend.** Pas de PostgreSQL, pas de pgvector, pas d'appel à l'API Claude.
-- **Aucune authentification** : l'utilisateur courant est `s-soa`, codé en dur.
+- **Aucune authentification réelle** : aucun mot de passe n'est demandé ni
+  vérifié. Les écrans de connexion et d'inscription l'affichent explicitement.
 - **Aucune persistance** : un rechargement remet le corpus à son état initial.
 - **Aucune intégration GitHub/GitLab réelle** : l'écran de dépôt le dit lui-même.
+- Aucun envoi de fichier (captures, vidéos) : seuls des liens sont saisissables.
 - Aucun test automatisé, aucune CI.
 
 ## 6. Direction visuelle
