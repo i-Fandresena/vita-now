@@ -107,76 +107,50 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
   }
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[0.85fr_1.15fr]">
-      {/* Panneau en dégradé. Masqué sous `lg` : sur un téléphone il pousserait
-          le formulaire sous la ligne de flottaison, et un écran d'inscription
-          qu'il faut faire défiler pour trouver perd la moitié de ceux qui
-          l'ouvrent. */}
-      {/* Le panneau ne contient plus que l'illustration : `items-center` et
-          `justify-center` la calent sur les deux axes.
-
-          `justify-between` répartissait trois enfants ; avec un seul, il le
-          colle en haut — c'est le piège de cette propriété quand le contenu se
-          réduit. */}
-      <aside className="panel-aura relative hidden items-center justify-center p-10 lg:flex">
-        {/* `width` et `height` portent les dimensions **réelles** du fichier,
-            385×506. C'est ce rapport que le navigateur emploie pour réserver la
-            place avant le chargement : un rapport faux — un carré, par exemple —
-            fait réserver une boîte carrée, puis l'image se replie sur son vrai
-            format à l'arrivée, et tout le panneau sursaute.
-
-            La borne laisse une marge de chaque côté. À pleine largeur de
-            colonne, l'illustration touchait les bords et le panneau n'avait plus
-            de silhouette — le blanc autour d'une image fait partie de l'image. */}
+    <div className="grid h-dvh min-h-dvh max-h-dvh overflow-hidden lg:grid-cols-[0.85fr_1.15fr]">
+      {/* Panneau en dégradé */}
+      <aside className="panel-aura relative hidden h-full items-center justify-center p-6 lg:flex">
         <img
           src="/hero-section.png"
           alt=""
           aria-hidden
           width={385}
           height={506}
-          className="relative z-10 w-full max-w-[40rem]"
+          className="relative z-10 max-h-[80vh] w-auto max-w-[36rem] object-contain"
         />
       </aside>
 
       {/* Colonne du formulaire */}
-      <div className="flex items-center justify-center px-6 py-14 sm:px-10">
+      <div className="flex h-full flex-col justify-center overflow-y-auto px-6 py-4 sm:px-10 sm:py-6">
         <motion.div
           variants={sequence(0.05)}
           initial="hidden"
           animate="visible"
-          className="flex w-full max-w-sm flex-col items-center gap-6 text-center"
+          className="my-auto flex w-full max-w-sm flex-col items-center gap-3 sm:gap-4 text-center"
         >
-          {/* Les mascottes se chevauchent par marge négative, jamais par
-              position absolue : en flux, la rangée garde une largeur propre et
-              reste centrée toute seule. */}
           <motion.div variants={rise} className="flex items-center">
             {TROMBINOSCOPE.map((source, rang) => (
               <span
                 key={source}
-                className="grid size-20 place-items-center overflow-hidden rounded-full bg- ring-4 ring-background"
-                /* Le recouvrement suit la taille du médaillon — un cinquième de
-                   son diamètre. Laissé à sa valeur d'avant, il aurait décollé
-                   les trois pastilles et la rangée se serait lue comme trois
-                   éléments séparés plutôt que comme un groupe. */
-                style={{ marginLeft: rang === 0 ? 0 : "-1rem" }}
+                className="grid size-14 place-items-center overflow-hidden rounded-full ring-2 ring-background sm:size-16"
+                style={{ marginLeft: rang === 0 ? 0 : "-0.75rem" }}
               >
-                <img src={source} alt="" aria-hidden className="size-14 object-contain" />
+                <img src={source} alt="" aria-hidden className="size-10 object-contain sm:size-12" />
               </span>
             ))}
           </motion.div>
 
-          <motion.div variants={rise} className="flex flex-col gap-2">
+          <motion.div variants={rise} className="flex flex-col gap-1">
             <h1 className="font-display text-display-3 text-ink">{salutDuJour()}</h1>
-            <p className="text-body text-ink-muted">
-              Ouvre un espace où tes projets gardent leur mémoire — les
-              décisions, les blocages, les raisons.
+            <p className="text-caption text-ink-muted">
+              Ouvre un espace où tes projets gardent leur mémoire.
             </p>
           </motion.div>
 
           <motion.form
             variants={rise}
             onSubmit={soumettre}
-            className="flex w-full flex-col gap-4 text-left"
+            className="flex w-full flex-col gap-2.5 sm:gap-3 text-left"
           >
             <Input
               label="Adresse e-mail"
@@ -208,7 +182,6 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
               placeholder="Six caractères au minimum"
               value={form.motDePasse}
               onChange={(event) => setForm({ ...form, motDePasse: event.target.value })}
-              hint="Six caractères au minimum. Ne réutilise pas un mot de passe existant : la démonstration ne le protège pas."
             />
             <Input
               label="Filière"
@@ -219,11 +192,9 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
               onChange={(event) => setForm({ ...form, filiere: event.target.value })}
             />
 
-            {/* Le niveau conditionne le matching de compagnons et le suivi de
-                promotion : il ne peut pas être deviné après coup. */}
-            <fieldset className="flex flex-col gap-2">
-              <legend className="label-eyebrow mb-2">Niveau</legend>
-              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Niveau">
+            <fieldset className="flex flex-col gap-1">
+              <legend className="label-eyebrow mb-1">Niveau</legend>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Niveau">
                 {NIVEAUX.map((n) => (
                   <button
                     key={n}
@@ -232,7 +203,7 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
                     aria-checked={n === form.niveau}
                     onClick={() => setForm({ ...form, niveau: n })}
                     className={cn(
-                      "h-11 w-14 rounded-full border text-body transition-colors duration-150",
+                      "h-9 w-12 rounded-full border text-caption transition-colors duration-150",
                       n === form.niveau
                         ? "border-primary bg-primary-wash font-medium text-primary"
                         : "border-border text-ink-muted hover:border-border-strong hover:text-ink",
@@ -244,17 +215,11 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
               </div>
             </fieldset>
 
-            {/* Le modèle place ici deux liens vers une politique de
-                confidentialité et des conditions d'utilisation. Ni l'une ni les
-                autres n'existent : des liens morts sur la ligne même où l'on
-                demande un consentement valent moins que rien. La phrase dit donc
-                l'état réel des choses. */}
-
             <Button
               type="submit"
               variant="primary"
               size="lg"
-              className="w-full"
+              className="mt-1 w-full"
               disabled={envoye || !complet}
             >
               {envoye ? "Ouverture…" : "S'inscrire"}

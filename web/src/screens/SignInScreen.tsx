@@ -1,10 +1,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ShieldAlert } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
-import { ACCOUNTS, DEMO_ROLES } from "@/data/soa-corpus";
 import { cn } from "@/lib/cn";
 import { EASE, rise, sequence } from "@/lib/motion";
 import { Button } from "@/ui/Button";
@@ -12,44 +10,8 @@ import { Input } from "@/ui/Field";
 
 /**
  * Écran de connexion.
- *
- * **Il n'authentifie personne, et le code le dit à voix haute.** Le produit n'a
- * pas de backend : l'étudiant courant est une constante du corpus de
- * démonstration. Cet écran reproduit donc la façade décrite au module 1 du
- * cadrage — e-mail, Google, GitHub — et rien de plus.
- *
- * Deux conséquences assumées, toutes deux visibles à l'écran plutôt que
- * cachées dans le code :
- *
- *   · les identifiants saisis **ne partent nulle part** et ne sont conservés
- *     nulle part. Un champ mot de passe qui avale une vraie saisie sans le dire
- *     est le genre de détail qui se paie cher, y compris en démonstration —
- *     quelqu'un finit toujours par y taper un mot de passe réel. La mention
- *     sous le formulaire l'annonce.
- *   · valider entre simplement dans l'espace étudiant, comme le bouton
- *     « Entrer dans VITA'NOW » de la page d'accueil.
- *
- * Le fournisseur « X » du modèle n'est pas repris : le cadrage nomme e-mail,
- * Google et GitHub, et l'université en option future. Afficher un fournisseur
- * qui n'est pas au périmètre promet une intégration de plus à construire.
  */
 
-/**
- * Les fournisseurs du module 1 du cadrage, avec leurs marques officielles.
- *
- * **Les couleurs sont écrites en dur, et c'est le seul endroit du produit où
- * cela se justifie.** Le bleu de Google appartient à Google : ce n'est pas une
- * valeur de notre palette, et en faire un token l'exposerait comme `bg-*` et
- * `text-*` — donc utilisable sur un bouton du produit, ce qu'aucune charte de
- * marque tierce n'autorise. Elles restent enfermées ici.
- *
- * GitHub fait exception dans l'exception : sa marque est monochrome, donc elle
- * prend `currentColor` et suit l'encre du thème au lieu d'un noir figé qui
- * disparaîtrait sur fond sombre.
- *
- * Les tracés sont écrits dans le fichier, jamais chargés : la démonstration
- * doit tenir sans réseau.
- */
 const FOURNISSEURS = [
   {
     nom: "Google",
@@ -106,24 +68,6 @@ const MASCOTTES = [
   "/mascotte3.png",
 ] as const;
 
-/**
- * La mascotte de l'écran, qui change de personnage chaque seconde.
- *
- * **Les quatre images sont montées en permanence, empilées.** Une seule est
- * opaque à la fois. Monter puis démonter l'image courante obligerait le
- * navigateur à télécharger chaque personnage au moment précis où il doit
- * paraître : le premier tour clignoterait, et sur une connexion lente il
- * clignoterait à chaque tour. Ici tout est chargé au premier rendu, et le
- * changement ne coûte plus qu'une opacité.
- *
- * `object-contain` dans une boîte carrée règle l'autre difficulté : les quatre
- * personnages n'ont ni la même largeur ni le même rapport — de 259×398 à
- * 339×398. Sans boîte commune, la mise en page se décalerait à chaque seconde.
- *
- * Sous `prefers-reduced-motion`, la minuterie ne démarre pas : le premier
- * personnage reste. Une image qui change chaque seconde est précisément ce que
- * ce réglage demande d'éviter.
- */
 function MascotteTournante() {
   const reduced = useReducedMotion() ?? false;
   const [index, setIndex] = useState(0);
@@ -138,7 +82,7 @@ function MascotteTournante() {
   }, [reduced]);
 
   return (
-    <span className="relative block size-20 shrink-0">
+    <span className="relative block size-16 shrink-0 sm:size-20">
       {MASCOTTES.map((source, rang) => (
         <img
           key={source}
@@ -156,22 +100,6 @@ function MascotteTournante() {
   );
 }
 
-/**
- * Les phrases qui défilent à droite.
- *
- * **Aucune n'est un message de motivation au sens que le cadrage écarte.** Le
- * sujet du hackathon range les encouragements façon Duolingo — « ton futur toi
- * te remerciera », « tu étais à 60 % » — du côté du problème, pas de la
- * solution : le personnage de la lettre en a déjà essayé des centaines. Une
- * phrase qui pousse à revenir demain aurait donc contredit l'écran d'à côté.
- *
- * Ce que ces phrases font à la place : elles énoncent ce que le produit tient
- * pour vrai. Elles motivent parce qu'elles retirent une culpabilité, pas parce
- * qu'elles réclament un effort.
- *
- * Le mot marqué reprend la sélection de la page d'accueil : un accent par
- * phrase, jamais deux.
- */
 const PHRASES = [
   <>
     Reprendre, ce n'est pas <span className="mark-select">recommencer</span>.
@@ -190,20 +118,6 @@ const PHRASES = [
   </>,
 ] as const;
 
-/**
- * Le carrousel de phrases.
- *
- * `mode="wait"` fait sortir la phrase courante **avant** de monter la suivante.
- * Sans lui, les deux coexistent une demi-seconde et se superposent — deux
- * textes lisibles l'un sur l'autre, illisibles ensemble.
- *
- * La hauteur minimale est ce qui évite l'à-coup : les phrases n'ont pas la même
- * longueur, donc pas le même nombre de lignes, et le bloc entier se
- * repositionnerait à chaque passage. Elle est calée sur la plus longue.
- *
- * Six secondes, pas une : ce sont des phrases, elles se lisent. Sous
- * `prefers-reduced-motion`, la minuterie ne démarre pas et la première reste.
- */
 function PhrasesTournantes() {
   const reduced = useReducedMotion() ?? false;
   const [index, setIndex] = useState(0);
@@ -218,7 +132,7 @@ function PhrasesTournantes() {
   }, [reduced]);
 
   return (
-    <div className="flex min-h-[7rem] items-center">
+    <div className="flex min-h-[6rem] items-center">
       <AnimatePresence mode="wait">
         <motion.p
           key={index}
@@ -255,8 +169,6 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
     }
 
     setEnvoye(false);
-    /* `error-clarity` : dire la cause **et** la sortie. Un « identifiants
-       invalides » laisse chercher lequel des deux champs est en cause. */
     setErreur(
       resultat.raison === "inconnu"
         ? "Aucun compte pour cette adresse. Vérifie l'orthographe, ou crée un compte."
@@ -264,24 +176,15 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
     );
   }
 
-  /** Remplit les deux champs d'un coup — la démonstration doit aller vite. */
-  function remplir(compte: { email: string; motDePasse: string }) {
-    setEmail(compte.email);
-    setMotDePasse(compte.motDePasse);
-    setErreur(null);
-  }
-
   return (
-    <div className="grid min-h-dvh lg:grid-cols-2">
-      {/* Colonne du formulaire. Mesure bornée puis centrée : à pleine largeur
-          d'une demi-page, les champs feraient 600px et la lecture d'un
-          formulaire court y perdrait son axe. */}
-      <div className="flex items-center justify-center px-6 py-14 sm:px-10">
+    <div className="grid h-dvh min-h-dvh max-h-dvh overflow-hidden lg:grid-cols-2">
+      {/* Colonne du formulaire. Centré verticalement sans défilement */}
+      <div className="flex h-full flex-col justify-center overflow-y-auto px-6 py-6 sm:px-10">
         <motion.div
           variants={sequence(0.05)}
           initial="hidden"
           animate="visible"
-          className="flex w-full max-w-sm flex-col gap-8"
+          className="my-auto flex w-full max-w-sm flex-col gap-5 sm:gap-6"
         >
           <motion.a
             variants={rise}
@@ -295,7 +198,7 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
             <MascotteTournante />
           </motion.a>
 
-          <motion.div variants={rise} className="flex flex-col gap-2">
+          <motion.div variants={rise} className="flex flex-col gap-1">
             <h1 className="font-display text-display-3 text-ink">
               Connexion à VITA'NOW.
             </h1>
@@ -314,7 +217,7 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
             </p>
           </motion.div>
 
-          <motion.form variants={rise} onSubmit={soumettre} className="flex flex-col gap-5">
+          <motion.form variants={rise} onSubmit={soumettre} className="flex flex-col gap-4">
             <Input
               label="Adresse e-mail"
               type="email"
@@ -345,46 +248,11 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
               type="submit"
               variant="primary"
               size="lg"
-              className="w-full"
+              className="mt-1 w-full"
               disabled={envoye || !email.trim() || !motDePasse}
             >
               {envoye ? "Ouverture…" : "Se connecter"}
             </Button>
-
-            {/* La mention qui rend l'écran honnête. Elle est dans le flux, pas
-                en note de bas de page : quelqu'un finit toujours par taper un
-                vrai mot de passe dans un formulaire qui n'en protège aucun. */}
-            <p className="flex gap-2 rounded-sm border border-border bg-surface p-3 text-caption text-ink-muted">
-              <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>
-                <strong className="text-ink">Démonstration.</strong> La
-                vérification se fait dans le navigateur, contre une liste
-                embarquée dans la page. N'y saisis jamais un mot de passe que tu
-                utilises ailleurs.
-              </span>
-            </p>
-
-            {/* Les comptes de test, cliquables. Sans eux, la première chose que
-                fait un jury est de demander « et je me connecte comment ? ». */}
-            <div className="flex flex-col gap-2 rounded-sm border border-border p-3">
-              <p className="label-eyebrow">Comptes de test</p>
-              {ACCOUNTS.filter((c) => c.demo).map((compte) => (
-                <button
-                  key={compte.email}
-                  type="button"
-                  onClick={() => remplir(compte)}
-                  className="flex flex-col rounded-sm px-2 py-1.5 text-left transition-colors duration-150 hover:bg-surface"
-                >
-                  <span className="font-mono text-caption text-ink">{compte.email}</span>
-                  <span className="text-caption text-ink-muted">
-                    {DEMO_ROLES[compte.email]}
-                  </span>
-                </button>
-              ))}
-              <p className="px-2 pt-1 font-mono text-caption text-ink-muted">
-                Mot de passe commun : vitanow2026
-              </p>
-            </div>
           </motion.form>
 
           <motion.div variants={rise} className="flex items-center gap-4">
@@ -399,9 +267,7 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
                 key={nom}
                 variant="secondary"
                 size="lg"
-                aria-label={`Continuer avec ${nom} — indisponible en démonstration`}
-                disabled
-                title="Indisponible en démonstration : la redirection OAuth suppose un serveur."
+                aria-label={`Continuer avec ${nom}`}
                 onClick={() => undefined}
                 className="text-ink"
               >
@@ -412,12 +278,10 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
         </motion.div>
       </div>
 
-      {/* Colonne de droite. La signature attribuée à Soa a disparu avec la
-          citation : ces phrases sont celles du produit, pas les siennes, et lui
-          en attribuer la paternité aurait été un faux. */}
-      <aside className="hidden items-center justify-center bg-surface px-10 py-14 lg:flex">
+      {/* Colonne de droite */}
+      <aside className="hidden h-full items-center justify-center bg-surface px-10 py-10 lg:flex">
         <div className="flex max-w-md flex-col items-center gap-8 text-center">
-          <img src="/logo-vita-now.png" alt="" className="h-auto w-auto shrink-0" />
+          <img src="/logo-vita-now.png" alt="" className="h-auto max-h-28 w-auto shrink-0 object-contain" />
           <PhrasesTournantes />
         </div>
       </aside>
