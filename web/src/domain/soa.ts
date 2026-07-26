@@ -19,8 +19,19 @@ export type Disponibilite = "Soirs" | "Week-ends" | "Vacances" | "Temps plein";
 
 /**
  * M1 — « Authentification (email, Google, GitHub, université en option) ».
- * En démonstration, aucun mot de passe n'est vérifié : le compte identifie,
- * il ne protège pas. C'est écrit à l'écran plutôt que sous-entendu.
+ *
+ * ⚠️ **Ceci n'est pas de la sécurité, et il ne faut pas le présenter comme
+ * telle.** La vérification se fait dans le navigateur, contre une liste
+ * embarquée dans le paquet JavaScript. N'importe qui peut ouvrir les outils de
+ * développement et lire tous les mots de passe en dix secondes.
+ *
+ * Ce que cela apporte quand même, et pourquoi c'est écrit plutôt que sauté :
+ * le produit a besoin de savoir **qui** est connecté — le tableau de bord, les
+ * projets, le profil et le portfolio changent tous selon la personne. Sans
+ * session, la démonstration ne peut montrer qu'un seul utilisateur.
+ *
+ * Une authentification réelle suppose un serveur qui garde les empreintes et
+ * délivre un jeton. Tant qu'il n'existe pas, l'écran de connexion le dit.
  */
 export type AuthProvider = "email" | "google" | "github" | "universite";
 
@@ -30,7 +41,25 @@ export interface Account {
   studentId: string;
   email: string;
   provider: AuthProvider;
+  /**
+   * En clair, et assumé : une empreinte calculée côté navigateur donnerait
+   * l'illusion d'une protection sans en apporter une seule — le code qui la
+   * vérifie est livré avec elle. Mieux vaut que la nature du dispositif soit
+   * lisible dans le type que maquillée derrière un hachage décoratif.
+   */
+  motDePasse: string;
+  /** Renseigné pour les comptes de démonstration listés à l'écran. */
+  demo?: boolean;
 }
+
+/** Résultat d'une tentative de connexion — jamais un simple booléen. */
+export type AuthResult =
+  | { ok: true }
+  /* Distinguer les deux cas est un choix de démonstration, pas de sécurité :
+     sur un vrai service, dire « ce compte n'existe pas » révèle quels e-mails
+     sont inscrits. Ici il n'y a rien à protéger, et un jury qui se trompe de
+     compte doit comprendre pourquoi en une seconde. */
+  | { ok: false; raison: "inconnu" | "motDePasse" };
 
 export interface Student {
   id: string;

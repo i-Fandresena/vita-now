@@ -8,6 +8,8 @@ import {
 } from "react";
 
 import type {
+  Account,
+  AuthResult,
   Challenge,
   ChannelPrefs,
   CohortHealth,
@@ -107,9 +109,10 @@ interface SoaApi extends SoaState {
   markAllRead: () => void;
   setChannel: (canal: keyof ChannelPrefs, actif: boolean) => void;
 
-  /* M1 — authentification (mock : rien n'est vérifié) */
-  login: (email: string) => boolean;
-  signup: (draft: NewStudent) => void;
+  /* M1 — authentification. Voir `domain/soa.ts` : ceci n'est pas de la
+     sécurité, c'est une session qui permet de savoir qui est connecté. */
+  login: (email: string, motDePasse: string) => AuthResult;
+  signup: (draft: NewStudent) => AuthResult;
   logout: () => void;
   updateProfile: (patch: Partial<Student>) => void;
 
@@ -166,6 +169,7 @@ export interface NewThread {
 export interface NewStudent {
   nom: string;
   email: string;
+  motDePasse: string;
   universite: string;
   niveau: Student["niveau"];
   filiere: string;
@@ -183,6 +187,38 @@ export interface NewOpportunity {
 
 const SoaContext = createContext<SoaApi | null>(null);
 
+/**
+ * Persistance de la session.
+ *
+ * Sans elle, un rechargement de page déconnecte — et un rechargement arrive
+ * toujours, y compris en pleine soutenance. Seul l'identifiant est conservé :
+ * ni le mot de passe, ni les données, qui restent en mémoire et repartent de
+ * leur état initial. C'est une limite assumée du prototype, mais perdre sa
+ * session à chaque F5 en serait une autre, parfaitement évitable.
+ */
+const CLE_SESSION = "vitanow.session";
+
+function lireSession(): string | null {
+  try {
+    return window.localStorage.getItem(CLE_SESSION);
+  } catch {
+    // Navigation privée, stockage refusé : on continue sans persistance.
+    return null;
+  }
+}
+
+function ecrireSession(id: string | null) {
+  try {
+    if (id) window.localStorage.setItem(CLE_SESSION, id);
+    else window.localStorage.removeItem(CLE_SESSION);
+  } catch {
+    /* Sans stockage, la session ne survit pas au rechargement. Rien de plus. */
+  }
+}
+
+/** Les comptes créés pendant la session s'ajoutent à ceux du corpus. */
+let comptesVivants: Account[] = [...ACCOUNTS];
+
 let compteur = 0;
 const nouvelId = (prefixe: string) => `${prefixe}-${Date.now().toString(36)}-${compteur++}`;
 
@@ -197,10 +233,10 @@ export function SoaProvider({ children }: { children: ReactNode }) {
     notifications: NOTIFICATIONS,
     opportunities: OPPORTUNITIES,
     mentorRequests: MENTOR_REQUESTS,
-    // Une démonstration ne peut pas commencer par un écran de connexion : la
-    // session est ouverte d'emblée. `logout()` permet de montrer le parcours
-    // d'entrée quand le pitch le demande.
-    sessionId: CURRENT_STUDENT_ID,
+    // Reprise de la session précédente si elle existe. Sinon `null` : on
+    // entre par la landing, et la connexion est un vrai passage — c'est le
+    // parcours que le cadrage décrit (M1), pas un raccourci de démonstration.
+    sessionId: lireSession(),
     channels: { web: true, email: false, push: false },
   }));
 
@@ -584,41 +620,61 @@ export function SoaProvider({ children }: { children: ReactNode }) {
    * L'écran de connexion l'affiche noir sur blanc — laisser croire à une
    * authentification qui n'existe pas serait pire que ne pas en avoir.
    */
-  const login = useCallback((email: string): boolean => {
-    const compte = ACCOUNTS.find(
+  const login = useCallback((email: string, motDePasse: string): AuthResult => {
+    const compte = comptesVivants.find(
       (c) => c.email.toLowerCase() === email.trim().toLowerCase(),
     );
-    if (!compte) return false;
+    if (!compte) return { ok: false, raison: "inconnu" };
+    if (compte.motDePasse !== motDePasse) return { ok: false, raison: "motDePasse" };
+
     setState((s) => ({ ...s, sessionId: compte.studentId }));
-    return true;
+    ecrireSession(compte.studentId);
+    return { ok: true };
   }, []);
 
-  const signup = useCallback((draft: NewStudent) => {
+  const signup = useCallback((draft: NewStudent): AuthResult => {
+    const email = draft.email.trim().toLowerCase();
+    // Un e-mail déjà pris renvoie la même erreur qu'une connexion sur un
+    // compte inconnu : le formulaire n'a qu'un seul endroit où l'afficher.
+    if (comptesVivants.some((c) => c.email.toLowerCase() === email)) {
+      return { ok: false, raison: "inconnu" };
+    }
+
     const id = nouvelId("s");
     const etudiant: Student = {
       id,
-      nom: draft.nom,
+      nom: draft.nom.trim(),
       initiales: draft.nom
-        .split(" ")
+        .trim()
+        .split(/\s+/)
         .map((m) => m[0] ?? "")
         .slice(0, 2)
         .join("")
         .toUpperCase(),
-      universite: draft.universite,
+      universite: draft.universite.trim(),
       niveau: draft.niveau,
-      filiere: draft.filiere,
+      filiere: draft.filiere.trim(),
       technos: [],
       interets: [],
       disponibilites: [],
-      objectifs: draft.objectifs,
+      objectifs: draft.objectifs.trim(),
       mentor: false,
       promo: String(new Date().getFullYear() + 2),
     };
+
+    comptesVivants = [
+      ...comptesVivants,
+      { studentId: id, email, motDePasse: draft.motDePasse, provider: "email" },
+    ];
+
     setState((s) => ({ ...s, students: [...s.students, etudiant], sessionId: id }));
+    ecrireSession(id);
+    return { ok: true };
   }, []);
 
   const logout = useCallback(() => {
     setState((s) => ({ ...s, sessionId: null }));
+    ecrireSession(null);
   }, []);
 
   const updateProfile = useCallback((patch: Partial<Student>) => {

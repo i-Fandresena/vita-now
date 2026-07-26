@@ -2,6 +2,9 @@ import { motion } from "framer-motion";
 import { useState, type FormEvent } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
+import { useSoa } from "@/app/soa-store";
+import type { Niveau } from "@/domain/soa";
+import { cn } from "@/lib/cn";
 import { rise, sequence } from "@/lib/motion";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Field";
@@ -55,13 +58,47 @@ function salutDuJour(): string {
   return `Bon ${JOURS[new Date().getDay()]} !`;
 }
 
+/** Les niveaux du cadrage. Le champ est obligatoire : le matching de
+ *  compagnons et le suivi de promotion s'en servent tous les deux. */
+const NIVEAUX: Niveau[] = ["L1", "L2", "L3", "M1", "M2"];
+
 export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
+  const { signup } = useSoa();
+  const [form, setForm] = useState({
+    email: "",
+    nom: "",
+    motDePasse: "",
+    niveau: "L3" as Niveau,
+    filiere: "",
+  });
   const [envoye, setEnvoye] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  const complet =
+    form.email.trim() && form.nom.trim() && form.motDePasse.length >= 6 && form.filiere.trim();
 
   function soumettre(event: FormEvent) {
     event.preventDefault();
+    if (!complet) return;
+
     setEnvoye(true);
-    navigate({ name: "tableau" });
+    const resultat = signup({
+      nom: form.nom,
+      email: form.email,
+      motDePasse: form.motDePasse,
+      universite: "ENI Fianarantsoa",
+      niveau: form.niveau,
+      filiere: form.filiere,
+      objectifs: "",
+    });
+
+    if (resultat.ok) {
+      navigate({ name: "tableau" });
+      return;
+    }
+
+    setEnvoye(false);
+    setErreur("Un compte existe déjà pour cette adresse. Connecte-toi plutôt.");
   }
 
   function versConnexion(event: { preventDefault: () => void }) {
@@ -147,6 +184,12 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
               name="email"
               autoComplete="email"
               placeholder="prenom.nom@eni.mg"
+              value={form.email}
+              onChange={(event) => {
+                setForm({ ...form, email: event.target.value });
+                setErreur(null);
+              }}
+              error={erreur ?? undefined}
             />
             <Input
               label="Nom complet"
@@ -154,14 +197,52 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
               name="nom"
               autoComplete="name"
               placeholder="Votre nom"
+              value={form.nom}
+              onChange={(event) => setForm({ ...form, nom: event.target.value })}
             />
             <Input
               label="Mot de passe"
               type="password"
               name="motdepasse"
               autoComplete="new-password"
-              placeholder="Choisissez un mot de passe"
+              placeholder="Six caractères au minimum"
+              value={form.motDePasse}
+              onChange={(event) => setForm({ ...form, motDePasse: event.target.value })}
+              hint="Six caractères au minimum. Ne réutilise pas un mot de passe existant : la démonstration ne le protège pas."
             />
+            <Input
+              label="Filière"
+              type="text"
+              name="filiere"
+              placeholder="Génie logiciel"
+              value={form.filiere}
+              onChange={(event) => setForm({ ...form, filiere: event.target.value })}
+            />
+
+            {/* Le niveau conditionne le matching de compagnons et le suivi de
+                promotion : il ne peut pas être deviné après coup. */}
+            <fieldset className="flex flex-col gap-2">
+              <legend className="label-eyebrow mb-2">Niveau</legend>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Niveau">
+                {NIVEAUX.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    role="radio"
+                    aria-checked={n === form.niveau}
+                    onClick={() => setForm({ ...form, niveau: n })}
+                    className={cn(
+                      "h-11 w-14 rounded-full border text-body transition-colors duration-150",
+                      n === form.niveau
+                        ? "border-primary bg-primary-wash font-medium text-primary"
+                        : "border-border text-ink-muted hover:border-border-strong hover:text-ink",
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
 
             {/* Le modèle place ici deux liens vers une politique de
                 confidentialité et des conditions d'utilisation. Ni l'une ni les
@@ -169,7 +250,13 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
                 demande un consentement valent moins que rien. La phrase dit donc
                 l'état réel des choses. */}
 
-            <Button type="submit" variant="primary" size="lg" className="w-full">
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={envoye || !complet}
+            >
               {envoye ? "Ouverture…" : "S'inscrire"}
             </Button>
           </motion.form>

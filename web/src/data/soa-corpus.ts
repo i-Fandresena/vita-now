@@ -1104,11 +1104,61 @@ export const NOTIFICATIONS: Notification[] = [
  * le dit explicitement plutôt que de le laisser croire.
  */
 export const ACCOUNTS: Account[] = [
-  { studentId: "s-soa", email: "soa.rakotoarisoa@eni.mg", provider: "universite" },
-  { studentId: "s-hery", email: "hery.rakotomalala@eni.mg", provider: "email" },
-  { studentId: "s-lova", email: "lova.a@gmail.com", provider: "google" },
-  { studentId: "s-naina", email: "naina@users.noreply.github.com", provider: "github" },
+  {
+    studentId: "s-soa",
+    email: "soa@eni.mg",
+    motDePasse: "vitanow2026",
+    provider: "universite",
+    demo: true,
+  },
+  {
+    studentId: "s-hery",
+    email: "hery@eni.mg",
+    motDePasse: "vitanow2026",
+    provider: "email",
+    demo: true,
+  },
+  {
+    studentId: "s-lova",
+    email: "lova@eni.mg",
+    motDePasse: "vitanow2026",
+    provider: "google",
+    demo: true,
+  },
+  {
+    studentId: "s-fanja",
+    email: "fanja@eni.mg",
+    motDePasse: "vitanow2026",
+    provider: "email",
+    demo: true,
+  },
+  {
+    studentId: "s-naina",
+    email: "naina@eni.mg",
+    motDePasse: "vitanow2026",
+    provider: "github",
+    demo: true,
+  },
 ];
+
+/**
+ * Ce que chaque compte de démonstration permet de montrer.
+ *
+ * Le choix n'est pas arbitraire : une démonstration se joue mieux en changeant
+ * de personne qu'en changeant d'écran. Voir la reprise depuis le compte de Soa,
+ * puis le retour à l'auteur depuis celui d'Hery, raconte la boucle du produit
+ * bien mieux que deux onglets ouverts côte à côte.
+ */
+export const DEMO_ROLES: Record<string, string> = {
+  "soa@eni.mg":
+    "Le parcours principal — un projet en sommeil, une capsule de reprise, des projets arrêtés et documentés.",
+  "hery@eni.mg":
+    "L'auteur du corpus. Mentor, mémoire de 2022, c'est lui qui reçoit le retour quand son travail sert.",
+  "lova@eni.mg": "Mentor React, profil le mieux noté en collaboration.",
+  "fanja@eni.mg":
+    "Le profil qui démarre — peu de projets terminés, une impasse documentée.",
+  "naina@eni.mg": "Un projet arrêté faute de terrain, disponible à la reprise.",
+};
 
 /* ── M12 — Points SOA ───────────────────────────────────────────────────── */
 

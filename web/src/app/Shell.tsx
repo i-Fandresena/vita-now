@@ -6,6 +6,7 @@ import {
   LibraryBig,
   UserRound,
   Users,
+  LogOut,
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
@@ -293,7 +294,7 @@ const TITRES: Partial<Record<Route["name"], string>> = {
 
 export function Shell({ route, navigate, children }: ShellProps) {
   const espace = spaceOf(route);
-  const { unread } = useVitanow();
+  const { unread, logout, me } = useVitanow();
 
   /* Appelé sans condition, comme tout hook — mais avec une liste vide hors de
      la landing, ce qui démonte l'observateur au lieu de le laisser tourner sur
@@ -463,6 +464,22 @@ export function Shell({ route, navigate, children }: ShellProps) {
                 onClick={() => navigate({ name: "ent-accueil" })}
               >
                 Espace entreprise →
+              </Button>
+              {/* `destructive-nav-separation` : la déconnexion est séparée du
+                  reste par un filet. Elle change d'état, contrairement à tout
+                  ce qui la précède, et une action qui change d'état ne se colle
+                  pas à des liens de navigation. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 justify-start border-t border-border pt-4"
+                onClick={() => {
+                  logout();
+                  navigate({ name: "accueil" });
+                }}
+              >
+                <LogOut aria-hidden className="size-4" />
+                Se déconnecter ({me.nom.split(" ")[0]})
               </Button>
             </div>
           )

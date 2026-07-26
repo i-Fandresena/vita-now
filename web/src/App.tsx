@@ -1,10 +1,11 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useEffect } from "react";
 
 import { RepositoryProvider } from "./app/repository";
-import { routeKey, useRoute, type Route } from "./app/router";
+import { routeKey, spaceOf, useRoute, type Route } from "./app/router";
 import { SearchProvider } from "./app/search-store";
 import { Shell } from "./app/Shell";
-import { VitanowProvider } from "./app/vitanow-store";
+import { useSoa, VitanowProvider } from "./app/vitanow-store";
 import { fade, reduceVariants } from "./lib/motion";
 import { CapsuleScreen } from "./screens/CapsuleScreen";
 import {
@@ -148,10 +149,41 @@ function CurrentScreen({
   }
 }
 
+/**
+ * Garde de session.
+ *
+ * Sans elle, `#/tableau` tapé directement afficherait l'application sans que
+ * personne se soit connecté — et le tableau de bord, qui lit `me`, tomberait
+ * sur l'utilisateur par défaut. Le parcours d'entrée décrit par le cadrage
+ * (M1) deviendrait une décoration qu'on peut contourner en changeant l'URL.
+ *
+ * La redirection remplace l'entrée d'historique au lieu d'en ajouter une :
+ * sinon, le bouton « précédent » du navigateur renverrait sur la page protégée,
+ * qui redirigerait à nouveau, et l'utilisateur serait piégé dans une boucle.
+ */
+function useGardeSession(route: Route) {
+  const { connecte } = useSoa();
+  const publique = spaceOf(route) === "public";
+
+  useEffect(() => {
+    if (!connecte && !publique) {
+      window.location.replace(`${window.location.pathname}#/connexion`);
+    }
+  }, [connecte, publique]);
+
+  return connecte || publique;
+}
+
 function Screens() {
   const { route, navigate } = useRoute();
   const reduced = useReducedMotion() ?? false;
   const variants = reduceVariants(fade, reduced);
+  const autorise = useGardeSession(route);
+
+  /* Tant que la redirection n'a pas eu lieu, on ne rend rien : afficher un
+     écran protégé une fraction de seconde avant de le remplacer produit un
+     clignotement, et laisse entrevoir des données qui ne sont pas les siennes. */
+  if (!autorise) return null;
 
   return (
     <Shell route={route} navigate={navigate}>

@@ -1,7 +1,10 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ShieldAlert } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
+import { useSoa } from "@/app/soa-store";
+import { ACCOUNTS, DEMO_ROLES } from "@/data/soa-corpus";
 import { cn } from "@/lib/cn";
 import { EASE, rise, sequence } from "@/lib/motion";
 import { Button } from "@/ui/Button";
@@ -233,12 +236,39 @@ function PhrasesTournantes() {
 }
 
 export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
+  const { login } = useSoa();
+  const [email, setEmail] = useState("");
+  const [motDePasse, setMotDePasse] = useState("");
   const [envoye, setEnvoye] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
 
   function soumettre(event: FormEvent) {
     event.preventDefault();
+    if (!email.trim() || !motDePasse) return;
+
     setEnvoye(true);
-    navigate({ name: "tableau" });
+    const resultat = login(email, motDePasse);
+
+    if (resultat.ok) {
+      navigate({ name: "tableau" });
+      return;
+    }
+
+    setEnvoye(false);
+    /* `error-clarity` : dire la cause **et** la sortie. Un « identifiants
+       invalides » laisse chercher lequel des deux champs est en cause. */
+    setErreur(
+      resultat.raison === "inconnu"
+        ? "Aucun compte pour cette adresse. Vérifie l'orthographe, ou crée un compte."
+        : "Mot de passe incorrect pour cette adresse.",
+    );
+  }
+
+  /** Remplit les deux champs d'un coup — la démonstration doit aller vite. */
+  function remplir(compte: { email: string; motDePasse: string }) {
+    setEmail(compte.email);
+    setMotDePasse(compte.motDePasse);
+    setErreur(null);
   }
 
   return (
@@ -291,6 +321,11 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
               name="email"
               autoComplete="email"
               placeholder="prenom.nom@eni.mg"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setErreur(null);
+              }}
             />
             <Input
               label="Mot de passe"
@@ -298,15 +333,58 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
               name="motdepasse"
               autoComplete="current-password"
               placeholder="Votre mot de passe"
+              value={motDePasse}
+              onChange={(event) => {
+                setMotDePasse(event.target.value);
+                setErreur(null);
+              }}
+              error={erreur ?? undefined}
             />
 
-            <Button type="submit" variant="primary" size="lg" className="w-full">
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={envoye || !email.trim() || !motDePasse}
+            >
               {envoye ? "Ouverture…" : "Se connecter"}
             </Button>
 
             {/* La mention qui rend l'écran honnête. Elle est dans le flux, pas
                 en note de bas de page : quelqu'un finit toujours par taper un
-                vrai mot de passe dans un formulaire qui n'en demande pas. */}
+                vrai mot de passe dans un formulaire qui n'en protège aucun. */}
+            <p className="flex gap-2 rounded-sm border border-border bg-surface p-3 text-caption text-ink-muted">
+              <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>
+                <strong className="text-ink">Démonstration.</strong> La
+                vérification se fait dans le navigateur, contre une liste
+                embarquée dans la page. N'y saisis jamais un mot de passe que tu
+                utilises ailleurs.
+              </span>
+            </p>
+
+            {/* Les comptes de test, cliquables. Sans eux, la première chose que
+                fait un jury est de demander « et je me connecte comment ? ». */}
+            <div className="flex flex-col gap-2 rounded-sm border border-border p-3">
+              <p className="label-eyebrow">Comptes de test</p>
+              {ACCOUNTS.filter((c) => c.demo).map((compte) => (
+                <button
+                  key={compte.email}
+                  type="button"
+                  onClick={() => remplir(compte)}
+                  className="flex flex-col rounded-sm px-2 py-1.5 text-left transition-colors duration-150 hover:bg-surface"
+                >
+                  <span className="font-mono text-caption text-ink">{compte.email}</span>
+                  <span className="text-caption text-ink-muted">
+                    {DEMO_ROLES[compte.email]}
+                  </span>
+                </button>
+              ))}
+              <p className="px-2 pt-1 font-mono text-caption text-ink-muted">
+                Mot de passe commun : vitanow2026
+              </p>
+            </div>
           </motion.form>
 
           <motion.div variants={rise} className="flex items-center gap-4">
@@ -322,7 +400,9 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
                 variant="secondary"
                 size="lg"
                 aria-label={`Continuer avec ${nom} — indisponible en démonstration`}
-                onClick={() => navigate({ name: "tableau" })}
+                disabled
+                title="Indisponible en démonstration : la redirection OAuth suppose un serveur."
+                onClick={() => undefined}
                 className="text-ink"
               >
                 <LogoFournisseur nom={nom} tracés={tracés} />

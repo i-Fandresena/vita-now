@@ -26,6 +26,7 @@ export type Route =
   | { name: "memoire" }
   | { name: "communaute" }
   | { name: "profil"; id?: string }
+  | { name: "profil-edition" }
   /* Étudiant — écrans profonds */
   | { name: "projet"; id: string }
   | { name: "projet-nouveau" }
@@ -108,6 +109,7 @@ const TAB_PARENT: Partial<Record<Route["name"], Route["name"]>> = {
   mentorat: "communaute",
   notifications: "tableau",
   classements: "profil",
+  "profil-edition": "profil",
   portfolio: "profil",
   opportunites: "profil",
 };
@@ -145,6 +147,7 @@ export function parseRoute(hash: string): Route {
       if (milieu === "sujet" && queue) return { name: "sujet", id: queue };
       return { name: "communaute" };
     case "profil":
+      if (milieu === "edition") return { name: "profil-edition" };
       return { name: "profil", id: milieu };
     case "reprise":
       return { name: "reprise" };
@@ -220,6 +223,8 @@ export function hrefFor(route: Route): string {
       return `#/communaute/sujet/${route.id}`;
     case "profil":
       return route.id ? `#/profil/${route.id}` : "#/profil";
+    case "profil-edition":
+      return "#/profil/edition";
     case "reprise":
       return "#/reprise";
     case "renaissance":
