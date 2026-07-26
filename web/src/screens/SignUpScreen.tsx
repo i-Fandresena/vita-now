@@ -79,7 +79,10 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
 
   function soumettre(event: FormEvent) {
     event.preventDefault();
-    if (!complet) return;
+    if (!complet) {
+      setErreur("Veuillez remplir tous les champs obligatoires (mot de passe 6 caractères min).");
+      return;
+    }
 
     setEnvoye(true);
     const resultat = signup({
@@ -219,8 +222,8 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
               type="submit"
               variant="primary"
               size="lg"
-              className="mt-1 w-full"
-              disabled={envoye || !complet}
+              className="mt-1 w-full bg-primary text-on-primary hover:bg-primary/90 cursor-pointer"
+              disabled={envoye}
             >
               {envoye ? "Ouverture…" : "S'inscrire"}
             </Button>

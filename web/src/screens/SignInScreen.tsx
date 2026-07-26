@@ -158,7 +158,10 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
 
   function soumettre(event: FormEvent) {
     event.preventDefault();
-    if (!email.trim() || !motDePasse) return;
+    if (!email.trim() || !motDePasse) {
+      setErreur("Veuillez remplir votre adresse e-mail et votre mot de passe.");
+      return;
+    }
 
     setEnvoye(true);
     const resultat = login(email, motDePasse);
@@ -248,8 +251,8 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
               type="submit"
               variant="primary"
               size="lg"
-              className="mt-1 w-full"
-              disabled={envoye || !email.trim() || !motDePasse}
+              className="mt-1 w-full bg-primary text-on-primary hover:bg-primary/90 cursor-pointer"
+              disabled={envoye}
             >
               {envoye ? "Ouverture…" : "Se connecter"}
             </Button>
