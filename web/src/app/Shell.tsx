@@ -593,12 +593,18 @@ export function Shell({ route, navigate, children }: ShellProps) {
                 Se connecter
               </Button>
               <Button
-                variant="primary"
-                size="sm"
-                onClick={() => navigate({ name: "tableau" })}
-              >
-                Commencer
-              </Button>
+  variant="primary"
+  size="sm"
+  className="
+    bg-[#FFD633]
+    text-black
+    hover:bg-[#E6C200]
+    border-0
+  "
+  onClick={() => navigate({ name: "tableau" })}
+>
+  Commencer
+</Button>
             </div>
           </div>
         </motion.header>

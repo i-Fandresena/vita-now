@@ -232,13 +232,12 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
               {/* Le curseur, posé sur le bord du texte révélé. */}
               <span
                 aria-hidden
-                className="type-caret absolute top-[0.06em] bottom-[0.06em] w-[0.05em] bg-primary"
+                className="type-caret absolute top-[0.06em] bottom-[0.06em] w-[0.05em] bg-[#FFD633]"
               />
 
               <span
                 aria-hidden
-                className="absolute -top-[0.08em] -right-[0.42em] font-sans text-[0.26em] leading-none text-primary"
-              >
+                className="absolute -top-[0.08em] -right-[0.42em] font-sans text-[0.26em] leading-none text-[#FFD633]"              >
                 *
               </span>
             </span>
@@ -263,6 +262,7 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
             <Button
               variant="primary"
               size="lg"
+              className="bg-[#FFD633] text-black hover:bg-[#E6C200]"
               onClick={() => navigate({ name: "tableau" })}
             >
               Entrer dans VITA'NOW

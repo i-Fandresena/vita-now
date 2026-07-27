@@ -233,14 +233,14 @@
      près d'un cadratin — et les rognait en haut comme en bas. Le rembourrage
      vertical rend au bloc la marge que le modèle lui donne. */
   .mark-block {
-    display: inline-block;
-    background-color: var(--color-primary);
-    color: var(--color-on-primary);
-    line-height: 1;
-    padding-block: 0.06em;
-    padding-inline: 0.12em;
-    transform: rotate(-1deg);
-  }
+  display: inline-block;
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
+  line-height: 1;
+  padding-block: 0.06em;
+  padding-inline: 0.12em;
+  transform: rotate(-1deg);
+}
 
   /* L'aura du modèle Raycast — le dégradé qui cerne un panneau.
      L'utilitaire ne porte **que** le dégradé : ni flou, ni opacité, ni
