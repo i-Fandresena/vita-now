@@ -20,7 +20,7 @@ import { PointsCelebration } from "@/features/points/PointsCelebration";
 import { BandeauPlateforme } from "@/ui/BandeauPlateforme";
 import { BasculeTheme } from "@/ui/BasculeTheme";
 import { Button } from "@/ui/Button";
-import { Icon } from "@/ui/Icon";
+import { GeminiLogo, Icon } from "@/ui/Icon";
 import { activeTab, estEcranNu, hrefFor, spaceOf, type Route } from "./router";
 
 /**
@@ -1148,7 +1148,7 @@ export function Shell({ route, navigate, children }: ShellProps) {
                   label: "Copilote IA",
                   name: "copilote",
                   route: { name: "copilote" },
-                  icon: (props) => <Icon name="sparkle" size={20} {...props} />,
+                  icon: (props) => <GeminiLogo size={20} {...props} />,
                 },
                 {
                   label: "Notifications",

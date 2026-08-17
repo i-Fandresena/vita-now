@@ -6,7 +6,6 @@ import {
   MessageSquarePlus,
   Presentation,
   Send,
-  Sparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
@@ -19,6 +18,7 @@ import {
 } from "@/data/api";
 import { cn } from "@/lib/cn";
 import { Button } from "@/ui/Button";
+import { GeminiLogo } from "@/ui/Icon";
 import { Screen, ScreenHead } from "@/ui/layout";
 
 type RoleDefinition = {
@@ -93,7 +93,6 @@ export function CopilotScreen() {
   const finConversation = useRef<HTMLDivElement>(null);
 
   const roleActif = ROLES.find((item) => item.id === role) ?? ROLES[0]!;
-  const RoleIcon = roleActif.icon;
   const conversationActive = conversations.find((item) => item.id === conversationId);
 
   const chargerHistorique = useCallback(async () => {
@@ -194,7 +193,7 @@ export function CopilotScreen() {
       />
 
       <div className="mt-4 rounded-card border border-primary/20 bg-primary-wash p-3 text-caption text-primary flex items-center gap-2">
-        <Brain size={16} className="shrink-0" />
+        <GeminiLogo size={16} className="shrink-0" />
         <span>
           <strong>Cadre pédagogique & professionnel :</strong> Le Copilote IA est configuré pour répondre exclusivement aux sujets liés à vos projets académiques, compétences informatiques et monde professionnel.
         </span>
@@ -261,7 +260,7 @@ export function CopilotScreen() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-on-primary shadow-card">
-                  <RoleIcon size={18} aria-hidden />
+                  <GeminiLogo size={18} aria-hidden />
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-body font-semibold text-ink">
@@ -309,7 +308,7 @@ export function CopilotScreen() {
             {API_ACTIVE && !discussionChargee && messages.length === 0 && (
               <div className="mx-auto flex max-w-xl flex-col items-start gap-4 py-8 sm:py-14">
                 <span className="grid size-12 place-items-center rounded-2xl bg-primary-wash text-primary">
-                  <Sparkles size={23} aria-hidden />
+                  <GeminiLogo size={24} aria-hidden />
                 </span>
                 <div>
                   <h2 className="font-heading text-heading text-ink">Qu’aimerais-tu débloquer ?</h2>
@@ -331,7 +330,7 @@ export function CopilotScreen() {
               <article key={message.id} className={cn("flex gap-2.5", message.author === "user" ? "justify-end" : "justify-start")}>
                 {message.author === "assistant" && (
                   <span className="mt-1 grid size-7 shrink-0 place-items-center rounded-full bg-primary-wash text-primary">
-                    <RoleIcon size={14} aria-hidden />
+                    <GeminiLogo size={15} aria-hidden />
                   </span>
                 )}
                 <div className={cn("max-w-[88%] rounded-2xl px-4 py-3 sm:max-w-[76%] xl:max-w-[62rem]", message.author === "user" ? "rounded-tr-sm bg-primary text-on-primary shadow-card" : "rounded-tl-sm border border-border bg-card text-ink shadow-card")}>
@@ -343,7 +342,7 @@ export function CopilotScreen() {
 
             {envoi && (
               <div className="flex items-center gap-2.5" role="status" aria-label="Le Copilote prépare sa réponse">
-                <span className="grid size-7 place-items-center rounded-full bg-primary-wash text-primary"><RoleIcon size={14} aria-hidden /></span>
+                <span className="grid size-7 place-items-center rounded-full bg-primary-wash text-primary"><GeminiLogo size={15} aria-hidden /></span>
                 <span className="flex items-center gap-2 rounded-2xl rounded-tl-sm border border-border bg-card px-4 py-3 text-caption text-ink-muted shadow-card">
                   <LoaderCircle size={16} className="animate-spin" aria-hidden /> Le Copilote réfléchit…
                 </span>

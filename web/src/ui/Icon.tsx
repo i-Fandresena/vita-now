@@ -93,6 +93,25 @@ interface IconProps extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
   size?: number;
 }
 
+export function GeminiLogo({ size = 20, className, style }: { size?: number; className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={{ display: "inline-block", flexShrink: 0, ...style }}
+    >
+      <path
+        d="M12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 export function Icon({ name, size = 20, className, style, ...rest }: IconProps) {
   return (
     <UseAnimations
