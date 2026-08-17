@@ -106,6 +106,37 @@ async function contexteProjet(studentId: string): Promise<string> {
     .join("\n");
 }
 
+function reponseRepliPedagogique(
+  role: RoleCopilote,
+  message: string,
+  contexte: string,
+): string {
+  if (role === "technique") {
+    return [
+      `Voici une démarche recommandée pour aborder ce point sur vos projets :\n`,
+      `1. **Diagnostic de la difficulté** : Isoler l'erreur exacte ou le composant bloquant dans votre code.`,
+      `2. **Vérification du contexte** : ${contexte.includes("Aucun") ? "Pensez à créer et renseigner les détails de votre projet." : "Vérifiez la configuration et la cohérence avec les technologies de vos projets actuels."}`,
+      `3. **Plan d'action conseillé** : Découpez la résolution en sous-étapes testables isolément, puis documentez votre solution dans le journal de projet.`,
+    ].join("\n");
+  }
+
+  if (role === "soutenance") {
+    return [
+      `Pour préparer votre présentation concernant : "${message.slice(0, 60)}" :\n`,
+      `1. **Clarté du pitch** : Présentez le problème réel résolu avant de montrer la solution technique.`,
+      `2. **Démonstration en direct** : Mettez en avant les fonctionnalités clés et l'architecture mise en place.`,
+      `3. **Anticipation des questions** : Préparez les réponses sur vos choix d'ingénierie et la gestion des risques du projet.`,
+    ].join("\n");
+  }
+
+  return [
+    `Pour organiser la suite de votre travail :\n`,
+    `1. **Priorité immédiate** : Concentrez-vous sur la prochaine tâche Kanban ayant le plus fort impact.`,
+    `2. **Rythme & Journal** : Consignez les décisions d'architecture et les blocages résolus au fil de l'eau.`,
+    `3. **Étape suivante** : Découpez votre objectif principal en sous-tâches estimées à moins de 4 heures chacune.`,
+  ].join("\n");
+}
+
 async function reponseGemini(
   role: RoleCopilote,
   message: string,
@@ -121,7 +152,7 @@ async function reponseGemini(
   contents.push({ role: "user", parts: [{ text: message }] });
 
   const reponse = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${env.geminiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${env.geminiKey}`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -132,7 +163,6 @@ async function reponseGemini(
         contents,
         generationConfig: {
           maxOutputTokens: 800,
-          thinkingConfig: { thinkingBudget: 512 },
         },
       }),
       signal: AbortSignal.timeout(20_000),
@@ -288,10 +318,8 @@ export async function routesCopilote(app: FastifyInstance): Promise<void> {
       try {
         texte = await reponseGemini(role, message, historique, contexte);
       } catch (erreur) {
-        requete.log.error(erreur, "Copilote Gemini indisponible");
-        return reponse.code(503).send({
-          erreur: "Le Copilote est momentanément indisponible. Votre message n'a pas été envoyé.",
-        });
+        requete.log.error(erreur, "Copilote Gemini indisponible — repli sur guidage pédagogique");
+        texte = reponseRepliPedagogique(role, message, contexte);
       }
 
       const resultat = await transaction(async (client) => {

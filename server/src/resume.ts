@@ -331,12 +331,11 @@ async function parGemini(
     ],
     generationConfig: {
       responseMimeType: "application/json",
-      thinkingConfig: { thinkingBudget: 512 },
     },
   };
 
   const reponse = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${env.geminiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${env.geminiKey}`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
