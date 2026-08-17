@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ComponentType } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
-import { BADGES, COMPANIES, MENTORS, RELIABILITY, studentById } from "@/data/soa-corpus";
+import { BADGES, COMPANIES, MENTORS, studentById } from "@/data/soa-corpus";
 import {
   FORUM_CATEGORIES,
   POINT_LABELS,
@@ -633,13 +633,36 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
     }).filter((g) => g.classes.length > 0);
   }, [projetsEvalues]);
 
-  const lignes = [...RELIABILITY]
-    .map((r) => ({
-      student: students.find((s) => s.id === r.studentId) ?? studentById(r.studentId)!,
-      valeur: type === "progression" ? r.regularite : r.entraide,
-    }))
-    .filter((l) => l.student)
-    .sort((a, b) => b.valeur - a.valeur);
+  /** Calcul dynamique de régularité et entraide basé sur les données réelles. */
+  const lignes = useMemo(() => {
+    return students
+      .map((student) => {
+        const sesProjets = projects.filter(
+          (p) => p.ownerId === student.id || p.membres?.includes(student.id),
+        );
+        const etapesFaites = sesProjets.reduce(
+          (sum, p) => sum + (p.checklist?.filter((c) => c.fait).length ?? 0),
+          0,
+        );
+        const journalEntriesCount = sesProjets.reduce(
+          (sum, p) => sum + journalFor(p.id).length,
+          0,
+        );
+        const tachesAssignees = sesProjets.reduce(
+          (sum, p) => sum + (p.checklist?.filter((c) => c.assigneA === student.id).length ?? 0),
+          0,
+        );
+
+        const regularite = (sesProjets.length * 10) + (etapesFaites * 5) + (journalEntriesCount * 4);
+        const entraide = (sesProjets.filter((p) => p.membres && p.membres.length > 1).length * 15) + (tachesAssignees * 8) + 10;
+
+        return {
+          student,
+          valeur: type === "progression" ? regularite : entraide,
+        };
+      })
+      .sort((a, b) => b.valeur - a.valeur);
+  }, [students, projects, journalFor, type]);
 
   const actif = CLASSEMENTS.find((c) => c.cle === type) ?? CLASSEMENTS[0]!;
 
