@@ -165,7 +165,7 @@ async function reponseGemini(
           maxOutputTokens: 800,
         },
       }),
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(15_000),
     },
   );
 
