@@ -1,5 +1,4 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Clock, Search } from "lucide-react";
 
 import type { Route } from "@/app/router";
 import { useSearch } from "@/app/search-store";
@@ -7,6 +6,7 @@ import { useSoa } from "@/app/soa-store";
 import { joursDepuis } from "@/domain/soa";
 import { EASE } from "@/lib/motion";
 import { Button } from "@/ui/Button";
+import { Icon } from "@/ui/Icon";
 import { Screen, ScreenHead } from "@/ui/layout";
 import { EmptyState } from "@/ui/states";
 
@@ -76,7 +76,7 @@ export function CapsuleScreen({ navigate }: { navigate: (to: Route) => void }) {
         {...etape(0)}
         className="mt-4 flex items-center gap-2 text-caption text-ink-muted"
       >
-        <Clock aria-hidden className="size-3.5" />
+        <Icon name="clock" size={14} aria-hidden />
         Dernière activité il y a {jours} jour{jours > 1 ? "s" : ""}
       </motion.p>
 
@@ -120,7 +120,7 @@ export function CapsuleScreen({ navigate }: { navigate: (to: Route) => void }) {
                 navigate({ name: "memoire" });
               }}
             >
-              <Search aria-hidden className="size-4" />
+              <Icon name="search" size={16} aria-hidden />
               Chercher ce blocage dans le corpus
             </Button>
             <Button

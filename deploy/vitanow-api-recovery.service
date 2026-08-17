@@ -1,0 +1,7 @@
+[Unit]
+Description=VITA'NOW — reprise de l'API après un contrôle de santé en échec
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl reset-failed vitanow-api.service
+ExecStart=/bin/systemctl restart vitanow-api.service

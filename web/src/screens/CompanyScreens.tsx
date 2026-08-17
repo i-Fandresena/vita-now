@@ -1,20 +1,18 @@
-import { Award, Building2, Check, Filter, Search, Trophy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Filter } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
-import {
-  COMPANIES,
-  OPPORTUNITIES,
-  STUDENTS,
-  reliabilityFor,
-  studentById,
-} from "@/data/soa-corpus";
+import { COMPANIES, STUDENTS, reliabilityFor, studentById } from "@/data/soa-corpus";
 import type { Company, Niveau, ReliabilityScore, TalentMatch } from "@/domain/soa";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
 import { Avatar, DefRow, Progress, ScoreRing, Stat } from "@/ui/data";
-import { Block, CardLink, ScreenHead, Tabs, WideScreen } from "@/ui/layout";
+import { Dialog } from "@/ui/Dialog";
+import { Input, Textarea } from "@/ui/Field";
+import { Icon, type IconName } from "@/ui/Icon";
+import { Block, CardLink, Screen, ScreenHead, Tabs, WideScreen } from "@/ui/layout";
+import { Pagination } from "@/ui/Pagination";
 import { EmptyState } from "@/ui/states";
 
 /**
@@ -35,8 +33,8 @@ const ENTREPRISE_COURANTE: Company = COMPANIES[2]!; // Agrivia
 /* ── E1 — Accueil ───────────────────────────────────────────────────────── */
 
 export function CompanyHomeScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { projects } = useSoa();
-  const e = ENTREPRISE_COURANTE;
+  const { projects, opportunities, entreprise, entrepriseConnectee } = useSoa();
+  const e = entreprise ?? ENTREPRISE_COURANTE;
 
   const prototypes = projects.filter((p) => p.public && p.status === "Terminé").length;
   const candidats = STUDENTS.length;
@@ -48,10 +46,20 @@ export function CompanyHomeScreen({ navigate }: { navigate: (to: Route) => void 
         titre={e.nom}
         lede={e.presentation}
         actions={
-          <Button variant="primary" onClick={() => navigate({ name: "ent-talents" })}>
-            <Search aria-hidden className="size-4" />
-            Chercher un profil
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {entrepriseConnectee && (
+              <Button
+                variant="secondary"
+                onClick={() => navigate({ name: "ent-profil-edition" })}
+              >
+                Modifier le profil
+              </Button>
+            )}
+            <Button variant="primary" onClick={() => navigate({ name: "ent-talents" })}>
+              <Icon name="search" size={16} aria-hidden />
+              Chercher un profil
+            </Button>
+          </div>
         }
       />
 
@@ -73,7 +81,7 @@ export function CompanyHomeScreen({ navigate }: { navigate: (to: Route) => void 
         <Stat valeur={candidats} libelle="Profils consultables" />
         <Stat valeur={prototypes} libelle="Prototypes livrés" />
         <Stat
-          valeur={OPPORTUNITIES.filter((o) => o.companyId === e.id).length}
+          valeur={opportunities.filter((o) => o.companyId === e.id).length}
           libelle="Offres publiées"
         />
         <Stat valeur={1} libelle="Challenge sponsorisé" />
@@ -82,7 +90,7 @@ export function CompanyHomeScreen({ navigate }: { navigate: (to: Route) => void 
       <Block titre="Le principe">
         <div className="rounded-card border border-accent bg-accent-soft p-5 sm:p-6">
           <p className="prose-measure text-body text-on-accent">
-            Un CV dit ce qu'un étudiant a appris. SOA dit ce qu'il a{" "}
+            Un CV dit ce qu'un étudiant a appris. L'utilisateur dit ce qu'il a{" "}
             <strong>terminé</strong>, ce qu'il a <strong>arrêté</strong> et pourquoi,
             ce qu'il a <strong>documenté</strong>, et à qui son travail a{" "}
             <strong>servi</strong>. C'est ce que vous regardez ici.
@@ -101,29 +109,29 @@ export function CompanyHomeScreen({ navigate }: { navigate: (to: Route) => void 
               titre: "Talents",
               corps: "Recherche multicritère avec correspondance.",
               route: { name: "ent-talents" } as Route,
-              icone: Search,
+              icone: "search" as IconName,
             },
             {
               titre: "Opportunités",
               corps: "Vos offres de projets et de stages.",
               route: { name: "ent-opportunites" } as Route,
-              icone: Building2,
+              icone: "building" as IconName,
             },
             {
               titre: "Challenges",
               corps: "Sponsoriser un challenge encadré.",
               route: { name: "ent-challenges" } as Route,
-              icone: Trophy,
+              icone: "trophy" as IconName,
             },
             {
               titre: "Prototypes",
               corps: "Découvrir les projets étudiants livrés.",
               route: { name: "ent-marketplace" } as Route,
-              icone: Award,
+              icone: "sparkle" as IconName,
             },
-          ].map(({ titre, corps, route, icone: Icone }) => (
+          ].map(({ titre, corps, route, icone }) => (
             <CardLink key={titre} href={hrefFor(route)} onClick={() => navigate(route)}>
-              <Icone aria-hidden className="size-5 text-primary" />
+              <Icon name={icone} size={20} aria-hidden className="text-primary" />
               <h3 className="mt-3 text-body font-semibold text-ink">{titre}</h3>
               <p className="mt-1 text-caption text-ink-muted">{corps}</p>
             </CardLink>
@@ -131,6 +139,95 @@ export function CompanyHomeScreen({ navigate }: { navigate: (to: Route) => void 
         </div>
       </Block>
     </WideScreen>
+  );
+}
+
+/* ── Édition du profil entreprise — hors cadrage, addition ──────────────── */
+
+export function CompanyProfileEditScreen({ navigate }: { navigate: (to: Route) => void }) {
+  const { entreprise, updateCompanyProfile } = useSoa();
+  // Cet écran n'est atteignable que par une entreprise réellement connectée
+  // (voir useGardeSession, App.tsx) — `entreprise` y est donc toujours non
+  // nul en pratique. Le repli vide protège seulement le rendu du premier tour
+  // avant hydratation, jamais une vraie absence de session.
+  const [form, setForm] = useState({
+    nom: entreprise?.nom ?? "",
+    secteur: entreprise?.secteur ?? "",
+    presentation: entreprise?.presentation ?? "",
+  });
+  const [technosRecherchees, setTechnosRecherchees] = useState(
+    (entreprise?.technosRecherchees ?? []).join(", "),
+  );
+  const [profilsRecherches, setProfilsRecherches] = useState(
+    (entreprise?.profilsRecherches ?? []).join(", "),
+  );
+
+  function soumettre(event: FormEvent) {
+    event.preventDefault();
+    updateCompanyProfile({
+      ...form,
+      technosRecherchees: technosRecherchees
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      profilsRecherches: profilsRecherches
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean),
+    });
+    navigate({ name: "ent-accueil" });
+  }
+
+  return (
+    <Screen>
+      <ScreenHead
+        eyebrow="Espace entreprise"
+        titre="Modifier le profil"
+        retour={{ name: "ent-accueil" }}
+        onRetour={navigate}
+      />
+
+      <form onSubmit={soumettre} className="mt-8 flex max-w-2xl flex-col gap-8">
+        <Input
+          label="Nom de l'entreprise"
+          value={form.nom}
+          onChange={(e) => setForm({ ...form, nom: e.target.value })}
+        />
+        <Input
+          label="Secteur"
+          value={form.secteur}
+          onChange={(e) => setForm({ ...form, secteur: e.target.value })}
+        />
+        <Textarea
+          label="Présentation"
+          rows={4}
+          value={form.presentation}
+          onChange={(e) => setForm({ ...form, presentation: e.target.value })}
+          hint="Affichée en tête de votre espace entreprise."
+        />
+        <Input
+          label="Technologies recherchées"
+          value={technosRecherchees}
+          onChange={(e) => setTechnosRecherchees(e.target.value)}
+          hint="Séparées par des virgules."
+        />
+        <Input
+          label="Profils recherchés"
+          value={profilsRecherches}
+          onChange={(e) => setProfilsRecherches(e.target.value)}
+          hint="Séparés par des virgules — « stagiaires, alternants, juniors »."
+        />
+
+        <div className="flex flex-wrap gap-3">
+          <Button type="submit" variant="primary" size="lg">
+            Enregistrer
+          </Button>
+          <Button variant="ghost" onClick={() => navigate({ name: "ent-accueil" })}>
+            Annuler
+          </Button>
+        </div>
+      </form>
+    </Screen>
   );
 }
 
@@ -143,6 +240,7 @@ export function TalentsScreen({ navigate }: { navigate: (to: Route) => void }) {
   const [techno, setTechno] = useState("");
   const [niveau, setNiveau] = useState<Niveau | "Tous">("Tous");
   const [minTermines, setMinTermines] = useState(0);
+  const [page, setPage] = useState(1);
 
   /**
    * Le matching du cadrage : « 5 étudiants Java, 3+ projets terminés, actifs
@@ -219,6 +317,16 @@ export function TalentsScreen({ navigate }: { navigate: (to: Route) => void }) {
       .sort((a, b) => b.correspondance - a.correspondance);
   }, [projects, techno, niveau, minTermines]);
 
+  const pages = Math.max(1, Math.ceil(resultats.length / 8));
+  const resultatsPage = resultats.slice((page - 1) * 8, page * 8);
+
+  useEffect(() => {
+    setPage(1);
+  }, [techno, niveau, minTermines]);
+  useEffect(() => {
+    setPage((courante) => Math.min(courante, pages));
+  }, [pages]);
+
   return (
     <WideScreen>
       <ScreenHead
@@ -273,7 +381,7 @@ export function TalentsScreen({ navigate }: { navigate: (to: Route) => void }) {
 
       <Block titre={`${resultats.length} profil${resultats.length > 1 ? "s" : ""}`}>
         <div className="grid gap-3 lg:grid-cols-2">
-          {resultats.map(({ student, correspondance, raisons }) => (
+          {resultatsPage.map(({ student, correspondance, raisons }) => (
             <CardLink
               key={student.id}
               href={hrefFor({ name: "ent-talent", id: student.id })}
@@ -297,7 +405,7 @@ export function TalentsScreen({ navigate }: { navigate: (to: Route) => void }) {
                   <ul className="mt-3 flex flex-col gap-1">
                     {raisons.slice(0, 3).map((r) => (
                       <li key={r} className="flex gap-2 text-caption text-ink-muted">
-                        <Check aria-hidden className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                        <Icon name="check" size={14} aria-hidden className="mt-0.5 shrink-0 text-primary" />
                         {r}
                       </li>
                     ))}
@@ -314,6 +422,7 @@ export function TalentsScreen({ navigate }: { navigate: (to: Route) => void }) {
             body="Élargis les critères. Un filtre trop serré ne révèle pas un manque de candidats — il révèle un filtre trop serré."
           />
         )}
+        <Pagination page={page} total={resultats.length} pageSize={8} onChange={setPage} itemLabel="profil" />
       </Block>
     </WideScreen>
   );
@@ -348,7 +457,8 @@ export function TalentScreen({
   id: string;
   navigate: (to: Route) => void;
 }) {
-  const { projects, journalFor, students, validateSkill, proposeInterview } = useSoa();
+  const { projects, journalFor, students, validateSkill, proposeInterview, entreprise } =
+    useSoa();
   const [entretien, setEntretien] = useState(false);
   const etudiant = students.find((e) => e.id === id) ?? studentById(id);
   const score = reliabilityFor(id);
@@ -390,7 +500,7 @@ export function TalentScreen({
 
       {entretien && (
         <p className="mt-4 flex items-center gap-2 rounded-card border border-success/30 bg-success/5 p-4 text-body text-success">
-          <Check aria-hidden className="size-4 shrink-0" />
+          <Icon name="check" size={16} aria-hidden className="shrink-0" />
           {etudiant.nom.split(" ")[0]} a reçu la proposition dans ses notifications.
         </p>
       )}
@@ -446,13 +556,13 @@ export function TalentScreen({
                       qui la signe : une preuve anonyme n'en est pas une. */}
                   {t.valideePar ? (
                     <p className="mt-1.5 flex items-center gap-1.5 text-caption text-success">
-                      <Award aria-hidden className="size-3.5" />
+                      <Icon name="sparkle" size={14} aria-hidden />
                       Validé par {t.valideePar}
                     </p>
                   ) : (
                     <button
                       onClick={() => {
-                        validateSkill(id, t.nom, ENTREPRISE_COURANTE.nom);
+                        validateSkill(id, t.nom, (entreprise ?? ENTREPRISE_COURANTE).nom);
                       }}
                       className="mt-1.5 rounded-sm text-caption font-medium text-primary underline-offset-4 hover:underline"
                     >
@@ -510,13 +620,179 @@ export function TalentScreen({
 
 /* ── E2 — Opportunités publiées ─────────────────────────────────────────── */
 
+const NATURES_OPPORTUNITE = ["Projet", "Stage", "Alternance"] as const;
+
+/** Formulaire de publication — même motif que `ChoixGroupe` (ProjectScreens.tsx,
+    CalendarScreen.tsx) : un groupe de boutons radio local à l'écran. */
+function ChoixNature({
+  valeur,
+  onChange,
+}: {
+  valeur: (typeof NATURES_OPPORTUNITE)[number];
+  onChange: (v: (typeof NATURES_OPPORTUNITE)[number]) => void;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="label-eyebrow mb-2">Nature</legend>
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Nature">
+        {NATURES_OPPORTUNITE.map((n) => {
+          const actif = n === valeur;
+          return (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={actif}
+              onClick={() => onChange(n)}
+              className={`h-11 rounded-full border px-4 text-body transition-colors duration-150 ${
+                actif
+                  ? "border-primary bg-primary-wash font-medium text-primary"
+                  : "border-border text-ink-muted hover:border-border-strong"
+              }`}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+function PublierOffreDialog({
+  ouvert,
+  onOpenChange,
+}: {
+  ouvert: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { publishOpportunity } = useSoa();
+  const [titre, setTitre] = useState("");
+  const [description, setDescription] = useState("");
+  const [technos, setTechnos] = useState("");
+  const [dureeMois, setDureeMois] = useState("3");
+  const [profil, setProfil] = useState("");
+  const [nature, setNature] = useState<(typeof NATURES_OPPORTUNITE)[number]>("Projet");
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [publicationEnCours, setPublicationEnCours] = useState(false);
+
+  function reinitialiser() {
+    setTitre("");
+    setDescription("");
+    setTechnos("");
+    setDureeMois("3");
+    setProfil("");
+    setNature("Projet");
+    setErreur(null);
+  }
+
+  async function soumettre(event: FormEvent) {
+    event.preventDefault();
+    if (!titre.trim()) {
+      setErreur("Le titre est requis.");
+      return;
+    }
+    setPublicationEnCours(true);
+    setErreur(null);
+    try {
+      await publishOpportunity({
+        titre: titre.trim(),
+        description: description.trim(),
+        technos: technos
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        dureeMois: Number(dureeMois) || 3,
+        profil: profil.trim(),
+        nature,
+      }, "entreprise");
+      reinitialiser();
+      onOpenChange(false);
+    } catch {
+      setErreur("La publication n'a pas pu être enregistrée. Réessaie dans un instant.");
+    } finally {
+      setPublicationEnCours(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={ouvert}
+      onOpenChange={(v) => {
+        if (!v) reinitialiser();
+        onOpenChange(v);
+      }}
+      title="Publier une offre"
+    >
+      <form onSubmit={(event) => void soumettre(event)} className="flex flex-col gap-5">
+        <Input
+          label="Titre"
+          value={titre}
+          onChange={(e) => setTitre(e.target.value)}
+          placeholder="Application de suivi des semis — module hors ligne"
+          required
+        />
+        <Textarea
+          label="Description"
+          rows={3}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          required
+        />
+        <Input
+          label="Technologies"
+          value={technos}
+          onChange={(e) => setTechnos(e.target.value)}
+          hint="Séparées par des virgules."
+        />
+        <Input
+          label="Durée (mois)"
+          type="number"
+          min={1}
+          value={dureeMois}
+          onChange={(e) => setDureeMois(e.target.value)}
+        />
+        <Input
+          label="Profil recherché"
+          value={profil}
+          onChange={(e) => setProfil(e.target.value)}
+          placeholder="Étudiant L3/M1, à l'aise avec React"
+          required
+        />
+        <ChoixNature valeur={nature} onChange={setNature} />
+
+        {erreur && (
+          <p role="alert" className="text-caption text-destructive">
+            {erreur}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" type="button" onClick={() => onOpenChange(false)} disabled={publicationEnCours}>
+            Annuler
+          </Button>
+          <Button variant="primary" type="submit" disabled={publicationEnCours}>
+            {publicationEnCours ? "Publication…" : "Publier"}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
 export function CompanyOpportunitiesScreen({
   navigate,
+  ouvrirPublication = false,
 }: {
   navigate: (to: Route) => void;
+  ouvrirPublication?: boolean;
 }) {
-  const miennes = OPPORTUNITIES.filter((o) => o.companyId === ENTREPRISE_COURANTE.id);
-  const autres = OPPORTUNITIES.filter((o) => o.companyId !== ENTREPRISE_COURANTE.id);
+  const { opportunities, companies, entreprise, entrepriseConnectee } = useSoa();
+  const e = entreprise ?? ENTREPRISE_COURANTE;
+  const [dialogueOuvert, setDialogueOuvert] = useState(ouvrirPublication);
+
+  const miennes = opportunities.filter((o) => o.companyId === e.id);
+  const autres = opportunities.filter((o) => o.companyId && o.companyId !== e.id);
 
   return (
     <WideScreen>
@@ -526,7 +802,13 @@ export function CompanyOpportunitiesScreen({
         lede="Des projets réels, pas seulement des offres d'emploi. C'est la distinction que pose le cadrage."
         retour={{ name: "ent-accueil" }}
         onRetour={navigate}
-        actions={<Button variant="primary">Publier une offre</Button>}
+        actions={
+          entrepriseConnectee ? (
+            <Button variant="primary" onClick={() => setDialogueOuvert(true)}>
+              Publier une offre
+            </Button>
+          ) : undefined
+        }
       />
 
       <Block titre="Vos offres">
@@ -547,7 +829,21 @@ export function CompanyOpportunitiesScreen({
             </article>
           ))}
           {miennes.length === 0 && (
-            <EmptyState title="Aucune offre publiée" body="Publier une offre la rend visible aux étudiants ayant un projet terminé." />
+            <EmptyState
+              title="Aucune offre publiée"
+              body={
+                entrepriseConnectee
+                  ? "Publier une offre la rend visible aux étudiants ayant un projet terminé."
+                  : "Connectez votre entreprise pour publier une offre réelle."
+              }
+              action={
+                entrepriseConnectee ? (
+                  <Button variant="secondary" onClick={() => setDialogueOuvert(true)}>
+                    Publier une offre
+                  </Button>
+                ) : undefined
+              }
+            />
           )}
         </div>
       </Block>
@@ -555,7 +851,10 @@ export function CompanyOpportunitiesScreen({
       <Block titre="Autres offres de la plateforme">
         <div className="flex flex-col gap-3">
           {autres.map((o) => {
-            const e = COMPANIES.find((c) => c.id === o.companyId);
+            // `companies` (useSoa) plutôt que la seule corpus statique
+            // `COMPANIES` : une entreprise réelle peut émettre une offre sans
+            // jamais y figurer.
+            const emetteur = companies.find((c) => c.id === o.companyId);
             return (
               <div
                 key={o.id}
@@ -563,7 +862,7 @@ export function CompanyOpportunitiesScreen({
               >
                 <div className="min-w-0">
                   <p className="text-body font-medium text-ink">{o.titre}</p>
-                  <p className="text-caption text-ink-muted">{e?.nom}</p>
+                  <p className="text-caption text-ink-muted">{emetteur?.nom}</p>
                 </div>
                 <Chip>{o.nature}</Chip>
               </div>
@@ -571,6 +870,8 @@ export function CompanyOpportunitiesScreen({
           })}
         </div>
       </Block>
+
+      <PublierOffreDialog ouvert={dialogueOuvert} onOpenChange={setDialogueOuvert} />
     </WideScreen>
   );
 }

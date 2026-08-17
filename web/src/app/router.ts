@@ -20,8 +20,11 @@ export type Route =
   | { name: "accueil" }
   | { name: "connexion" }
   | { name: "inscription" }
+  | { name: "admin-connexion" }
+  | { name: "admin" }
   /* Étudiant — onglets principaux */
   | { name: "tableau" }
+  | { name: "copilote" }
   | { name: "projets" }
   | { name: "memoire" }
   | { name: "communaute" }
@@ -48,19 +51,45 @@ export type Route =
   | { name: "classements" }
   | { name: "portfolio"; id: string }
   | { name: "opportunites" }
+  | { name: "calendrier" }
+  /* Entreprise — comptes réels, hors cadrage */
+  | { name: "ent-connexion" }
+  | { name: "ent-inscription" }
   /* Entreprise */
   | { name: "ent-accueil" }
   | { name: "ent-talents" }
   | { name: "ent-talent"; id: string }
   | { name: "ent-opportunites" }
+  | { name: "ent-opportunites-nouveau" }
   | { name: "ent-challenges" }
-  | { name: "ent-marketplace" };
+  | { name: "ent-marketplace" }
+  | { name: "ent-profil-edition" };
 
-export type Space = "public" | "etudiant" | "entreprise";
+export type Space = "public" | "etudiant" | "entreprise" | "admin";
+
+/** Le centre de gestion n'est jamais mélangé au parcours utilisateur. */
+export const ADMIN_HOST = "manage.aura-plus.site";
+
+export function estSurHoteAdmin(): boolean {
+  return typeof window !== "undefined" && window.location.hostname === ADMIN_HOST;
+}
+
+export function urlAdmin(route: Extract<Route, { name: "admin" | "admin-connexion" }>): string {
+  return `https://${ADMIN_HOST}/${hrefFor(route)}`;
+}
+
+const ROUTES_PUBLIQUES: readonly Route["name"][] = [
+  "accueil",
+  "connexion",
+  "inscription",
+  "ent-connexion",
+  "ent-inscription",
+  "admin-connexion",
+];
 
 export function spaceOf(route: Route): Space {
-  if (route.name === "accueil" || route.name === "connexion" || route.name === "inscription")
-    return "public";
+  if (ROUTES_PUBLIQUES.includes(route.name)) return "public";
+  if (route.name === "admin") return "admin";
   return route.name.startsWith("ent-") ? "entreprise" : "etudiant";
 }
 
@@ -72,7 +101,13 @@ export function spaceOf(route: Route): Space {
  * porte sa propre sortie — le retour à l'accueil par la marque.
  */
 export function estEcranNu(route: Route): boolean {
-  return route.name === "connexion" || route.name === "inscription";
+  return (
+    route.name === "connexion" ||
+    route.name === "inscription" ||
+    route.name === "ent-connexion" ||
+    route.name === "ent-inscription"
+    || route.name === "admin-connexion"
+  );
 }
 
 /** Les cinq onglets de la barre basse — `bottom-nav-limit` : jamais plus. */
@@ -112,6 +147,10 @@ const TAB_PARENT: Partial<Record<Route["name"], Route["name"]>> = {
   "profil-edition": "profil",
   portfolio: "profil",
   opportunites: "profil",
+  calendrier: "tableau",
+  copilote: "tableau",
+  "ent-profil-edition": "ent-accueil",
+  "ent-opportunites-nouveau": "ent-opportunites",
 };
 
 export function activeTab(route: Route): Route["name"] | null {
@@ -125,6 +164,7 @@ export function parseRoute(hash: string): Route {
   const chemin = hash.replace(/^#\/?/, "");
   const [tete, milieu, queue] = chemin.split("/");
 
+  const route: Route = (() : Route => {
   switch (tete) {
     case "":
       return { name: "accueil" };
@@ -132,8 +172,12 @@ export function parseRoute(hash: string): Route {
       return { name: "connexion" };
     case "inscription":
       return { name: "inscription" };
+    case "admin":
+      return milieu === "connexion" ? { name: "admin-connexion" } : { name: "admin" };
     case "tableau":
       return { name: "tableau" };
+    case "copilote":
+      return { name: "copilote" };
     case "projets":
       if (!milieu) return { name: "projets" };
       if (milieu === "nouveau") return { name: "projet-nouveau" };
@@ -175,22 +219,40 @@ export function parseRoute(hash: string): Route {
       return milieu ? { name: "portfolio", id: milieu } : { name: "profil" };
     case "opportunites":
       return { name: "opportunites" };
+    case "calendrier":
+      return { name: "calendrier" };
     case "entreprise":
       switch (milieu) {
+        case "connexion":
+          return { name: "ent-connexion" };
+        case "inscription":
+          return { name: "ent-inscription" };
         case "talents":
           return queue ? { name: "ent-talent", id: queue } : { name: "ent-talents" };
         case "opportunites":
-          return { name: "ent-opportunites" };
+          return queue === "nouveau"
+            ? { name: "ent-opportunites-nouveau" }
+            : { name: "ent-opportunites" };
         case "challenges":
           return { name: "ent-challenges" };
         case "marketplace":
           return { name: "ent-marketplace" };
+        case "profil":
+          return queue === "edition" ? { name: "ent-profil-edition" } : { name: "ent-accueil" };
         default:
           return { name: "ent-accueil" };
       }
     default:
       return { name: "accueil" };
   }
+  })();
+
+  // `manage` sert exclusivement l'authentification et le centre de gestion.
+  // Même une URL collée avec une route étudiante revient sur la connexion.
+  if (estSurHoteAdmin() && route.name !== "admin" && route.name !== "admin-connexion") {
+    return { name: "admin-connexion" };
+  }
+  return route;
 }
 
 export function hrefFor(route: Route): string {
@@ -201,8 +263,14 @@ export function hrefFor(route: Route): string {
       return "#/connexion";
     case "inscription":
       return "#/inscription";
+    case "admin-connexion":
+      return "#/admin/connexion";
+    case "admin":
+      return "#/admin";
     case "tableau":
       return "#/tableau";
+    case "copilote":
+      return "#/copilote";
     case "projets":
       return "#/projets";
     case "projet":
@@ -253,6 +321,12 @@ export function hrefFor(route: Route): string {
       return `#/portfolio/${route.id}`;
     case "opportunites":
       return "#/opportunites";
+    case "calendrier":
+      return "#/calendrier";
+    case "ent-connexion":
+      return "#/entreprise/connexion";
+    case "ent-inscription":
+      return "#/entreprise/inscription";
     case "ent-accueil":
       return "#/entreprise";
     case "ent-talents":
@@ -261,10 +335,14 @@ export function hrefFor(route: Route): string {
       return `#/entreprise/talents/${route.id}`;
     case "ent-opportunites":
       return "#/entreprise/opportunites";
+    case "ent-opportunites-nouveau":
+      return "#/entreprise/opportunites/nouveau";
     case "ent-challenges":
       return "#/entreprise/challenges";
     case "ent-marketplace":
       return "#/entreprise/marketplace";
+    case "ent-profil-edition":
+      return "#/entreprise/profil/edition";
   }
 }
 
@@ -284,6 +362,15 @@ export function useRoute(): { route: Route; navigate: (to: Route) => void } {
   const hash = useSyncExternalStore(subscribe, getSnapshot, () => "");
 
   const navigate = useCallback((to: Route) => {
+    if (to.name === "admin" || to.name === "admin-connexion") {
+      if (!estSurHoteAdmin()) {
+        window.location.assign(urlAdmin(to));
+        return;
+      }
+    } else if (estSurHoteAdmin()) {
+      window.location.assign(urlAdmin({ name: "admin-connexion" }));
+      return;
+    }
     window.location.hash = hrefFor(to);
     // `focus-on-route-change` : après une transition, le focus repart sur le
     // contenu principal, sans quoi un lecteur d'écran reste sur l'écran précédent.

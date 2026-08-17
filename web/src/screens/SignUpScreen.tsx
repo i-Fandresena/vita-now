@@ -86,12 +86,27 @@ export function SignUpScreen({ navigate }: { navigate: (to: Route) => void }) {
     form.motDePasse.length >= MDP_MINIMUM &&
     form.filiere.trim();
 
+  const DISPOSABLE = ["mailinator.com", "guerrillamail.com", "tempmail.com", "yopmail.com", "dispostable.com"];
+
   async function soumettre(event: FormEvent) {
     event.preventDefault();
     if (!complet) {
       setErreur(
         `Tous les champs sont requis, et le mot de passe doit faire au moins ${MDP_MINIMUM} caractères.`,
       );
+      return;
+    }
+
+    const emailPropre = form.email.trim().toLowerCase();
+    const emailValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailPropre);
+    if (!emailValide) {
+      setErreur("Veuillez saisir une adresse e-mail valide.");
+      return;
+    }
+
+    const domaine = emailPropre.split("@")[1];
+    if (domaine && DISPOSABLE.includes(domaine)) {
+      setErreur("Les adresses e-mail jetables/temporaires ne sont pas autorisées.");
       return;
     }
 

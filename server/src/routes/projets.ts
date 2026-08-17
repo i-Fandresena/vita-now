@@ -7,10 +7,15 @@ import { sessionDe } from "../session.js";
 /**
  * projets.ts — M2 (projets) et M3 (journal), en lecture.
  *
- * L'avancement n'est jamais une saisie : il se déduit du journal, comme
- * l'exige M15 (« les projets abandonnés restent visibles avec leur état »).
+ * L'avancement n'est jamais une saisie directe de pourcentage. Trois sources,
+ * dans cet ordre : le statut Terminé (100 %), puis la checklist si le projet
+ * en a une (`faits / total`), puis à défaut l'heuristique du journal — voir
+ * `avancement()` ci-dessous, et sa contrepartie front dans
+ * `web/src/app/soa-store.tsx` (`progressOf`), qui doit rester synchronisée.
  * Le calcul vit ici plutôt que dans le front pour que l'espace enseignant et
- * l'espace entreprise en obtiennent la même valeur sans le réimplémenter.
+ * l'espace entreprise en obtiennent la même valeur sans le réimplémenter —
+ * même si, en pratique aujourd'hui, aucun écran ne lit encore ce champ via
+ * l'API (voir HANDOFF.md) : chaque écran recalcule côté client.
  */
 
 interface LigneProjet {
@@ -32,8 +37,11 @@ interface LigneProjet {
   depot: unknown;
   owner_id: string;
   owner_nom: string;
+  opportunite_id: string | null;
   entrees: number;
   jalons: number;
+  checklist_total: number;
+  checklist_faits: number;
 }
 
 /** Les colonnes communes à toutes les lectures de projet. */
@@ -41,21 +49,36 @@ const SELECTION_PROJET = `
   p.id, p.nom, p.description, p.type, p.statut, p.technos, p.objectif,
   p.duree_semaines, p.debut, p.fin, p.difficulte, p.derniere_activite,
   p.raison_abandon, p.public, p.presentation, p.depot, p.owner_id,
+  p.opportunite_id,
   s.nom AS owner_nom,
   (SELECT count(*) FROM journal_entries j WHERE j.project_id = p.id) AS entrees,
   (SELECT count(*) FROM journal_entries j
-     WHERE j.project_id = p.id AND j.jalon IS NOT NULL) AS jalons
+     WHERE j.project_id = p.id AND j.jalon IS NOT NULL) AS jalons,
+  (SELECT count(*) FROM checklist_items c WHERE c.project_id = p.id) AS checklist_total,
+  (SELECT count(*) FROM checklist_items c
+     WHERE c.project_id = p.id AND c.fait) AS checklist_faits
 `;
 
 /**
  * Avancement estimé, en pourcentage.
  *
- * Un jalon franchi pèse davantage qu'une entrée simple : écrire dix fois « j'ai
- * lu la documentation » n'est pas la même chose qu'avoir livré une étape. Le
- * résultat est borné à 95 % tant que le projet n'est pas Terminé — afficher
- * 100 % sur un projet en cours serait un mensonge que l'utilisateur constate.
+ * Dès qu'une checklist existe, elle **est** l'avancement (`faits / total`),
+ * **toujours** — y compris sur un projet Terminé. Décocher une case après
+ * coup doit faire bouger le chiffre, sinon le statut Terminé fige un
+ * pourcentage que la checklist contredit (déjà arrivé une fois avec l'ordre
+ * inverse, voir HANDOFF.md). Sans checklist, un projet Terminé affiche
+ * 100 % — seul signal d'achèvement disponible. Sans l'un ni l'autre, repli
+ * sur l'heuristique du journal : un jalon franchi pèse davantage qu'une
+ * entrée simple, et le résultat est borné à 95 % tant que le statut n'est
+ * pas Terminé — afficher 100 % sur un projet en cours serait un mensonge que
+ * l'utilisateur constate.
  */
 function avancement(ligne: LigneProjet): number {
+  const totalEtapes = Number(ligne.checklist_total);
+  if (totalEtapes > 0) {
+    return Math.round((Number(ligne.checklist_faits) / totalEtapes) * 100);
+  }
+
   if (ligne.statut === "Terminé") return 100;
 
   const entrees = Number(ligne.entrees);
@@ -84,6 +107,7 @@ function versProjet(ligne: LigneProjet) {
     public: ligne.public,
     presentation: ligne.presentation,
     depot: ligne.depot,
+    opportuniteId: ligne.opportunite_id,
     proprietaire: { id: ligne.owner_id, nom: ligne.owner_nom },
     avancement: avancement(ligne),
     entreesJournal: Number(ligne.entrees),
@@ -108,7 +132,7 @@ export async function routesProjets(app: FastifyInstance): Promise<void> {
 
          Trois cas, et un seul invariant : on ne voit un projet non public que
          s'il est le sien. */
-      const moi = sessionDe(requete);
+      const moi = await sessionDe(requete);
 
       const conditions: string[] = [];
       const valeurs: unknown[] = [];
@@ -175,7 +199,22 @@ export async function routesProjets(app: FastifyInstance): Promise<void> {
     );
 
     if (!ligne) return reponse.code(404).send({ erreur: "Projet introuvable" });
-    return versProjet(ligne);
+
+    const checklist = await query<{
+      id: string;
+      libelle: string;
+      fait: boolean;
+      ordre: number;
+      parentId: string | null;
+      dureeHeures: number | null;
+    }>(
+      `SELECT id, libelle, fait, bloque, ordre, parent_id AS "parentId", duree_heures AS "dureeHeures"
+       FROM checklist_items
+       WHERE project_id = $1 ORDER BY ordre`,
+      [requete.params.id],
+    );
+
+    return { ...versProjet(ligne), checklist };
   });
 
   /**
@@ -185,11 +224,26 @@ export async function routesProjets(app: FastifyInstance): Promise<void> {
    * coûter un appel au modèle, alors que la fiche est lue à chaque affichage
    * de liste. Les fondre ensemble ferait payer ce coût à des écrans qui
    * n'affichent pas le résumé.
+   *
+   * La checklist du projet est transmise au résumeur : un item coché n'y sert
+   * de preuve d'avancement que corroboré par le journal (voir resume.ts) — le
+   * calcul d'`avancement()` ci-dessus, lui, n'en tient jamais compte (M15).
    */
   app.get<{ Params: { id: string } }>(
     "/api/projets/:id/resume",
     async (requete, reponse) => {
-      const resume = await resumeDe(requete.params.id);
+      const moi = await sessionDe(requete);
+      const checklist = await query<{
+        id: string;
+        libelle: string;
+        fait: boolean;
+        parentId: string | null;
+      }>(
+        `SELECT id, libelle, fait, parent_id AS "parentId"
+         FROM checklist_items WHERE project_id = $1 ORDER BY ordre`,
+        [requete.params.id],
+      );
+      const resume = await resumeDe(requete.params.id, moi, checklist);
       if (!resume) return reponse.code(404).send({ erreur: "Projet introuvable" });
       return resume;
     },

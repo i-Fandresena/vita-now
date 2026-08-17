@@ -82,6 +82,12 @@ export interface Student {
   /** M18 — un étudiant avancé peut devenir mentor. */
   mentor: boolean;
   promo: string;
+  /** Hors cadrage, addition — photo de profil, affichée par `Avatar`. */
+  photoUrl?: string;
+  /** Hors cadrage, addition — CV téléchargeable depuis le portfolio. */
+  cvUrl?: string;
+  /** Nom de fichier d'origine du CV, pour l'attribut `download`. */
+  cvNom?: string;
 }
 
 /** E3 — « technos maîtrisées avec niveau ». */
@@ -127,7 +133,8 @@ export interface Project {
   derniereActivite: string;
   /**
    * M15 — « les projets abandonnés restent visibles avec leur état (%, raison) ».
-   * Le pourcentage vient du journal, pas d'une saisie : voir `avancement()`.
+   * Le pourcentage vient du journal ou de la checklist, jamais d'une saisie
+   * directe de pourcentage : voir `progressOf` dans `app/soa-store.tsx`.
    */
   raisonAbandon?: string;
   /** Le projet est-il consultable par les autres étudiants ? */
@@ -136,24 +143,80 @@ export interface Project {
   presentation?: ProjectShowcase;
   /** M4 — dépôt Git rattaché (mock : aucun appel réseau). */
   depot?: RepoLink;
+  /** Membres de l'équipe du projet académique/groupe. */
+  membres?: string[];
+  /** Colonnes personnalisées du tableau Kanban (ClickUp clone). */
+  colonnesKanban?: KanbanColumn[];
+  /**
+   * Étapes prévues, définies à la création (ou ajoutées ensuite) — le
+   * "post-it" de l'espace projet. Pilote l'avancement affiché
+   * (`progressOf`/`avancement()` côté serveur) dès qu'elle existe : voir la
+   * doc de `progressOf` dans `app/soa-store.tsx` pour l'ordre de priorité
+   * exact (Terminé > checklist > heuristique du journal).
+   */
+  checklist?: ChecklistItem[];
+  /**
+   * M13 — l'appel à projet (`Opportunity` de nature "Projet") qui a motivé
+   * ce projet, quand il en existe un sur la plateforme. Rien n'oblige un
+   * projet Personnel à en avoir un — beaucoup naissent sans appel publié.
+   */
+  opportuniteId?: string;
+}
+
+export interface KanbanColumn {
+  id: string;
+  titre: string;
+  couleur?: string;
+}
+
+export const DEFAULT_KANBAN_COLUMNS: KanbanColumn[] = [
+  { id: "a_faire", titre: "À faire" },
+  { id: "en_cours", titre: "En cours" },
+  { id: "test", titre: "Test" },
+  { id: "termine", titre: "Terminé" },
+];
+
+/**
+ * Une étape de la checklist / ticket Kanban d'un projet.
+ *
+ * `parentId` rattache une sous-tâche à une tâche de premier niveau.
+ * `dureeHeures` est l'estimation en heures.
+ * `colonneId` est la colonne Kanban d'appartenance.
+ * `assigneA` est l'étudiant membre assigné.
+ */
+export interface ChecklistItem {
+  id: string;
+  projectId: string;
+  libelle: string;
+  fait: boolean;
+  /** Signal explicite : cette étape attend une décision ou de l'aide. */
+  bloque?: boolean;
+  ordre: number;
+  parentId?: string;
+  dureeHeures?: number;
+  colonneId?: string;
+  assigneA?: string;
 }
 
 export interface ProjectShowcase {
   captures: string[];
-  /** M17 — « vidéo de démo ». URL saisie : l'envoi de fichier suppose un serveur. */
+  /** L'URL est facultative : les captures réelles sont envoyées au VPS. */
   videoUrl?: string;
   demoUrl?: string;
   architecture: string;
   documentation: string;
 }
 
-/** M4 — intégration GitHub/GitLab. Mock assumé, cf. SPEC.md §4.2. */
+/** Dépôt public synchronisé depuis GitHub ou GitLab. */
 export interface RepoLink {
   hote: "GitHub" | "GitLab";
   slug: string;
+  url?: string;
   /** Fréquence de commits sur les 12 dernières semaines. */
   commitsParSemaine: number[];
   branches: string[];
+  brancheParDefaut?: string;
+  synchroniseLe?: string;
 }
 
 /* ── M3 — Journal de progression ────────────────────────────────────────── */
@@ -185,6 +248,8 @@ export interface ProjectSummary {
   projectId: string;
   objectif: string;
   faitCeQui: string[];
+  /** Une tâche principale non cochée mais dont une sous-tâche l'est. */
+  enCours: string[];
   resteAFaire: string[];
   derniereActivite: string;
   /** Le cadrage demande un « risque d'abandon ». Qualitatif, jamais un score. */
@@ -387,6 +452,8 @@ export const POINT_LABELS: Record<PointReason, string> = {
 };
 
 export interface PointEntry {
+  /** Absent sur le corpus de démo statique — jamais sur un point réel. */
+  id?: string;
   studentId: string;
   reason: PointReason;
   detail: string;
@@ -394,7 +461,12 @@ export interface PointEntry {
 }
 
 /** Les classements de la plateforme. */
-export type LeaderboardKind = "academique" | "progression" | "contribution" | "meilleur-annee";
+export type LeaderboardKind =
+  | "academique"
+  | "progression"
+  | "contribution"
+  | "meilleur-annee"
+  | "technologie";
 
 export interface LeaderboardRow {
   studentId: string;
@@ -529,7 +601,8 @@ export type NotificationKind =
   | "challenge"
   | "opportunite"
   | "signal"
-  | "mentorat";
+  | "mentorat"
+  | "evenement";
 
 /** M20 — « Canaux : email, push mobile, notification web ». */
 export type NotificationChannel = "web" | "email" | "push";
@@ -550,6 +623,25 @@ export interface Notification {
   /** Route à ouvrir au clic — le cadrage exige des notifications actionnables. */
   cible?: string;
 }
+
+/* ── Calendrier personnel — hors cadrage, addition ──────────────────────── */
+
+export type EvenementType = "Réunion" | "Deadline" | "Session" | "Autre";
+
+export interface CalendarEvent {
+  id: string;
+  studentId: string;
+  titre: string;
+  /** ISO, sans heure — "YYYY-MM-DD". */
+  date: string;
+  /** "HH:MM" ; absente = toute la journée. */
+  heure?: string;
+  type: EvenementType;
+  /** M13 — un événement peut se rattacher à l'un de ses propres projets. */
+  projectId?: string;
+}
+
+export type NewCalendarEvent = Omit<CalendarEvent, "id" | "studentId">;
 
 /* ── Module Entreprise (E1–E10) ─────────────────────────────────────────── */
 

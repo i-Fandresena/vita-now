@@ -1,44 +1,30 @@
 import { motion } from "framer-motion";
-import {
-  Award,
-  Bell,
-  Briefcase,
-  Building2,
-  ExternalLink,
-  ListOrdered,
-  Lock,
-  RotateCcw,
-  Sparkles,
-  Trophy,
-} from "lucide-react";
-import { useMemo, useState } from "react";
+import { Briefcase, ListOrdered, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
+import { BADGES, COMPANIES, MENTORS, RELIABILITY, studentById } from "@/data/soa-corpus";
 import {
-  BADGES,
-  COMPANIES,
-  CURRENT_STUDENT_ID,
-  MENTORS,
-  POINTS,
-  RELIABILITY,
-  studentById,
-} from "@/data/soa-corpus";
-import {
+  FORUM_CATEGORIES,
   POINT_LABELS,
   POINT_VALUES,
   joursDepuis,
   type LeaderboardKind,
   type Notification,
+  type PointReason,
+  type Project,
 } from "@/domain/soa";
 import { cn } from "@/lib/cn";
 import { rise, sequence } from "@/lib/motion";
 import { reinitialiser } from "@/lib/persistence";
-import { Button } from "@/ui/Button";
+import { Button, button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
 import { Avatar, Progress, Stat } from "@/ui/data";
 import { Input, Textarea } from "@/ui/Field";
+import { Icon, type IconName } from "@/ui/Icon";
 import { Block, CardLink, Screen, ScreenHead, Tabs } from "@/ui/layout";
+import { Pagination } from "@/ui/Pagination";
 import { EmptyState } from "@/ui/states";
 import { ProjectRow } from "./ProjectScreens";
 
@@ -54,6 +40,41 @@ import { ProjectRow } from "./ProjectScreens";
  */
 
 const ONGLETS = ["Projets", "Compétences", "Reconnaissance"] as const;
+
+/** M12 — une icône par geste réel, aucune nouvelle icône ajoutée pour ça. */
+const ICONE_POINT: Record<PointReason, IconName> = {
+  "projet-termine": "check",
+  "pair-aide": "user",
+  "solution-partagee": "send",
+  "erreur-documentee": "alertTriangle",
+};
+
+/** « Aujourd'hui » / « Hier » / une date — jamais un nombre de jours brut. */
+function jourRelatif(date: string): string {
+  const jours = joursDepuis(date);
+  if (jours === 0) return "Aujourd'hui";
+  if (jours === 1) return "Hier";
+  return new Date(date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+}
+
+/**
+ * Regroupe un journal de points déjà trié (le plus récent d'abord) par jour
+ * relatif — façon Duolingo : « pourquoi j'ai gagné ça », classé par moment,
+ * pas juste une liste plate.
+ */
+function groupesParJour<T extends { date: string }>(entrees: T[]): [string, T[]][] {
+  const groupes: [string, T[]][] = [];
+  for (const entree of entrees) {
+    const jour = jourRelatif(entree.date);
+    const dernier = groupes[groupes.length - 1];
+    if (dernier && dernier[0] === jour) {
+      dernier[1].push(entree);
+    } else {
+      groupes.push([jour, [entree]]);
+    }
+  }
+  return groupes;
+}
 
 /**
  * Remise à zéro de la démonstration.
@@ -136,7 +157,7 @@ export function ProfileScreen({
   id?: string;
   navigate: (to: Route) => void;
 }) {
-  const { projects, pointsOf, me, students } = useSoa();
+  const { projects, points, pointsOf, me, students } = useSoa();
   const [onglet, setOnglet] = useState<(typeof ONGLETS)[number]>("Projets");
 
   const etudiant = id ? (students.find((s) => s.id === id) ?? studentById(id)) : me;
@@ -164,7 +185,9 @@ export function ProfileScreen({
   const arretes = siens.filter((p) => p.status === "Abandonné").length;
   const mentor = MENTORS.find((m) => m.studentId === etudiant.id);
   const badgesObtenus = BADGES.filter((b) => b.obtenuLe);
-  const mesPoints = POINTS.filter((p) => p.studentId === etudiant.id);
+  const mesPoints = points
+    .filter((p) => p.studentId === etudiant.id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <Screen>
@@ -179,7 +202,7 @@ export function ProfileScreen({
                 variant="secondary"
                 onClick={() => navigate({ name: "classements" })}
               >
-                <Trophy aria-hidden className="size-4 text-primary" />
+                <Icon name="trophy" size={16} aria-hidden className="text-primary" />
                 Classements & Prix
               </Button>
               <Button
@@ -206,22 +229,37 @@ export function ProfileScreen({
         }
       />
 
-      <section className="mt-6 flex flex-col gap-4 rounded-card border border-border bg-card p-5 sm:flex-row sm:items-center sm:gap-6 sm:p-6">
-        <Avatar initiales={etudiant.initiales} nom={etudiant.nom} taille="lg" />
-        <div className="min-w-0 flex-1">
-          <h2 className="text-title font-semibold text-ink">{etudiant.nom}</h2>
-          <p className="mt-1 text-body text-ink-muted">
-            {etudiant.niveau} · {etudiant.filiere}
-          </p>
-          <p className="mt-0.5 text-caption text-ink-muted">
-            {etudiant.universite} · promo {etudiant.promo}
-          </p>
-          <ChipRow className="mt-3">
-            {mentor && <Chip tone="primary">Mentor</Chip>}
-            {disponibilites.map((d) => (
-              <Chip key={d}>{d}</Chip>
-            ))}
-          </ChipRow>
+      <section className="mt-6 overflow-hidden rounded-card border border-border bg-card">
+        {/* Bande de fond : tokens existants (primary/accent), pas de nouvelle
+            couleur — un simple dégradé pour donner du relief à l'en-tête sans
+            rivaliser avec le contenu. */}
+        <div
+          aria-hidden
+          className="h-16 bg-gradient-to-r from-primary-wash to-accent-soft sm:h-20"
+        />
+        <div className="-mt-8 flex flex-col gap-4 p-5 sm:-mt-10 sm:flex-row sm:items-end sm:gap-6 sm:p-6">
+          <Avatar
+            initiales={etudiant.initiales}
+            nom={etudiant.nom}
+            photoUrl={etudiant.photoUrl}
+            taille="lg"
+            className="ring-4 ring-card"
+          />
+          <div className="min-w-0 flex-1 sm:pb-1">
+            <h2 className="text-title font-semibold text-ink">{etudiant.nom}</h2>
+            <p className="mt-1 text-body text-ink-muted">
+              {etudiant.niveau} · {etudiant.filiere}
+            </p>
+            <p className="mt-0.5 text-caption text-ink-muted">
+              {etudiant.universite} · promo {etudiant.promo}
+            </p>
+            <ChipRow className="mt-3">
+              {mentor && <Chip tone="primary">Mentor</Chip>}
+              {disponibilites.map((d) => (
+                <Chip key={d}>{d}</Chip>
+              ))}
+            </ChipRow>
+          </div>
         </div>
       </section>
 
@@ -266,7 +304,7 @@ export function ProfileScreen({
                       une décoration : elle porte le nom de qui l'a signée. */}
                   {t.valideePar && (
                     <p className="mt-1.5 flex items-center gap-1.5 text-caption text-success">
-                      <Award aria-hidden className="size-3.5" />
+                      <Icon name="sparkle" size={14} aria-hidden />
                       Validé par {t.valideePar}
                     </p>
                   )}
@@ -307,21 +345,42 @@ export function ProfileScreen({
               </span>
             </div>
 
-            <ul className="mt-4 flex flex-col gap-2">
-              {mesPoints.map((pt, i) => (
-                <li
-                  key={i}
-                  className="flex items-baseline justify-between gap-4 border-b border-border pb-2 last:border-0 last:pb-0"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-body text-ink">{pt.detail}</span>
-                    <span className="block text-caption text-ink-muted">
-                      {POINT_LABELS[pt.reason]}
-                    </span>
-                  </span>
-                  <span className="shrink-0 tabular-nums text-caption text-ink-muted">
-                    +{POINT_VALUES[pt.reason]}
-                  </span>
+            {/* La liste complète, en clair : pas de multiplicateur cousu
+                ailleurs, pas de source qui ne soit pas l'un de ces gestes. */}
+            <p className="mt-2 text-caption text-ink-muted">
+              Quatre gestes rapportent des points, et ce sont les seuls :
+              terminer un projet (+{POINT_VALUES["projet-termine"]}), aider un
+              pair ou répondre en tant que mentor (+{POINT_VALUES["pair-aide"]}),
+              documenter une erreur (+{POINT_VALUES["erreur-documentee"]}), voir
+              sa fiche mémoire servir à quelqu'un d'autre
+              (+{POINT_VALUES["solution-partagee"]}).
+            </p>
+
+            <ul className="mt-4 flex flex-col gap-5">
+              {groupesParJour(mesPoints).map(([jour, entrees]) => (
+                <li key={jour}>
+                  <p className="label-eyebrow mb-2">{jour}</p>
+                  <ul className="flex flex-col gap-2">
+                    {entrees.map((pt) => (
+                      <li
+                        key={pt.id ?? `${pt.studentId}-${pt.reason}-${pt.date}`}
+                        className="flex items-center gap-3 border-b border-border pb-2 last:border-0 last:pb-0"
+                      >
+                        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary-wash text-primary">
+                          <Icon name={ICONE_POINT[pt.reason]} size={14} aria-hidden />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-body text-ink">{pt.detail}</span>
+                          <span className="block text-caption text-ink-muted">
+                            {POINT_LABELS[pt.reason]}
+                          </span>
+                        </span>
+                        <span className="shrink-0 tabular-nums text-caption font-medium text-success">
+                          +{POINT_VALUES[pt.reason]}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </li>
               ))}
             </ul>
@@ -350,9 +409,9 @@ export function ProfileScreen({
                     )}
                   >
                     {obtenu ? (
-                      <Award aria-hidden className="mt-0.5 size-4 shrink-0 text-on-accent" />
+                      <Icon name="sparkle" size={16} aria-hidden className="mt-0.5 shrink-0 text-on-accent" />
                     ) : (
-                      <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+                      <Icon name="lock" size={16} aria-hidden className="mt-0.5 shrink-0 text-ink-muted" />
                     )}
                     <div className="min-w-0">
                       <p
@@ -402,34 +461,130 @@ export function ProfileScreen({
 
 /** Les classements applicatifs. */
 const CLASSEMENTS: { cle: LeaderboardKind; libelle: string }[] = [
-  { cle: "meilleur-annee", libelle: "🏆 Meilleur de l'année" },
+  { cle: "meilleur-annee", libelle: "Meilleur de l'année" },
   { cle: "academique", libelle: "Par domaine & secteur" },
+  { cle: "technologie", libelle: "Par technologie" },
   { cle: "progression", libelle: "Régularité" },
   { cle: "contribution", libelle: "Entraide" },
 ];
 
+interface LigneClassement {
+  projet: Project;
+  auteur?: { nom: string };
+  score: number;
+  jalons: number;
+  entrees: number;
+  termine: boolean;
+}
+
+/**
+ * Un classement groupé par catégorie (secteur ou technologie) — factorisé
+ * pour ne pas dupliquer le rendu entre « Par domaine & secteur » et « Par
+ * technologie », identiques à la présentation près du libellé du trophée.
+ */
+function ClassementParGroupe({
+  groupes,
+  libelleTop,
+  navigate,
+}: {
+  groupes: { categorie: string; classes: LigneClassement[]; topProjet?: LigneClassement }[];
+  libelleTop: string;
+  navigate: (to: Route) => void;
+}) {
+  return (
+    <div className="mt-6 flex flex-col gap-8">
+      {groupes.map(({ categorie, classes, topProjet }) => (
+        <section key={categorie} className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-heading text-heading text-ink">{categorie}</h2>
+            {topProjet && (
+              <span className="text-caption text-primary font-medium flex items-center gap-1">
+                <Icon name="trophy" size={14} /> {libelleTop} : {topProjet.projet.nom}
+              </span>
+            )}
+          </div>
+          <ol className="flex flex-col gap-2">
+            {classes.map((c, index) => (
+              <li key={c.projet.id}>
+                <a
+                  href={hrefFor({ name: "projet", id: c.projet.id })}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate({ name: "projet", id: c.projet.id });
+                  }}
+                  className={cn(
+                    "flex items-center gap-4 rounded-card border p-4 transition-colors duration-150",
+                    index === 0
+                      ? "border-primary/40 bg-primary-wash/50 hover:border-primary"
+                      : "border-border bg-card hover:border-border-strong",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid size-7 place-items-center rounded-full text-caption font-bold tabular-nums shrink-0",
+                      index === 0 ? "bg-primary text-on-primary" : "bg-surface text-ink-muted",
+                    )}
+                  >
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-body font-medium text-ink flex items-center gap-2">
+                      {c.projet.nom}
+                      {index === 0 && (
+                        <span className="text-caption text-primary font-semibold">
+                          N°1 {categorie}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-caption text-ink-muted">
+                      {c.auteur?.nom} · {c.jalons} jalon{c.jalons > 1 ? "s" : ""} ·{" "}
+                      {c.entrees} entrée{c.entrees > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <span className="text-caption font-semibold text-ink shrink-0">
+                    {c.score} pts
+                  </span>
+                  {c.termine && <Chip tone="success">Terminé</Chip>}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { projects, journalFor, students } = useSoa();
+  const { projects, journalFor, students, me } = useSoa();
   const [type, setType] = useState<LeaderboardKind>("meilleur-annee");
 
   /**
    * Calcul automatique du score de performance d'un projet :
    * - Projets terminés prioritaires (50 pts)
    * - Jalons franchis (15 pts par jalon)
+   * - Étapes de checklist cochées (8 pts par étape, sous-tâches comprises)
    * - Volume et rigueur des entrées de journal (5 pts par entrée)
    * - Nombre de technos maîtrisées associées (3 pts par techno)
    */
   const calculScoreProjet = (p: (typeof projects)[0]) => {
     const entrees = journalFor(p.id);
     const jalons = entrees.filter((e) => e.jalon).length;
+    const etapesFaites = p.checklist?.filter((e) => e.fait).length ?? 0;
     const estTermine = p.status === "Terminé" ? 50 : 0;
-    return estTermine + jalons * 15 + entrees.length * 5 + (p.technos?.length ?? 0) * 3;
+    return (
+      estTermine +
+      jalons * 15 +
+      etapesFaites * 8 +
+      entrees.length * 5 +
+      (p.technos?.length ?? 0) * 3
+    );
   };
 
   /** Projets évalués et classés avec score global. */
   const projetsEvalues = useMemo(() => {
     return projects
-      .filter((p) => p.public)
+      .filter((p) => p.public !== false)
       .map((p) => {
         const score = calculScoreProjet(p);
         const entrees = journalFor(p.id);
@@ -460,6 +615,24 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
       .filter((g) => g.classes.length > 0);
   }, [projects, projetsEvalues]);
 
+  /**
+   * Classement par technologie — « meilleur projet Java », etc. Le cadrage
+   * nomme les mêmes catégories pour le forum et pour ce classement
+   * (`AURA_cadrage.md`, « Forum technique par catégorie » / « meilleur projet
+   * par catégorie ») : on regroupe donc par correspondance avec les technos
+   * du projet, pas par `ProjectType` (déjà utilisé ci-dessus pour « secteur »).
+   * Un projet sans techno reconnue n'apparaît dans aucun groupe — pas de
+   * case "Autre" inventée.
+   */
+  const parTechnologie = useMemo(() => {
+    return FORUM_CATEGORIES.map((categorie) => {
+      const classes = projetsEvalues.filter((item) =>
+        item.projet.technos.some((t) => t.toLowerCase() === categorie.toLowerCase()),
+      );
+      return { categorie, classes, topProjet: classes[0] };
+    }).filter((g) => g.classes.length > 0);
+  }, [projetsEvalues]);
+
   const lignes = [...RELIABILITY]
     .map((r) => ({
       student: students.find((s) => s.id === r.studentId) ?? studentById(r.studentId)!,
@@ -480,6 +653,17 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
         onRetour={navigate}
       />
 
+      {/* Dit en clair ce que le calcul fait déjà silencieusement : on compare
+          des projets, jamais des personnes — c'est une exigence du cadrage,
+          pas un détail d'implémentation à cacher. */}
+      <p className="mt-4 rounded-card border border-border bg-surface p-4 text-caption text-ink-muted">
+        Ce classement compare des <strong className="text-ink">projets</strong>,
+        jamais des personnes. Le score d'un projet est calculé, pas déclaré :
+        Terminé (+50), par jalon franchi (+15), par étape de checklist cochée
+        (+8), par entrée de journal (+5), par technologie maîtrisée associée
+        (+3).
+      </p>
+
       <Tabs
         valeurs={CLASSEMENTS.map((c) => c.libelle)}
         actif={actif.libelle}
@@ -488,16 +672,23 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
       />
 
       {/* ── Vue : Meilleur de l'année ─────────────────────────────────────── */}
-      {type === "meilleur-annee" && meilleurDeLannee && (
+      {type === "meilleur-annee" && (!meilleurDeLannee ? (
+        <div className="mt-6">
+          <EmptyState
+            title="Aucun projet évalué pour le moment"
+            body="Les projets s'afficheront automatiquement ici dès qu'ils auront enregistré leurs premières avancées."
+          />
+        </div>
+      ) : (
         <div className="mt-6 flex flex-col gap-6">
           <div className="relative overflow-hidden rounded-card border-2 border-primary bg-primary-wash p-6 sm:p-8">
             <div className="absolute -right-6 -top-6 grid size-32 place-items-center rounded-full bg-primary/10 text-primary">
-              <Trophy className="size-20 opacity-30" />
+              <Icon name="trophy" size={80} className="opacity-30" />
             </div>
 
             <div className="relative z-10 flex flex-col gap-4">
               <div className="flex items-center gap-2 text-primary font-semibold text-caption uppercase tracking-wider">
-                <Sparkles className="size-4" />
+                <Icon name="sparkle" size={16} />
                 Lauréat du Grand Prix VITA'NOW 2026
               </div>
 
@@ -571,79 +762,28 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
             </ol>
           </div>
         </div>
-      )}
+      ))}
 
       {/* ── Vue : Par domaine & secteur ───────────────────────────────────── */}
       {type === "academique" && (
-        <div className="mt-6 flex flex-col gap-8">
-          {parDomaine.map(({ categorie, classes, topProjet }) => (
-            <section key={categorie} className="flex flex-col gap-3">
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-heading text-heading text-ink">{categorie}</h2>
-                {topProjet && (
-                  <span className="text-caption text-primary font-medium flex items-center gap-1">
-                    <Trophy className="size-3.5" /> Top Secteur : {topProjet.projet.nom}
-                  </span>
-                )}
-              </div>
-              <ol className="flex flex-col gap-2">
-                {classes.map((c, index) => (
-                  <li key={c.projet.id}>
-                    <a
-                      href={hrefFor({ name: "projet", id: c.projet.id })}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        navigate({ name: "projet", id: c.projet.id });
-                      }}
-                      className={cn(
-                        "flex items-center gap-4 rounded-card border p-4 transition-colors duration-150",
-                        index === 0
-                          ? "border-primary/40 bg-primary-wash/50 hover:border-primary"
-                          : "border-border bg-card hover:border-border-strong",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "grid size-7 place-items-center rounded-full text-caption font-bold tabular-nums shrink-0",
-                          index === 0
-                            ? "bg-primary text-on-primary"
-                            : "bg-surface text-ink-muted",
-                        )}
-                      >
-                        {index + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-body font-medium text-ink flex items-center gap-2">
-                          {c.projet.nom}
-                          {index === 0 && (
-                            <span className="text-caption text-primary font-semibold">
-                              🏆 N°1 {categorie}
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-caption text-ink-muted">
-                          {c.auteur?.nom} · {c.jalons} jalon{c.jalons > 1 ? "s" : ""} ·{" "}
-                          {c.entrees} entrée{c.entrees > 1 ? "s" : ""}
-                        </p>
-                      </div>
-                      <span className="text-caption font-semibold text-ink shrink-0">
-                        {c.score} pts
-                      </span>
-                      {c.termine && <Chip tone="success">Terminé</Chip>}
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          ))}
-        </div>
+        <ClassementParGroupe groupes={parDomaine} libelleTop="Top Secteur" navigate={navigate} />
+      )}
+
+      {/*
+       * ── Vue : Par technologie ──────────────────────────────────────────
+       * « Meilleur projet Java », etc. — regroupe par correspondance avec
+       * les technos du projet (Java, PHP, React, IA, BDD, Réseau), pas par
+       * type de projet (voir `parTechnologie` ci-dessus).
+       */}
+      {type === "technologie" && (
+        <ClassementParGroupe groupes={parTechnologie} libelleTop="Top Techno" navigate={navigate} />
       )}
 
       {/* ── Vues : Régularité & Entraide ─────────────────────────────────── */}
       {(type === "progression" || type === "contribution") && (
         <ol className="mt-6 flex flex-col gap-2">
           {lignes.map((l, index) => {
-            const moi = l.student.id === CURRENT_STUDENT_ID;
+            const moi = l.student.id === me.id;
             return (
               <li key={l.student.id}>
                 <a
@@ -687,6 +827,14 @@ export function LeaderboardScreen({ navigate }: { navigate: (to: Route) => void 
 
 /* ── M16 — Portfolio ────────────────────────────────────────────────────── */
 
+/**
+ * Bandeaux de couleur des cartes "projets marquants" — mêmes tokens que
+ * `HALO_STATUT` dans `ProjectScreens.tsx` (primary/accent/success), cyclés
+ * par position plutôt que choisis au hasard : pas de nouvelle couleur
+ * inventée pour l'occasion.
+ */
+const BANDEAUX_MARQUANTS = ["bg-primary-wash", "bg-accent-soft", "bg-success/15", "bg-surface"];
+
 export function PortfolioScreen({
   id,
   navigate,
@@ -696,6 +844,7 @@ export function PortfolioScreen({
 }) {
   const { projects, journalFor, students } = useSoa();
   const etudiant = students.find((s) => s.id === id) ?? studentById(id);
+  const [copie, setCopie] = useState(false);
 
   if (!etudiant) {
     return (
@@ -708,7 +857,67 @@ export function PortfolioScreen({
   const siens = projects.filter((p) => p.ownerId === etudiant.id);
   const termines = siens.filter((p) => p.status === "Terminé");
   const arretes = siens.filter((p) => p.status === "Abandonné");
-  const entrees = siens.reduce((n, p) => n + journalFor(p.id).length, 0);
+  // Même garde qu'ProfileScreen (ligne 143) : selon l'état d'hydratation,
+  // `technos` peut arriver comme un tableau JSON déjà propre ou comme la
+  // représentation brute d'un tableau Postgres — jamais `undefined`, mais
+  // pas toujours un vrai tableau JS non plus.
+  const technos = parseArray<{ nom: string; maitrise: number; valideePar?: string }>(
+    etudiant.technos,
+  );
+
+  // Un projet Terminé mais privé n'a rien à faire sur une page qui se dit
+  // « Portfolio public » — même principe que la confidentialité par défaut
+  // appliquée ailleurs (GET /api/projets).
+  const marquants = termines
+    .filter((p) => p.public)
+    .sort((a, b) => new Date(b.debut).getTime() - new Date(a.debut).getTime());
+
+  // Toutes les checklists cochées, tous projets confondus — une donnée
+  // réelle, pas une jauge de gamification inventée pour l'occasion.
+  const taches = siens.reduce(
+    (n, p) => n + (p.checklist?.filter((e) => e.fait).length ?? 0),
+    0,
+  );
+
+  // Jours calendaires distincts avec au moins une entrée de journal sur les
+  // 30 derniers jours. Remplace une « série active » qu'aucune donnée du
+  // modèle ne permet de calculer honnêtement (pas de suivi de streak
+  // consécutif) — inventer un chiffre irait contre SPEC.md §2bis.
+  const joursActifs = new Set(
+    siens
+      .flatMap((p) => journalFor(p.id))
+      .filter((e) => joursDepuis(e.date) <= 30)
+      .map((e) => e.date.slice(0, 10)),
+  ).size;
+
+  const badgesObtenus = BADGES.filter((b) => b.obtenuLe);
+
+  const lien =
+    typeof window !== "undefined"
+      ? `${window.location.origin}${window.location.pathname}${hrefFor({ name: "portfolio", id: etudiant.id })}`
+      : "";
+
+  const nomEtudiant = etudiant.nom;
+
+  const copierLien = () => {
+    navigator.clipboard
+      ?.writeText(lien)
+      .then(() => {
+        setCopie(true);
+        setTimeout(() => setCopie(false), 2000);
+      })
+      // Contexte non sécurisé, permission refusée... : rien de mieux à
+      // proposer, mais ça ne doit pas remonter comme une erreur non gérée.
+      .catch(() => {});
+  };
+
+  const partager = () => {
+    if (navigator.share) {
+      navigator.share({ title: `Portfolio de ${nomEtudiant}`, url: lien }).catch(() => {});
+    } else {
+      copierLien();
+    }
+  };
 
   return (
     <Screen>
@@ -719,34 +928,101 @@ export function PortfolioScreen({
         retour={{ name: "profil" }}
         onRetour={navigate}
         actions={
-          <Button variant="secondary">
-            <ExternalLink aria-hidden className="size-4" />
-            Copier le lien
-          </Button>
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <Button variant="secondary" onClick={copierLien}>
+              <Icon name="check" size={16} aria-hidden />
+              {copie ? "Copié !" : "Copier le lien"}
+            </Button>
+            <Button variant="secondary" onClick={partager}>
+              <Icon name="send" size={16} aria-hidden />
+              Partager
+            </Button>
+            <Button variant="secondary" onClick={() => window.print()}>
+              <Icon name="folder" size={16} aria-hidden />
+              Exporter en PDF
+            </Button>
+            {etudiant.cvUrl && (
+              <a href={etudiant.cvUrl} download={etudiant.cvNom} className={button({ variant: "secondary" })}>
+                <Icon name="book" size={16} aria-hidden />
+                Télécharger le CV
+              </a>
+            )}
+          </div>
         }
       />
 
-      <p className="mt-6 rounded-card border border-border bg-surface p-5 text-body text-ink">
-        {etudiant.objectifs}
-      </p>
+      <section className="mt-6 overflow-hidden rounded-card border border-border bg-card">
+        {/* Même bande de dégradé que l'en-tête du profil (tokens existants) —
+            langage visuel cohérent entre les deux écrans. */}
+        <div
+          aria-hidden
+          className="h-14 bg-gradient-to-r from-primary-wash to-accent-soft sm:h-16"
+        />
+        <div className="-mt-7 flex items-end gap-4 px-5 sm:-mt-8 sm:px-6">
+          <Avatar
+            initiales={etudiant.initiales}
+            nom={etudiant.nom}
+            photoUrl={etudiant.photoUrl}
+            taille="lg"
+            className="ring-4 ring-card"
+          />
+        </div>
+        <p className="px-5 pb-5 pt-4 text-body text-ink sm:px-6 sm:pb-6">
+          {etudiant.objectifs}
+        </p>
+      </section>
 
-      <div className="mt-6 grid grid-cols-3 gap-3">
-        <Stat valeur={termines.length} libelle="Livrés" ton="success" />
-        <Stat valeur={arretes.length} libelle="Arrêtés" detail="documentés" />
-        <Stat valeur={entrees} libelle="Décisions écrites" />
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat valeur={termines.length} libelle="Projets livrés" ton="success" />
+        <Stat valeur={taches} libelle="Tâches finies" />
+        <Stat valeur={joursActifs} libelle="Jours actifs" detail="30 derniers jours" />
+        <Stat valeur={badgesObtenus.length} libelle="Distinctions" />
       </div>
 
-      <Block titre="Projets livrés">
-        <div className="flex flex-col gap-3">
-          {termines.length > 0 ? (
-            termines.map((p) => <ProjectRow key={p.id} projet={p} navigate={navigate} />)
-          ) : (
-            <EmptyState
-              title="Aucun projet livré"
-              body="Le portfolio se remplit tout seul à mesure que des projets passent en « Terminé »."
-            />
-          )}
-        </div>
+      <Block titre="Projets marquants">
+        {marquants.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {marquants.map((p, index) => (
+              <CardLink
+                key={p.id}
+                href={hrefFor({ name: "projet", id: p.id })}
+                onClick={() => navigate({ name: "projet", id: p.id })}
+                className="overflow-hidden !p-0"
+              >
+                <div
+                  className={cn(
+                    "h-24",
+                    BANDEAUX_MARQUANTS[index % BANDEAUX_MARQUANTS.length],
+                  )}
+                  aria-hidden
+                />
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <Chip>{p.type}</Chip>
+                    <span className="shrink-0 text-caption text-ink-muted">
+                      {new Date(p.debut).getFullYear()}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 font-heading text-heading text-ink">{p.nom}</h3>
+                  <ChipRow className="mt-3">
+                    {p.technos.slice(0, 3).map((t) => (
+                      <Chip key={t}>{t}</Chip>
+                    ))}
+                  </ChipRow>
+                  <p className="mt-4 flex items-center gap-1.5 text-caption font-medium text-primary">
+                    Voir le projet
+                    <Icon name="arrowRight" size={14} aria-hidden />
+                  </p>
+                </div>
+              </CardLink>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="Aucun projet marquant pour l'instant"
+            body="Un projet apparaît ici une fois Terminé et rendu public."
+          />
+        )}
       </Block>
 
       {/* Montrer les projets arrêtés dans un portfolio est un choix : le
@@ -776,7 +1052,7 @@ export function PortfolioScreen({
       <Block titre="Compétences">
         <div className="rounded-card border border-border bg-card p-5 sm:p-6">
           <div className="flex flex-col gap-4">
-            {etudiant.technos.map((t) => (
+            {technos.map((t) => (
               <div key={t.nom}>
                 <Progress
                   valeur={t.maitrise * 25}
@@ -785,7 +1061,7 @@ export function PortfolioScreen({
                 />
                 {t.valideePar && (
                   <p className="mt-1.5 flex items-center gap-1.5 text-caption text-success">
-                    <Award aria-hidden className="size-3.5" />
+                    <Icon name="sparkle" size={14} aria-hidden />
                     Validé par {t.valideePar}
                   </p>
                 )}
@@ -800,18 +1076,77 @@ export function PortfolioScreen({
 
 /* ── M20 — Notifications ────────────────────────────────────────────────── */
 
-const ICONE_NOTIF: Record<Notification["kind"], typeof Bell> = {
-  reprise: Bell,
-  forum: Bell,
-  challenge: Bell,
+const ICONE_NOTIF: Record<Notification["kind"], ComponentType<{ className?: string }>> = {
+  reprise: (props) => <Icon name="bell" size={16} {...props} />,
+  forum: (props) => <Icon name="bell" size={16} {...props} />,
+  challenge: (props) => <Icon name="bell" size={16} {...props} />,
   opportunite: Briefcase,
-  signal: Award,
-  mentorat: Bell,
+  signal: (props) => <Icon name="sparkle" size={16} {...props} />,
+  mentorat: (props) => <Icon name="bell" size={16} {...props} />,
+  evenement: (props) => <Icon name="calendar" size={16} {...props} />,
 };
 
 export function NotificationsScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { notifications, markNotificationRead, markAllRead, unread, channels, setChannel } =
-    useSoa();
+  const {
+    notifications,
+    markNotificationRead,
+    markAllRead,
+    deleteNotifications,
+    deleteAllNotifications,
+    unread,
+    channels,
+    setChannel,
+  } = useSoa();
+  const [selection, setSelection] = useState<Set<string>>(() => new Set());
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+  const [erreurSuppression, setErreurSuppression] = useState<string | null>(null);
+
+  const toutSelectionne = notifications.length > 0 && selection.size === notifications.length;
+
+  function basculerSelection(id: string) {
+    setSelection((courante) => {
+      const suivante = new Set(courante);
+      if (suivante.has(id)) suivante.delete(id);
+      else suivante.add(id);
+      return suivante;
+    });
+  }
+
+  function basculerTout() {
+    setSelection(toutSelectionne ? new Set() : new Set(notifications.map((notification) => notification.id)));
+  }
+
+  async function supprimerSelection(ids: string[]) {
+    if (ids.length === 0) return;
+    setErreurSuppression(null);
+    setSuppressionEnCours(true);
+    try {
+      await deleteNotifications(ids);
+      setSelection((courante) => {
+        const suivante = new Set(courante);
+        ids.forEach((id) => suivante.delete(id));
+        return suivante;
+      });
+    } catch {
+      setErreurSuppression("La suppression n'a pas pu être enregistrée. Réessaie dans un instant.");
+    } finally {
+      setSuppressionEnCours(false);
+    }
+  }
+
+  async function supprimerTout() {
+    if (!window.confirm("Supprimer toutes vos notifications ? Cette action est définitive.")) return;
+    setErreurSuppression(null);
+    setSuppressionEnCours(true);
+    try {
+      await deleteAllNotifications();
+      setSelection(new Set());
+    } catch {
+      setErreurSuppression("La suppression n'a pas pu être enregistrée. Réessaie dans un instant.");
+    } finally {
+      setSuppressionEnCours(false);
+    }
+  }
 
   return (
     <Screen>
@@ -820,34 +1155,82 @@ export function NotificationsScreen({ navigate }: { navigate: (to: Route) => voi
         retour={{ name: "tableau" }}
         onRetour={navigate}
         actions={
-          unread > 0 && (
-            <Button variant="secondary" onClick={markAllRead}>
-              Tout marquer comme lu
-            </Button>
-          )
+          <div className="flex flex-wrap items-center gap-2">
+            {unread > 0 && (
+              <Button variant="secondary" onClick={markAllRead}>
+                Tout marquer comme lu
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <>
+                <Button variant="secondary" onClick={basculerTout} disabled={suppressionEnCours}>
+                  {toutSelectionne ? "Tout désélectionner" : "Tout sélectionner"}
+                </Button>
+                {selection.size > 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => void supprimerSelection([...selection])}
+                    disabled={suppressionEnCours}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="size-4" aria-hidden />
+                    Supprimer ({selection.size})
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={() => void supprimerTout()}
+                  disabled={suppressionEnCours}
+                  className="text-destructive hover:text-destructive"
+                >
+                  Tout supprimer
+                </Button>
+              </>
+            )}
+          </div>
         }
       />
 
-      <motion.ul
-        variants={sequence()}
-        initial="hidden"
-        animate="visible"
-        className="mt-6 flex flex-col gap-3"
-      >
-        {notifications.map((n) => {
+      {erreurSuppression && (
+        <p role="alert" className="mt-4 rounded-card border border-destructive/30 bg-destructive/5 px-4 py-3 text-caption text-destructive">
+          {erreurSuppression}
+        </p>
+      )}
+
+      {notifications.length === 0 ? (
+        <EmptyState
+          className="mt-6"
+          title="Aucune notification"
+          body="Les rappels, réponses et actualités de tes projets apparaîtront ici."
+        />
+      ) : (
+        <motion.ul
+          variants={sequence()}
+          initial="hidden"
+          animate="visible"
+          className="mt-6 flex flex-col gap-3"
+        >
+          {notifications.map((n) => {
           const Icone = ICONE_NOTIF[n.kind];
           return (
             <motion.li key={n.id} variants={rise}>
-              <a
-                href={n.cible ?? "#"}
-                onClick={() => markNotificationRead(n.id)}
+              <div
                 className={cn(
-                  "flex gap-4 rounded-card border p-4 transition-colors duration-150",
+                  "flex gap-3 rounded-card border p-3 transition-colors duration-150 sm:gap-4 sm:p-4",
                   n.lu
                     ? "border-border bg-card"
                     : "border-primary/25 bg-primary-wash",
                 )}
               >
+                <label className="flex shrink-0 cursor-pointer items-start pt-2">
+                  <input
+                    type="checkbox"
+                    checked={selection.has(n.id)}
+                    onChange={() => basculerSelection(n.id)}
+                    aria-label={`Sélectionner la notification : ${n.titre}`}
+                    className="size-4 accent-[var(--color-primary)]"
+                  />
+                </label>
                 <span
                   aria-hidden
                   className={cn(
@@ -857,23 +1240,33 @@ export function NotificationsScreen({ navigate }: { navigate: (to: Route) => voi
                 >
                   <Icone className="size-4" />
                 </span>
-                <div className="min-w-0 flex-1">
+                <a
+                  href={n.cible ?? "#"}
+                  onClick={() => markNotificationRead(n.id)}
+                  className="min-w-0 flex-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-body font-medium text-ink">{n.titre}</p>
-                    {!n.lu && (
-                      <span className="mt-2 size-2 shrink-0 rounded-full bg-primary" />
-                    )}
+                    {!n.lu && <span className="mt-2 size-2 shrink-0 rounded-full bg-primary" />}
                   </div>
                   <p className="mt-0.5 text-caption text-ink-muted">{n.corps}</p>
-                  <p className="mt-2 text-caption text-ink-muted">
-                    il y a {joursDepuis(n.date)} j
-                  </p>
-                </div>
-              </a>
+                  <p className="mt-2 text-caption text-ink-muted">il y a {joursDepuis(n.date)} j</p>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => void supprimerSelection([n.id])}
+                  disabled={suppressionEnCours}
+                  aria-label={`Supprimer la notification : ${n.titre}`}
+                  className="grid size-10 shrink-0 place-items-center rounded-sm text-ink-muted transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
+              </div>
             </motion.li>
           );
-        })}
-      </motion.ul>
+          })}
+        </motion.ul>
+      )}
 
       {/* M20 — « Canaux : email, push mobile, notification web ». Les trois
           existent comme réglage ; deux ne peuvent pas fonctionner sans serveur,
@@ -919,8 +1312,13 @@ export function NotificationsScreen({ navigate }: { navigate: (to: Route) => voi
 /* ── M13 — Opportunités (côté étudiant) ─────────────────────────────────── */
 
 export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { myProjects, opportunities, publishOpportunity } = useSoa();
+  const { me, myProjects, opportunities, companies, students, publishOpportunity } = useSoa();
   const [ouvert, setOuvert] = useState(false);
+  const [source, setSource] = useState<"Entreprises" | "Toutes" | "Étudiants" | "Mes appels">("Entreprises");
+  const [page, setPage] = useState(1);
+  const [publicationEnCours, setPublicationEnCours] = useState(false);
+  const [erreurPublication, setErreurPublication] = useState<string | null>(null);
+  const [succesPublication, setSuccesPublication] = useState<string | null>(null);
   const [form, setForm] = useState({
     titre: "",
     description: "",
@@ -931,13 +1329,24 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
 
   const mesTechnos = new Set(myProjects.flatMap((p) => p.technos));
   const termines = myProjects.filter((p) => p.status === "Terminé").length;
+  const offres = opportunities.filter((opportunite) => {
+    if (source === "Entreprises") return Boolean(opportunite.companyId);
+    if (source === "Étudiants") return Boolean(opportunite.studentId);
+    if (source === "Mes appels") return opportunite.studentId === me.id;
+    return true;
+  });
+  const pages = Math.max(1, Math.ceil(offres.length / 8));
+  const offresPage = offres.slice((page - 1) * 8, page * 8);
+
+  useEffect(() => { setPage(1); }, [source]);
+  useEffect(() => { setPage((courante) => Math.min(courante, pages)); }, [pages]);
 
   return (
     <Screen>
       <ScreenHead
         eyebrow="M13"
         titre="Opportunités"
-        lede="Des entreprises publient des projets réels — et des étudiants aussi, quand ils cherchent des bras pour le leur."
+        lede="Consulte toutes les offres publiées par les entreprises, puis les appels à projets des autres étudiants."
         retour={{ name: "profil" }}
         onRetour={navigate}
         actions={
@@ -965,16 +1374,25 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
           onSubmit={(e) => {
             e.preventDefault();
             if (!form.titre.trim()) return;
-            publishOpportunity({
+            setPublicationEnCours(true);
+            setErreurPublication(null);
+            setSuccesPublication(null);
+            void publishOpportunity({
               titre: form.titre.trim(),
               description: form.description.trim(),
               technos: form.technos.split(",").map((t) => t.trim()).filter(Boolean),
               dureeMois: form.dureeMois,
               profil: form.profil.trim() || "Ouvert à tous les niveaux.",
               nature: "Projet",
-            });
-            setOuvert(false);
-            setForm({ titre: "", description: "", technos: "", dureeMois: 3, profil: "" });
+            }, "etudiant")
+              .then(() => {
+                setOuvert(false);
+                setSource("Mes appels");
+                setForm({ titre: "", description: "", technos: "", dureeMois: 3, profil: "" });
+                setSuccesPublication("Appel publié. Il est maintenant visible par tous les utilisateurs dans Opportunités.");
+              })
+              .catch(() => setErreurPublication("La publication n'a pas pu être enregistrée. Réessaie dans un instant."))
+              .finally(() => setPublicationEnCours(false));
           }}
           className="mt-6 flex flex-col gap-5 rounded-card border border-border bg-card p-5 sm:p-6"
         >
@@ -989,12 +1407,14 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
             value={form.titre}
             onChange={(e) => setForm({ ...form, titre: e.target.value })}
             placeholder="Cherche un binôme pour la partie synchronisation"
+            required
           />
           <Textarea
             label="Description"
             rows={3}
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
+            required
           />
           <Input
             label="Technologies"
@@ -1015,23 +1435,39 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
             label="Profil recherché"
             value={form.profil}
             onChange={(e) => setForm({ ...form, profil: e.target.value })}
+            required
           />
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="primary" disabled={!form.titre.trim()}>
-              Publier
+            <Button type="submit" variant="primary" disabled={!form.titre.trim() || publicationEnCours}>
+              {publicationEnCours ? "Publication…" : "Publier"}
             </Button>
-            <Button variant="ghost" onClick={() => setOuvert(false)}>
+            <Button variant="ghost" onClick={() => setOuvert(false)} disabled={publicationEnCours}>
               Annuler
             </Button>
           </div>
+          {erreurPublication && <p role="alert" className="text-caption text-destructive">{erreurPublication}</p>}
         </form>
       )}
 
+      <Tabs
+        valeurs={["Entreprises", "Toutes", "Étudiants", "Mes appels"] as const}
+        actif={source}
+        onChange={setSource}
+        className="mt-6"
+      />
+
+      {succesPublication && <p role="status" className="mt-4 rounded-card border border-success/30 bg-success/10 px-4 py-3 text-caption text-success">{succesPublication}</p>}
+
       <div className="mt-6 flex flex-col gap-4">
-        {opportunities.map((o) => {
-          const entreprise = COMPANIES.find((e) => e.id === o.companyId);
-          const auteur = o.studentId ? studentById(o.studentId) : undefined;
+        {offresPage.map((o) => {
+          const entreprise = o.companyId
+            ? companies.find((e) => e.id === o.companyId) ?? COMPANIES.find((e) => e.id === o.companyId)
+            : undefined;
+          const offreEntreprise = Boolean(o.companyId);
+          const auteur = o.studentId
+            ? (o.studentId === me.id ? me : students.find((etudiant) => etudiant.id === o.studentId) ?? studentById(o.studentId))
+            : undefined;
           const communes = o.technos.filter((t) => mesTechnos.has(t));
 
           return (
@@ -1043,10 +1479,11 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
                 <div className="min-w-0">
                   <h3 className="text-title font-semibold text-ink">{o.titre}</h3>
                   <p className="mt-1 flex items-center gap-1.5 text-caption text-ink-muted">
-                    {entreprise ? (
+                    {offreEntreprise ? (
                       <>
-                        <Building2 aria-hidden className="size-3.5" />
-                        {entreprise.nom} · {entreprise.secteur}
+                        <Icon name="building" size={14} aria-hidden />
+                        {entreprise?.nom ?? "Entreprise partenaire"}
+                        {entreprise?.secteur ? ` · ${entreprise.secteur}` : ""}
                       </>
                     ) : (
                       <>
@@ -1061,7 +1498,7 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
                   </p>
                 </div>
                 <ChipRow>
-                  {!entreprise && <Chip tone="primary">Étudiant</Chip>}
+                  {!offreEntreprise && <Chip tone="primary">Étudiant</Chip>}
                   <Chip tone={o.nature === "Stage" ? "primary" : "neutral"}>{o.nature}</Chip>
                 </ChipRow>
               </div>
@@ -1093,7 +1530,15 @@ export function OpportunitiesScreen({ navigate }: { navigate: (to: Route) => voi
             </article>
           );
         })}
+
+        {offres.length === 0 && (
+          <EmptyState
+            title={source === "Entreprises" ? "Aucune offre d'entreprise pour le moment" : "Aucune offre pour le moment"}
+            body="Les nouvelles offres publiées sur la plateforme apparaîtront ici automatiquement."
+          />
+        )}
       </div>
+      <Pagination page={page} total={offres.length} pageSize={8} onChange={setPage} itemLabel="offre" />
     </Screen>
   );
 }

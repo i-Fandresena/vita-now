@@ -55,10 +55,10 @@ export function Stat({
 /* ── Barre de progression ───────────────────────────────────────────────── */
 
 /**
- * Utilisée **uniquement** pour l'avancement déduit du journal, jamais comme
- * jauge de gamification : SPEC.md §2bis interdit les compteurs de complétion
- * dans un chemin de reprise. Elle porte donc toujours son chiffre en clair et
- * la phrase qui dit d'où il vient.
+ * Utilisée **uniquement** pour un avancement vérifiable (journal ou
+ * checklist cochée), jamais comme jauge de gamification : SPEC.md §2bis
+ * interdit les compteurs de complétion dans un chemin de reprise. Elle porte
+ * donc toujours son chiffre en clair et la phrase qui dit d'où il vient.
  */
 export function Progress({
   valeur,
@@ -221,11 +221,14 @@ export function ScoreRing({
 export function Avatar({
   initiales,
   nom,
+  photoUrl,
   taille = "md",
   className,
 }: {
   initiales: string;
   nom: string;
+  /** Hors cadrage, addition — quand présente, remplace les initiales. */
+  photoUrl?: string;
   taille?: "sm" | "md" | "lg";
   className?: string;
 }) {
@@ -234,6 +237,21 @@ export function Avatar({
     md: "size-10 text-body",
     lg: "size-16 text-title",
   } as const;
+
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt=""
+        title={nom}
+        className={cn(
+          "shrink-0 rounded-full object-cover",
+          tailles[taille],
+          className,
+        )}
+      />
+    );
+  }
 
   return (
     <span

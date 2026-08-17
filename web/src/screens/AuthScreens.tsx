@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
 import type { Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
 import type { Disponibilite, Niveau, Skill } from "@/domain/soa";
 import { cn } from "@/lib/cn";
 import { Button } from "@/ui/Button";
+import { Avatar } from "@/ui/data";
 import { Input, Textarea } from "@/ui/Field";
+import { Icon } from "@/ui/Icon";
 import { Screen, ScreenHead } from "@/ui/layout";
 
 /**
@@ -19,7 +21,16 @@ const NIVEAUX: Niveau[] = ["L1", "L2", "L3", "M1", "M2"];
 const DISPONIBILITES: Disponibilite[] = ["Soirs", "Week-ends", "Vacances", "Temps plein"];
 
 export function ProfileEditScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { me, updateProfile } = useSoa();
+  const {
+    me,
+    updateProfile,
+    uploadPhoto,
+    removePhoto,
+    uploadCv,
+    removeCv,
+    desactiverCompte,
+    supprimerCompte,
+  } = useSoa();
   const [form, setForm] = useState({
     nom: me.nom,
     universite: me.universite,
@@ -32,6 +43,15 @@ export function ProfileEditScreen({ navigate }: { navigate: (to: Route) => void 
   const [interets, setInterets] = useState(me.interets.join(", "));
   const [dispos, setDispos] = useState<Disponibilite[]>(me.disponibilites);
   const [nouvelleTechno, setNouvelleTechno] = useState("");
+  const [envoiPhoto, setEnvoiPhoto] = useState(false);
+  const [envoiCv, setEnvoiCv] = useState(false);
+  const [actionCompte, setActionCompte] = useState<"desactiver" | "supprimer" | null>(null);
+  const [motDePasseCompte, setMotDePasseCompte] = useState("");
+  const [confirmationCompte, setConfirmationCompte] = useState("");
+  const [compteEnCours, setCompteEnCours] = useState(false);
+  const [erreurCompte, setErreurCompte] = useState<string | null>(null);
+  const inputPhoto = useRef<HTMLInputElement>(null);
+  const inputCv = useRef<HTMLInputElement>(null);
 
   function soumettre(event: FormEvent) {
     event.preventDefault();
@@ -47,6 +67,57 @@ export function ProfileEditScreen({ navigate }: { navigate: (to: Route) => void 
     navigate({ name: "profil" });
   }
 
+  // Envoyée immédiatement au choix du fichier — pas différée au `submit` du
+  // formulaire, pour que l'aperçu reflète tout de suite ce qui est enregistré.
+  async function choisirPhoto(event: ChangeEvent<HTMLInputElement>) {
+    const fichier = event.target.files?.[0];
+    event.target.value = "";
+    if (!fichier) return;
+    setEnvoiPhoto(true);
+    try {
+      await uploadPhoto(fichier);
+    } finally {
+      setEnvoiPhoto(false);
+    }
+  }
+
+  async function choisirCv(event: ChangeEvent<HTMLInputElement>) {
+    const fichier = event.target.files?.[0];
+    event.target.value = "";
+    if (!fichier) return;
+    setEnvoiCv(true);
+    try {
+      await uploadCv(fichier);
+    } finally {
+      setEnvoiCv(false);
+    }
+  }
+
+  async function confirmerActionCompte(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!actionCompte || compteEnCours) return;
+    const attendu = actionCompte === "desactiver" ? "DESACTIVER" : "SUPPRIMER";
+    if (confirmationCompte !== attendu) {
+      setErreurCompte(`Saisis ${attendu} pour confirmer.`);
+      return;
+    }
+
+    setCompteEnCours(true);
+    setErreurCompte(null);
+    try {
+      if (actionCompte === "desactiver") {
+        await desactiverCompte(motDePasseCompte, confirmationCompte);
+      } else {
+        await supprimerCompte(motDePasseCompte, confirmationCompte);
+      }
+      navigate({ name: "accueil" });
+    } catch (erreur) {
+      setErreurCompte(erreur instanceof Error ? erreur.message : "L'opération n'a pas pu être finalisée.");
+    } finally {
+      setCompteEnCours(false);
+    }
+  }
+
   return (
     <Screen>
       <ScreenHead
@@ -57,6 +128,43 @@ export function ProfileEditScreen({ navigate }: { navigate: (to: Route) => void 
       />
 
       <form onSubmit={soumettre} className="mt-8 flex max-w-2xl flex-col gap-8">
+        <div className="flex items-center gap-5 rounded-card border border-border bg-card p-5">
+          <Avatar initiales={me.initiales} nom={me.nom} photoUrl={me.photoUrl} taille="lg" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <p className="text-body font-medium text-ink">Photo de profil</p>
+            <p className="text-caption text-ink-muted">JPEG, PNG ou WebP — 4 Mo maximum.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={envoiPhoto}
+                onClick={() => inputPhoto.current?.click()}
+              >
+                {envoiPhoto ? "Envoi…" : me.photoUrl ? "Changer la photo" : "Ajouter une photo"}
+              </Button>
+              {me.photoUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={envoiPhoto}
+                  onClick={() => void removePhoto()}
+                >
+                  Retirer
+                </Button>
+              )}
+            </div>
+            <input
+              ref={inputPhoto}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={choisirPhoto}
+            />
+          </div>
+        </div>
+
         <Input
           label="Nom complet"
           value={form.nom}
@@ -226,6 +334,47 @@ export function ProfileEditScreen({ navigate }: { navigate: (to: Route) => void 
           </span>
         </label>
 
+        <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-5">
+          <p className="text-body font-medium text-ink">CV</p>
+          {me.cvNom ? (
+            <p className="flex items-center gap-2 text-body text-ink-muted">
+              <Icon name="folder" size={16} aria-hidden className="shrink-0" />
+              <span className="min-w-0 truncate">{me.cvNom}</span>
+            </p>
+          ) : (
+            <p className="text-caption text-ink-muted">PDF — 8 Mo maximum.</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={envoiCv}
+              onClick={() => inputCv.current?.click()}
+            >
+              {envoiCv ? "Envoi…" : me.cvUrl ? "Remplacer" : "Ajouter un CV"}
+            </Button>
+            {me.cvUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={envoiCv}
+                onClick={() => void removeCv()}
+              >
+                Retirer
+              </Button>
+            )}
+          </div>
+          <input
+            ref={inputCv}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={choisirCv}
+          />
+        </div>
+
         <div className="flex flex-wrap gap-3">
           <Button type="submit" variant="primary" size="lg">
             Enregistrer
@@ -235,6 +384,88 @@ export function ProfileEditScreen({ navigate }: { navigate: (to: Route) => void 
           </Button>
         </div>
       </form>
+
+      <section className="mt-10 max-w-2xl rounded-card border border-destructive/25 bg-destructive/5 p-5 sm:p-6" aria-labelledby="gestion-compte">
+        <span className="label-eyebrow text-destructive">Gestion du compte</span>
+        <h2 id="gestion-compte" className="mt-2 font-heading text-heading text-ink">Prendre une pause ou partir</h2>
+        <p className="mt-2 text-body text-ink-muted">
+          La désactivation conserve ton espace et tes projets. La suppression est définitive.
+        </p>
+
+        {!actionCompte ? (
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActionCompte("desactiver");
+                setErreurCompte(null);
+              }}
+              className="rounded-card border border-border bg-card p-4 text-left transition-colors hover:border-primary"
+            >
+              <span className="block text-body font-semibold text-ink">Désactiver temporairement</span>
+              <span className="mt-1 block text-caption text-ink-muted">Tu pourras réactiver ton compte simplement en te reconnectant.</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActionCompte("supprimer");
+                setErreurCompte(null);
+              }}
+              className="rounded-card border border-destructive/30 bg-card p-4 text-left transition-colors hover:border-destructive"
+            >
+              <span className="block text-body font-semibold text-destructive">Supprimer définitivement</span>
+              <span className="mt-1 block text-caption text-ink-muted">Cette action ne peut pas être annulée.</span>
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={(event) => void confirmerActionCompte(event)} className="mt-5 flex max-w-md flex-col gap-4 rounded-card border border-border bg-card p-4">
+            <div>
+              <h3 className="text-body font-semibold text-ink">
+                {actionCompte === "desactiver" ? "Désactiver le compte" : "Supprimer le compte"}
+              </h3>
+              <p className="mt-1 text-caption text-ink-muted">
+                {actionCompte === "desactiver"
+                  ? "La session sera fermée. Une nouvelle connexion avec ton mot de passe réactivera le compte."
+                  : "Tous les éléments personnels associés au compte seront supprimés conformément aux règles de conservation de la plateforme."}
+              </p>
+            </div>
+            <Input
+              label="Mot de passe actuel"
+              type="password"
+              autoComplete="current-password"
+              value={motDePasseCompte}
+              onChange={(event) => setMotDePasseCompte(event.target.value)}
+              required
+            />
+            <Input
+              label={`Saisis ${actionCompte === "desactiver" ? "DESACTIVER" : "SUPPRIMER"} pour confirmer`}
+              value={confirmationCompte}
+              onChange={(event) => setConfirmationCompte(event.target.value.toUpperCase())}
+              autoComplete="off"
+              required
+              error={erreurCompte ?? undefined}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" variant="secondary" disabled={compteEnCours} className={actionCompte === "supprimer" ? "text-destructive" : undefined}>
+                {compteEnCours ? "Confirmation…" : actionCompte === "desactiver" ? "Désactiver mon compte" : "Supprimer définitivement"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={compteEnCours}
+                onClick={() => {
+                  setActionCompte(null);
+                  setMotDePasseCompte("");
+                  setConfirmationCompte("");
+                  setErreurCompte(null);
+                }}
+              >
+                Annuler
+              </Button>
+            </div>
+          </form>
+        )}
+      </section>
     </Screen>
   );
 }

@@ -12,7 +12,10 @@ import { cn } from "@/lib/cn";
  * immédiate. La célébration se fait avec des pastilles et des surlignages
  * (`.mark-accent`), jamais avec une action.
  */
-const button = cva(
+/** Exportée pour styler un élément non-`<button>` (ex. un `<a download>`,
+    voir `PortfolioScreen`) exactement comme un `Button` — sans imbriquer un
+    lien dans un bouton, invalide en HTML. */
+export const button = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
     "rounded-full font-medium",

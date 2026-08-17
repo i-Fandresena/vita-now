@@ -124,4 +124,6 @@ export const CLES = {
   etat: "etat",
   /** Les dépôts et déclarations d'usage de la Mémoire IA. */
   memoire: "memoire",
+  /** M12 — clés des points déjà fêtés, pour ne jamais rejouer les confettis. */
+  pointsVus: "points-vus",
 } as const;

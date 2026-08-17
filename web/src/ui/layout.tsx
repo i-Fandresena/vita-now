@@ -1,8 +1,8 @@
-import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
 import { cn } from "@/lib/cn";
+import { Icon } from "@/ui/Icon";
 
 /**
  * layout.tsx — la charpente d'un écran applicatif.
@@ -129,7 +129,7 @@ export function ScreenHead({
           }}
           className="-ml-2 inline-flex h-11 w-fit items-center gap-1 rounded-full pr-3 pl-2 text-caption font-medium text-ink-muted transition-colors duration-150 hover:bg-surface hover:text-ink"
         >
-          <ChevronLeft aria-hidden className="size-4" />
+          <Icon name="back" size={16} aria-hidden />
           Retour
         </a>
       )}

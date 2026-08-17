@@ -285,6 +285,115 @@
       radial-gradient(ellipse 90% 70% at 95% 100%, oklch(42% 0.2 266), transparent 72%);
   }
 
+  /* L'aura en clair — le cadre d'en-tête de l'onglet Projets.
+     Même technique et **mêmes deux couleurs** que `.panel-aura` : le jaune et
+     l'indigo de la palette, et rien d'autre. Ce qui change est la clarté. Là où
+     `.panel-aura` est un aplat saturé qui porte du texte blanc, celui-ci reste
+     au-dessus de 86 %, chroma plafonnée à 0,1 — c'est ce qui laisse l'encre
+     navy et l'indigo d'action lisibles dessus sans toucher à une seule couleur
+     de texte.
+
+     Des taches radiales, jamais un dégradé linéaire : un linéaire tracerait une
+     diagonale nette d'un coin à l'autre, alors que des taches se recouvrent et
+     donnent un fondu sans direction.
+
+     Le jaune tient dans l'angle haut-gauche, avec une chute rapide, et c'est la
+     contrainte principale de ce panneau. La raison est colorimétrique et elle
+     est déjà écrite pour `.panel-aura` : entre le jaune et le bleu, toute
+     interpolation passe par le vert. Une transition longue étalerait une bande
+     verdâtre au milieu du cadre — courte, elle se lit comme une frange. La
+     clarté élevée aide ici, elle ne suffit pas.
+
+     Elle sert aussi le signal : DESIGN.md réserve le jaune à la réussite. Une
+     large nappe jaune sous un titre d'écran userait ce sens ; un angle le cite
+     sans le dépenser. */
+  .panel-aura-pale {
+    background-color: oklch(91% 0.045 258);
+    background-image:
+      radial-gradient(ellipse 42% 52% at 2% 0%, oklch(94% 0.1 96 / 0.95), transparent 56%),
+      radial-gradient(ellipse 55% 55% at 16% 12%, oklch(93% 0.06 92 / 0.35), transparent 60%),
+      radial-gradient(ellipse 70% 75% at 90% 10%, oklch(90% 0.055 262 / 0.9), transparent 70%),
+      radial-gradient(ellipse 85% 80% at 58% 96%, oklch(88% 0.06 256 / 0.9), transparent 72%),
+      radial-gradient(ellipse 55% 60% at 99% 92%, oklch(86% 0.075 268 / 0.85), transparent 70%);
+  }
+
+  /* En sombre, le même dessin descend d'environ soixante-cinq points de clarté.
+     Les teintes et les positions ne bougent pas — c'est le panneau qui
+     s'assombrit, pas un second panneau. Sans cette descente, l'encre passe au
+     quasi-blanc et se poserait sur un fond à 91 % : illisible.
+
+     Le plafond est à 31 %, et il est fixé par la note manuscrite, pas par le
+     texte courant. L'indigo d'action est à 55 % de clarté : au-dessus de 31 %
+     de fond, il retombe sous 3:1 et cesse de passer, même en grand corps. Le
+     texte, lui, a de la marge — c'est le plus contraint des deux qui décide.
+
+     La chroma du jaune tombe de 0,1 à 0,05 dans la descente. Un jaune sombre
+     mais saturé n'est plus du jaune, c'est de l'olive ; désaturé, il reste une
+     chaleur dans l'angle, ce qui est exactement son rôle ici. */
+  .dark .panel-aura-pale {
+    background-color: oklch(27% 0.04 258);
+    background-image:
+      radial-gradient(ellipse 42% 52% at 2% 0%, oklch(31% 0.05 96 / 0.95), transparent 56%),
+      radial-gradient(ellipse 55% 55% at 16% 12%, oklch(29% 0.035 92 / 0.35), transparent 60%),
+      radial-gradient(ellipse 70% 75% at 90% 10%, oklch(29% 0.06 262 / 0.9), transparent 70%),
+      radial-gradient(ellipse 85% 80% at 58% 96%, oklch(26% 0.06 256 / 0.9), transparent 72%),
+      radial-gradient(ellipse 55% 60% at 99% 92%, oklch(25% 0.07 268 / 0.85), transparent 70%);
+  }
+
+  /* Le relais des mascottes — les quatre poses se succèdent dans la carte du
+     rail. Une seule animation, partagée par les quatre images, décalée par le
+     rang : c'est le retard qui fait le relais, exactement comme `.dot-wave`.
+
+     Les retards sont **négatifs**. Un retard positif laisserait les images 2 à
+     4 sur leur image-clé de départ pendant leur attente — soit quatre
+     mascottes empilées à l'ouverture de la page. Un retard négatif démarre
+     l'animation en cours de route : à la première image peinte, chacune est
+     déjà à sa place dans le cycle, et une seule est visible.
+
+     Le fondu est court (4 % du cycle, un demi-tiers de seconde) et le palier
+     long : on doit lire une pose qui change, pas un clignotement.
+
+     Sous `prefers-reduced-motion`, tout est coupé plus bas dans ce fichier et
+     les images retombent sur leur opacité de classe — `opacity-0` pour les
+     trois dernières, rien pour la première. Il reste donc une mascotte fixe,
+     jamais quatre superposées. */
+  @keyframes mascotte-relais {
+    0%,
+    21% {
+      opacity: 1;
+    }
+    25%,
+    96% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  .mascotte-relais {
+    animation: mascotte-relais 12s var(--ease-in-out-quint) infinite both;
+    /* Quatre poses, un quart de cycle chacune. Le `- 4` ramène tous les
+       retards sous zéro sans changer les écarts. */
+    animation-delay: calc((var(--mascotte, 0) - 4) * 3s);
+  }
+
+  /* Le relais change la pose ; ce wrapper donne aussi une respiration légère
+     au personnage actif, sans écraser le centrage des quatre images. */
+  @keyframes mascotte-flotte {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .mascotte-flotte {
+    animation: mascotte-flotte 3.4s var(--ease-in-out-quint) infinite;
+  }
+
   /* Le grain.
      Un `feTurbulence` encodé en `data:` — pas de fichier, pas de requête, et il
      se régénère à n'importe quelle taille d'écran sans jamais pixeliser, ce

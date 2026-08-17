@@ -9,6 +9,7 @@ import { useSoa, VitanowProvider } from "./app/vitanow-store";
 import { BandeauSync } from "./features/sync/BandeauSync";
 import { fade, reduceVariants } from "./lib/motion";
 import { ProfileEditScreen } from "./screens/AuthScreens";
+import { CalendarScreen } from "./screens/CalendarScreen";
 import { CapsuleScreen } from "./screens/CapsuleScreen";
 import {
   ChallengeScreen,
@@ -19,15 +20,18 @@ import {
   MentorsScreen,
   ThreadScreen,
 } from "./screens/CommunityScreens";
+import { CompanyLoginScreen, CompanySignUpScreen } from "./screens/CompanyAuthScreens";
 import {
   CompanyChallengesScreen,
   CompanyHomeScreen,
   CompanyOpportunitiesScreen,
+  CompanyProfileEditScreen,
   MarketplaceScreen,
   TalentScreen,
   TalentsScreen,
 } from "./screens/CompanyScreens";
 import { DashboardScreen } from "./screens/DashboardScreen";
+import { CopilotScreen } from "./screens/CopilotScreen";
 import { DepositScreen } from "./screens/DepositScreen";
 import { FragmentScreen } from "./screens/FragmentScreen";
 import { LandingScreen } from "./screens/LandingScreen";
@@ -50,6 +54,7 @@ import {
   ProfileScreen,
 } from "./screens/ProfileScreens";
 import { SignalScreen } from "./screens/SignalScreen";
+import { AdminLoginScreen, AdminScreen } from "./screens/AdminScreens";
 
 /**
  * App.tsx — l'aiguillage.
@@ -74,10 +79,20 @@ function CurrentScreen({
       return <SignInScreen navigate={navigate} />;
     case "inscription":
       return <SignUpScreen navigate={navigate} />;
+    case "admin-connexion":
+      return <AdminLoginScreen navigate={navigate} />;
+    case "admin":
+      return <AdminScreen navigate={navigate} />;
+    case "ent-connexion":
+      return <CompanyLoginScreen navigate={navigate} />;
+    case "ent-inscription":
+      return <CompanySignUpScreen navigate={navigate} />;
 
     /* Étudiant — onglets */
     case "tableau":
       return <DashboardScreen navigate={navigate} />;
+    case "copilote":
+      return <CopilotScreen />;
     case "projets":
       return <ProjectsScreen navigate={navigate} />;
     case "memoire":
@@ -134,6 +149,8 @@ function CurrentScreen({
       return <PortfolioScreen id={route.id} navigate={navigate} />;
     case "opportunites":
       return <OpportunitiesScreen navigate={navigate} />;
+    case "calendrier":
+      return <CalendarScreen navigate={navigate} />;
     case "profil-edition":
       return <ProfileEditScreen navigate={navigate} />;
 
@@ -146,10 +163,14 @@ function CurrentScreen({
       return <TalentScreen id={route.id} navigate={navigate} />;
     case "ent-opportunites":
       return <CompanyOpportunitiesScreen navigate={navigate} />;
+    case "ent-opportunites-nouveau":
+      return <CompanyOpportunitiesScreen navigate={navigate} ouvrirPublication />;
     case "ent-challenges":
       return <CompanyChallengesScreen navigate={navigate} />;
     case "ent-marketplace":
       return <MarketplaceScreen navigate={navigate} />;
+    case "ent-profil-edition":
+      return <CompanyProfileEditScreen navigate={navigate} />;
   }
 }
 
@@ -166,16 +187,31 @@ function CurrentScreen({
  * qui redirigerait à nouveau, et l'utilisateur serait piégé dans une boucle.
  */
 function useGardeSession(route: Route) {
-  const { connecte } = useSoa();
-  const publique = spaceOf(route) === "public";
+  const { connecte, entrepriseConnectee, hydrated } = useSoa();
+  const espace = spaceOf(route);
+  // Espace entreprise : une entreprise réellement connectée (hors cadrage,
+  // addition) y accède directement, mais un étudiant connecté continue aussi
+  // d'y accéder — c'est l'aperçu démo existant (bouton du Shell), inchangé.
+  const connecteQuelconque = espace === "entreprise" ? connecte || entrepriseConnectee : connecte;
+
+  // `hydrated` : tant que le premier `/api/etat` n'a pas répondu, `connecte`
+  // ne reflète que `sessionId` lu de `localStorage` — jamais le vrai cookie
+  // httpOnly. Arriver directement sur un écran protégé par une redirection
+  // serveur complète (retour OAuth Google/GitHub, lien copié) rechargerait la
+  // page à zéro : sans cette attente, la redirection vers #/connexion partirait
+  // sur cette lecture locale périmée, avant même que la réponse du serveur
+  // n'ait eu le temps d'arriver.
+  const autorise = espace === "public" || espace === "admin" || (hydrated && connecteQuelconque);
+  const enAttente = espace !== "public" && espace !== "admin" && !hydrated;
 
   useEffect(() => {
-    if (!connecte && !publique) {
-      window.location.replace(`${window.location.pathname}#/connexion`);
+    if (!autorise && !enAttente) {
+      const cible = espace === "entreprise" ? "#/entreprise/connexion" : "#/connexion";
+      window.location.replace(`${window.location.pathname}${cible}`);
     }
-  }, [connecte, publique]);
+  }, [autorise, enAttente, espace]);
 
-  return connecte || publique;
+  return autorise;
 }
 
 function Screens() {

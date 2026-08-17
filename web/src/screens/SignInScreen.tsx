@@ -267,18 +267,39 @@ export function SignInScreen({ navigate }: { navigate: (to: Route) => void }) {
           </motion.div>
 
           <motion.div variants={rise} className="grid w-full grid-cols-2 gap-3">
-            {FOURNISSEURS.map(({ nom, tracés }) => (
-              <Button
-                key={nom}
-                variant="secondary"
-                size="lg"
-                aria-label={`Continuer avec ${nom}`}
-                onClick={() => undefined}
-                className="text-ink"
-              >
-                <LogoFournisseur nom={nom} tracés={tracés} />
-              </Button>
-            ))}
+            {FOURNISSEURS.map(({ nom, tracés }) => {
+              // Redirection complète du navigateur (pas un appel du SPA) :
+              // le fournisseur OAuth doit recevoir cette requête, pas notre API.
+              const disponible = nom === "Google" || nom === "GitHub";
+              return (
+                <Button
+                  key={nom}
+                  variant="secondary"
+                  size="lg"
+                  aria-label={`Continuer avec ${nom}`}
+                  disabled={!disponible}
+                  onClick={() => {
+                    if (disponible) {
+                      window.location.href = nom === "Google" ? "/api/auth/google" : "/api/auth/github";
+                    }
+                  }}
+                  className="text-ink"
+                >
+                  <LogoFournisseur nom={nom} tracés={tracés} />
+                </Button>
+              );
+            })}
+          </motion.div>
+
+          <motion.div variants={rise} className="w-full border-t border-border pt-4">
+            <Button
+              variant="secondary"
+              size="lg"
+              className="w-full"
+              onClick={() => navigate({ name: "ent-connexion" })}
+            >
+              Connexion entreprise
+            </Button>
           </motion.div>
         </motion.div>
       </div>

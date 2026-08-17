@@ -8,16 +8,24 @@ Documentation=https://github.com/i-Fandresena/AuraPlusPlus
 Wants=postgresql.service
 After=network-online.target postgresql.service
 
+# Ces directives appartiennent à l'unité, pas à [Service]. Dans [Service],
+# systemd les ignore silencieusement et applique son seuil par défaut.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
 [Service]
 Type=simple
 User=vitanow
 Group=vitanow
-WorkingDirectory=/opt/vitanow/server
+WorkingDirectory=/opt/Aura++/server
 
 Environment=NODE_ENV=production
 # Le fichier contient DATABASE_URL, COOKIE_SECRET et ANTHROPIC_API_KEY.
 # Droits attendus : 0600, propriétaire vitanow. Il n'est jamais versionné.
-EnvironmentFile=/opt/vitanow/server/.env
+EnvironmentFile=/opt/Aura++/server/.env
+# Identifiants du centre d'administration : fichier racine 0600, séparé du
+# dépôt et de l'environnement applicatif courant.
+EnvironmentFile=-/etc/vitanow-admin.env
 
 ExecStart=/usr/bin/node dist/index.js
 
@@ -26,8 +34,7 @@ ExecStart=/usr/bin/node dist/index.js
 # de redémarrage qui sature le journal et masque la cause réelle.
 Restart=always
 RestartSec=5
-StartLimitIntervalSec=60
-StartLimitBurst=5
+TimeoutStartSec=30
 
 # Arrêt ordonné : index.ts intercepte SIGTERM, ferme Fastify puis le pool
 # PostgreSQL. Dix secondes suffisent largement ; au-delà, SIGKILL.
@@ -41,7 +48,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=
+# Les seules écritures applicatives sont les fichiers médias uploadés.
+ReadWritePaths=/opt/Aura++/server/uploads
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

@@ -1,13 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import {
-  ArrowRight,
-  Bell,
-  Clock,
-  Plus,
-  Search,
-  Sparkles,
-  Trophy,
-} from "lucide-react";
+import { useState } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
@@ -17,7 +9,9 @@ import { rise, sequence } from "@/lib/motion";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
 import { Progress, Rhythm, Stat } from "@/ui/data";
+import { Icon } from "@/ui/Icon";
 import { BoardScreen, CardLink, ScreenHead } from "@/ui/layout";
+import { useResumeProjet } from "./ProjectScreens";
 
 /**
  * Tableau de bord — le « QG » que la landing promet.
@@ -48,21 +42,225 @@ function heureDuJour(): string {
   return "Bonsoir";
 }
 
+/* ── Impulsion du jour ─────────────────────────────────────────────────── */
+
+function empreinte(texte: string): number {
+  return Array.from(texte).reduce((total, caractere) => ((total * 31) + caractere.charCodeAt(0)) >>> 0, 7);
+}
+
+function citationContextuelle({
+  prenom,
+  projet,
+  debutant,
+  termines,
+  tour,
+}: {
+  prenom: string;
+  projet?: string;
+  debutant: boolean;
+  termines: number;
+  tour: number;
+}): string {
+  /* Ce n'est pas une liste qui s'épuise : les débuts, les gestes et les
+     aboutissements se combinent. Le contexte réel (premier projet, projet
+     actif, parcours déjà mené) détermine également le ton de la phrase. */
+  const debuts = debutant
+    ? [
+        "Un premier geste suffit pour donner une direction à une idée.",
+        "Commencer petit est déjà une façon de construire grand.",
+        "Le projet que tu ouvres aujourd'hui peut devenir ta meilleure preuve demain.",
+      ]
+    : termines > 0
+      ? [
+          "Tu sais déjà terminer : aujourd'hui, il suffit de reprendre ce savoir-faire.",
+          "Chaque projet abouti t'a laissé une méthode que tu peux réutiliser maintenant.",
+          "Ce que tu as déjà mené au bout rend le prochain pas plus crédible.",
+        ]
+      : [
+          "La régularité transforme une intention en projet visible.",
+          "Un projet avance quand une idée trouve un prochain geste concret.",
+          "Une petite avancée documentée vaut mieux qu'une grande intention gardée pour demain.",
+        ];
+  const gestes = [
+    "Choisis le geste qui réduit l'incertitude, puis donne-lui vingt minutes.",
+    "Cherche la prochaine preuve, pas la perfection du plan.",
+    "Quand le chemin semble flou, avance jusqu'à la prochaine question utile.",
+    "Une tâche claire aujourd'hui libère plus d'énergie qu'une longue liste demain.",
+    "Fais de la place au brouillon : c'est souvent là que la solution commence.",
+    "Le rythme gagne contre l'élan quand l'élan fatigue.",
+    "Une décision modeste prise maintenant a plus de valeur qu'une option idéale remise à plus tard.",
+  ];
+  const ancrages = projet
+    ? [
+        `${projet} n'a pas besoin d'être parfait pour devenir plus solide aujourd'hui.`,
+        `Sur ${projet}, une action vérifiable vaut mieux qu'une promesse vague.`,
+        `Même ${projet} avance dès que tu transformes son prochain doute en essai.`,
+      ]
+    : [
+        `Ton futur projet commence par une décision simple, ${prenom}.`,
+        `L'idée la plus utile est souvent celle à laquelle tu donnes une première forme, ${prenom}.`,
+        `Tu n'as pas besoin de tout voir pour créer la première étape, ${prenom}.`,
+      ];
+  const graine = empreinte(`${new Date().toDateString()}-${prenom}-${projet ?? "nouveau"}`);
+  const choix = (liste: string[], decalage: number) => liste[(graine + tour * 17 + decalage) % liste.length]!;
+  const variantes = [
+    `${choix(debuts, 0)} ${choix(gestes, 1)}`,
+    `${choix(ancrages, 2)} ${choix(gestes, 3)}`,
+    `${choix(gestes, 4)} ${choix(debuts, 5)}`,
+  ];
+  return variantes[(graine + tour * 11) % variantes.length]!;
+}
+
+/**
+ * Bannière pleine largeur, en tête d'écran — la forme d'origine, remise en
+ * place à la demande. Le bouton « Une autre idée » relance la rotation sans
+ * attendre : la citation évolue déjà d'elle-même à chaque nouvelle session,
+ * mais quelqu'un qui n'accroche pas à la phrase du jour n'a pas à la subir
+ * jusqu'au lendemain.
+ */
+function CitationDuJour({
+  studentId,
+  prenom,
+  projet,
+  debutant,
+  termines,
+  reduced,
+}: {
+  studentId: string;
+  prenom: string;
+  projet?: string;
+  debutant: boolean;
+  termines: number;
+  reduced: boolean;
+}) {
+  const cle = `vitanow:citation:${new Date().toDateString()}:${studentId}`;
+  const [tour, setTour] = useState(() => {
+    try {
+      const session = `${cle}:session`;
+      const precedent = Number(window.localStorage.getItem(cle) ?? 0) || 0;
+      /* Une session navigateur ne change pas la citation à chaque retour sur
+         le tableau, mais une nouvelle session de cet étudiant la fait évoluer
+         automatiquement. La clé contient son identifiant : deux comptes sur
+         le même poste ne se partagent jamais leur rotation. */
+      if (window.sessionStorage.getItem(session) !== null) return precedent;
+      const prochain = precedent + 1;
+      window.localStorage.setItem(cle, String(prochain));
+      window.sessionStorage.setItem(session, String(prochain));
+      return prochain;
+    } catch {
+      return 0;
+    }
+  });
+  const citation = citationContextuelle({ prenom, projet, debutant, termines, tour });
+
+  const changer = () => {
+    setTour((precedent) => {
+      const prochain = precedent + 1;
+      try {
+        window.localStorage.setItem(cle, String(prochain));
+      } catch {
+        // Le changement de citation reste fonctionnel si le stockage est bloqué.
+      }
+      return prochain;
+    });
+  };
+
+  return (
+    <motion.section
+      variants={rise}
+      className="relative overflow-hidden rounded-card border border-primary/25 bg-[linear-gradient(120deg,color-mix(in_oklab,var(--color-primary)_13%,var(--color-card)),var(--color-card)_52%,color-mix(in_oklab,var(--color-accent)_19%,var(--color-card)))] p-5 shadow-card sm:p-6"
+      aria-label="Impulsion du jour"
+    >
+      <motion.span
+        aria-hidden
+        className="absolute -right-8 -top-10 size-36 rounded-full bg-primary/10 blur-2xl"
+        animate={reduced ? undefined : { x: [0, -12, 0], y: [0, 10, 0], scale: [1, 1.08, 1] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.span
+        aria-hidden
+        className="absolute -bottom-16 right-[22%] size-28 rounded-full bg-accent/20 blur-2xl"
+        animate={reduced ? undefined : { x: [0, 15, 0], y: [0, -9, 0] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+      />
+      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-3xl">
+          <span className="flex items-center gap-2 text-caption font-semibold uppercase tracking-wide text-primary">
+            <Icon name="sparkle" size={15} aria-hidden />
+            Impulsion du jour
+          </span>
+          <p className="mt-3 font-heading text-xl leading-snug text-ink sm:text-2xl">
+            « {citation} »
+          </p>
+        </div>
+        <Button variant="secondary" size="sm" className="shrink-0 self-start sm:self-auto" onClick={changer}>
+          <Icon name="sparkle" size={15} aria-hidden className="text-primary" />
+          Une autre idée
+        </Button>
+      </div>
+    </motion.section>
+  );
+}
+
 /* ── La reprise — ce qui passe avant tout ───────────────────────────────── */
 
 function CarteReprise({ navigate }: { navigate: (to: Route) => void }) {
-  const { capsule } = useSoa();
+  const { capsule, projects } = useSoa();
+  const projetDormant = projects.find((p) => p.id === capsule?.projectId);
+  // Hook appelé sans condition (règle de React) : `useResumeProjet` gère
+  // lui-même l'absence de projet. Un seul appel par visite du tableau de
+  // bord — le widget le plus visible de l'appli, pas une liste de cartes.
+  const { resume, resumeSource } = useResumeProjet(projetDormant, true);
+
   if (!capsule) return null;
 
   const jours = joursDepuis(capsule.lastActivity);
+
+  // Checklist réelle du projet endormi : combien de tâches restent à faire,
+  // pas une estimation. Sert de repli si le résumé IA n'est pas disponible.
+  const checklist = projetDormant?.checklist ?? [];
+  const restantes = checklist.filter((e) => !e.fait).length;
+
+  // « Assistant IA » n'est affiché comme tel que si le message vient
+  // réellement d'un modèle (Gemini/Claude) — même règle de vérité que le
+  // pied de page du bloc Résumé sur la page projet (`resumeSource`). Sinon,
+  // le message reste réel (checklist ou blocage du journal), juste sans
+  // prétendre à un appel modèle qui n'a pas eu lieu.
+  const estIA = resumeSource !== "journal";
+  const messageAssistant = estIA
+    ? resume?.pourquoi
+    : restantes > 0
+      ? `${restantes} tâche${restantes > 1 ? "s" : ""} pas encore finie${restantes > 1 ? "s" : ""} sur ${capsule.projectTitle}. On s'y met ?`
+      : null;
 
   return (
     <motion.section
       variants={rise}
       className="rounded-card border border-primary/25 bg-primary-wash p-5 sm:p-6"
     >
+      {messageAssistant && (
+        <a
+          href={hrefFor({ name: "projet", id: capsule.projectId })}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate({ name: "projet", id: capsule.projectId });
+          }}
+          className="mb-4 flex flex-col gap-2 rounded-card border border-border bg-card p-4 shadow-float transition-colors duration-150 hover:border-border-strong"
+        >
+          <span className="flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wide text-primary">
+            <Icon name="sparkle" size={14} aria-hidden />
+            Assistant{estIA ? " IA" : ""}
+          </span>
+          <p className="text-body text-ink">« {messageAssistant} »</p>
+          <span className="flex items-center gap-1 text-caption font-medium text-primary">
+            Reprendre {capsule.projectTitle}
+            <Icon name="arrowRight" size={14} aria-hidden />
+          </span>
+        </a>
+      )}
+
       <div className="flex items-center gap-2">
-        <Clock aria-hidden className="size-4 text-primary" />
+        <Icon name="clock" size={16} aria-hidden className="text-primary" />
         {/* Le nombre de jours est un fait, pas un reproche : pas de gros
             caractères, pas de « déjà », pas de point d'exclamation. */}
         <span className="text-caption font-medium text-primary">
@@ -90,7 +288,7 @@ function CarteReprise({ navigate }: { navigate: (to: Route) => void }) {
           Reprendre
         </Button>
         <Button variant="secondary" onClick={() => navigate({ name: "memoire" })}>
-          <Search aria-hidden className="size-4" />
+          <Icon name="search" size={16} aria-hidden />
           Chercher ce blocage
         </Button>
       </div>
@@ -117,9 +315,11 @@ function LigneProjet({
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="min-w-0 text-body font-semibold text-ink">{projet.nom}</h3>
-        <ArrowRight
+        <Icon
+          name="arrowRight"
+          size={16}
           aria-hidden
-          className="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform duration-150 group-hover:translate-x-0.5"
+          className="mt-0.5 shrink-0 text-ink-muted transition-transform duration-150 group-hover:translate-x-0.5"
         />
       </div>
 
@@ -165,10 +365,12 @@ function Alertes({ navigate }: { navigate: (to: Route) => void }) {
           <ul className="mt-4 flex flex-col gap-3">
             {recentes.map((n) => (
               <li key={n.id} className="flex gap-3">
-                <Bell
+                <Icon
+                  name="bell"
+                  size={16}
                   aria-hidden
                   className={cn(
-                    "mt-0.5 size-4 shrink-0",
+                    "mt-0.5 shrink-0",
                     n.lu ? "text-ink-muted" : "text-primary",
                   )}
                 />
@@ -217,7 +419,7 @@ function Reconnaissance({ navigate }: { navigate: (to: Route) => void }) {
       className="rounded-card border border-accent bg-accent-soft p-5"
     >
       <div className="flex items-center gap-2">
-        <Trophy aria-hidden className="size-4 text-on-accent" />
+        <Icon name="trophy" size={16} aria-hidden className="text-on-accent" />
         <h2 className="font-heading text-heading text-on-accent">Ton parcours</h2>
       </div>
 
@@ -288,16 +490,30 @@ export function DashboardScreen({ navigate }: { navigate: (to: Route) => void })
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="secondary"
+              onClick={() => navigate({ name: "copilote" })}
+            >
+              <Icon name="sparkle" size={16} aria-hidden className="text-primary" />
+              Copilote IA
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => navigate({ name: "classements" })}
             >
-              <Trophy aria-hidden className="size-4 text-primary" />
+              <Icon name="trophy" size={16} aria-hidden className="text-primary" />
               Classements & Prix
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => navigate({ name: "calendrier" })}
+            >
+              <Icon name="calendar" size={16} aria-hidden className="text-primary" />
+              Calendrier
             </Button>
             <Button
               variant="primary"
               onClick={() => navigate({ name: "projet-nouveau" })}
             >
-              <Plus aria-hidden className="size-4" />
+              <Icon name="plus" size={16} aria-hidden />
               Nouveau projet
             </Button>
           </div>
@@ -310,6 +526,15 @@ export function DashboardScreen({ navigate }: { navigate: (to: Route) => void })
         animate="visible"
         className="mt-8 flex flex-col gap-6"
       >
+        <CitationDuJour
+          studentId={me.id}
+          prenom={prenom}
+          projet={capsule?.projectTitle ?? actifs[0]?.nom}
+          debutant={debutant}
+          termines={analytics.projetsTermines}
+          reduced={reduced}
+        />
+
         {/* La reprise garde toute la largeur : c'est la seule chose de l'écran
             sur laquelle on agit tout de suite, et la réduire à une colonne la
             ferait passer pour une carte parmi d'autres. */}
@@ -439,7 +664,7 @@ export function DashboardScreen({ navigate }: { navigate: (to: Route) => void })
                 onClick={() => navigate({ name: "renaissance" })}
               >
                 <div className="flex items-start gap-3">
-                  <Sparkles aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />
+                  <Icon name="sparkle" size={20} aria-hidden className="mt-0.5 shrink-0 text-primary" />
                   <div className="min-w-0">
                     <h3 className="font-heading text-heading text-ink">Renaissance</h3>
                     <p className="mt-1 text-caption text-ink-muted">

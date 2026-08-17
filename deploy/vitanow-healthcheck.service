@@ -1,0 +1,12 @@
+[Unit]
+Description=VITA'NOW — contrôle de santé local
+After=network-online.target vitanow-api.service
+Wants=network-online.target
+OnFailure=vitanow-api-recovery.service
+
+[Service]
+Type=oneshot
+# Après un redémarrage, Node peut avoir besoin de quelques secondes pour
+# réécouter. Trois essais empêchent la sonde de confondre ce démarrage normal
+# avec une API bloquée et de provoquer un second redémarrage inutile.
+ExecStart=/usr/bin/curl --fail --silent --show-error --retry 3 --retry-delay 3 --retry-connrefused --max-time 8 http://127.0.0.1:3100/api/sante

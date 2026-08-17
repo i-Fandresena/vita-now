@@ -1,5 +1,4 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useRepository } from "@/app/repository";
@@ -11,6 +10,7 @@ import { EASE, narrativeTransition } from "@/lib/motion";
 import { Button } from "@/ui/Button";
 import { Dialog } from "@/ui/Dialog";
 import { ArchiveLabel, EditorialLayout, Rail, RailItem, Rule } from "@/ui/Editorial";
+import { Icon } from "@/ui/Icon";
 import { Surface } from "@/ui/Surface";
 import { ErrorState, FragmentSkeleton } from "@/ui/states";
 
@@ -113,7 +113,7 @@ export function FragmentScreen({ id, navigate }: FragmentScreenProps) {
         }}
         className="inline-flex items-center gap-2 rounded-sm text-caption text-ink-muted transition-colors duration-90 hover:text-ink"
       >
-        <ArrowLeft aria-hidden className="size-3.5" strokeWidth={1.5} />
+        <Icon name="back" size={14} aria-hidden />
         Résultats
       </a>
 

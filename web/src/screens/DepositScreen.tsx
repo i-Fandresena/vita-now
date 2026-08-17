@@ -9,6 +9,7 @@ import { EASE } from "@/lib/motion";
 import { Button } from "@/ui/Button";
 import { Input, Textarea } from "@/ui/Field";
 import { ArchiveLabel, Rule } from "@/ui/Editorial";
+import { Screen } from "@/ui/layout";
 
 /**
  * Écran 4 — Dépôt.
@@ -102,12 +103,13 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
 
   if (saved) {
     return (
-      <motion.div
+      <Screen>
+        <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: reduced ? 0.2 : 0.45, ease: EASE.outExpo }}
-        className="prose-measure flex flex-col gap-6 py-24"
-      >
+        className="flex w-full flex-col gap-6 py-16"
+        >
         <Rule />
         <h1 className="font-display text-display-2 text-ink">
           C’est dans le corpus.
@@ -134,13 +136,15 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
             Déposer autre chose
           </Button>
         </div>
-      </motion.div>
+        </motion.div>
+      </Screen>
     );
   }
 
   return (
-    <div className="pb-24 pt-14">
-      <div className="prose-measure">
+    <Screen>
+      <div className="w-full pb-8">
+      <div className="w-full">
         <h1 className="font-display text-display-2 text-ink">
           Déposer ce que tu as compris
         </h1>
@@ -151,7 +155,7 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
         </p>
       </div>
 
-      <form onSubmit={submit} className="prose-measure mt-14 flex flex-col gap-10">
+      <form onSubmit={submit} className="mt-10 flex w-full flex-col gap-8 sm:mt-12 sm:gap-10">
         <Input
           label="Titre"
           value={title}
@@ -235,6 +239,7 @@ export function DepositScreen({ navigate }: { navigate: (to: Route) => void }) {
           </Button>
         </div>
       </form>
-    </div>
+      </div>
+    </Screen>
   );
 }

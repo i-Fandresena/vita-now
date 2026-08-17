@@ -20,6 +20,21 @@ npm run dev      # http://localhost:5173
 npm run build    # tsc + vite build
 ```
 
+## Landing — mouvement progressif et repli stable
+
+La landing utilise Motion pour une barre de progression de lecture et une
+parallaxe légère du collage héro. Ces effets restent optionnels au build :
+
+```bash
+# version animée (production)
+VITE_MODE_API=1 VITE_LANDING_MOTION=1 npm run build
+
+# retour immédiat au rendu stable, sans modifier le code
+VITE_MODE_API=1 VITE_LANDING_MOTION=0 npm run build
+```
+
+Dans les deux cas, `prefers-reduced-motion` désactive les mouvements décoratifs.
+
 ## Le chemin de démonstration
 
 Cinq écrans, dans cet ordre. Chacun est atteignable directement par son URL —

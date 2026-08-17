@@ -1,25 +1,10 @@
 import { motion } from "framer-motion";
-import {
-  Check,
-  Handshake,
-  Lightbulb,
-  MessageCircle,
-  Send,
-  Sparkles,
-  Trophy,
-  UsersRound,
-} from "lucide-react";
+import { Handshake, Lightbulb, Link2, MessageCircle, TrendingUp } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
 import { useSoa } from "@/app/soa-store";
-import {
-  COMPANIES,
-  CURRENT_STUDENT_ID,
-  MENTORS,
-  STUDENTS,
-  studentById,
-} from "@/data/soa-corpus";
+import { COMPANIES, MENTORS, STUDENTS, studentById } from "@/data/soa-corpus";
 import {
   FORUM_CATEGORIES,
   joursDepuis,
@@ -34,6 +19,7 @@ import { Button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
 import { Input, Textarea } from "@/ui/Field";
 import { Avatar, Progress } from "@/ui/data";
+import { Icon } from "@/ui/Icon";
 import { Block, CardLink, Screen, ScreenHead, Tabs } from "@/ui/layout";
 import { EmptyState } from "@/ui/states";
 
@@ -55,77 +41,195 @@ function dateCourte(iso: string): string {
 
 /* ── M8 — Accueil communauté ────────────────────────────────────────────── */
 
+/**
+ * Les quatre aiguillages de l'onglet. Sortis du composant : ce sont des
+ * constantes de navigation, pas un état — les recréer à chaque rendu ne sert
+ * qu'à donner de nouvelles références à React.
+ */
+const RACCOURCIS = [
+  {
+    titre: "Compagnons",
+    corps: "Trouver quelqu'un qui avance sur les mêmes choses que toi.",
+    icone: (props: { className?: string }) => <Icon name="user" size={20} {...props} />,
+    route: { name: "compagnons" } as Route,
+  },
+  {
+    titre: "Challenges",
+    corps: "Un objectif borné dans le temps, tenu à plusieurs.",
+    icone: (props: { className?: string }) => <Icon name="trophy" size={20} {...props} />,
+    route: { name: "challenges" } as Route,
+  },
+  {
+    titre: "Idées",
+    corps: "Faire valider une idée avant d'y passer trois mois.",
+    icone: Lightbulb,
+    route: { name: "idees" } as Route,
+  },
+  {
+    titre: "Mentorat",
+    corps: "Demander à quelqu'un qui est déjà passé par là.",
+    icone: Handshake,
+    route: { name: "mentorat" } as Route,
+  },
+];
+
+/**
+ * L'écran se lit en deux colonnes au-delà de 1024px : le fil à gauche, les
+ * indicateurs à droite. En dessous, la colonne de droite passe **sous** le fil
+ * et non au-dessus — l'ordre du DOM est celui de la lecture, et ce qu'on vient
+ * chercher ici est le fil, pas le classement.
+ */
 export function CommunityScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { threads } = useSoa();
+  const { threads, projects, students, me } = useSoa();
   const [categorie, setCategorie] = useState<ForumCategory | "Tout">("Tout");
+  const [brouillon, setBrouillon] = useState("");
+  const [redige, setRedige] = useState(false);
 
   const visibles =
     categorie === "Tout" ? threads : threads.filter((t) => t.categorie === categorie);
 
-  const raccourcis = [
-    {
-      titre: "Compagnons",
-      corps: "Trouver quelqu'un qui avance sur les mêmes choses que toi.",
-      icone: UsersRound,
-      route: { name: "compagnons" } as Route,
-    },
-    {
-      titre: "Challenges",
-      corps: "Un objectif borné dans le temps, tenu à plusieurs.",
-      icone: Trophy,
-      route: { name: "challenges" } as Route,
-    },
-    {
-      titre: "Idées",
-      corps: "Faire valider une idée avant d'y passer trois mois.",
-      icone: Lightbulb,
-      route: { name: "idees" } as Route,
-    },
-    {
-      titre: "Mentorat",
-      corps: "Demander à quelqu'un qui est déjà passé par là.",
-      icone: Handshake,
-      route: { name: "mentorat" } as Route,
-    },
-  ];
+  const reponses = threads.reduce((total, t) => total + t.reponses.length, 0);
+
+  /* Les technos qui reviennent le plus, comptées sur les projets réellement
+     présents. Ce n'est pas une tendance de la semaine : le corpus n'a pas
+     l'historique qu'il faudrait pour en calculer une, et l'annoncer comme
+     telle serait un chiffre inventé. La légende du bloc le dit. */
+  const technos = useMemo(() => {
+    const compte = new Map<string, number>();
+    for (const p of projects) {
+      for (const t of p.technos) compte.set(t, (compte.get(t) ?? 0) + 1);
+    }
+    return [...compte.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [projects]);
+
+  /* « Ceux qui livrent » : le classement porte sur les projets terminés, pas
+     sur une activité ou un nombre de messages. C'est la seule mesure que le
+     cadrage assume — un projet livré est un fait vérifiable. */
+  const livreurs = useMemo(
+    () =>
+      students
+        .map((e) => ({
+          etudiant: e,
+          livres: projects.filter((p) => p.ownerId === e.id && p.status === "Terminé")
+            .length,
+        }))
+        .filter((x) => x.livres > 0)
+        .sort((a, b) => b.livres - a.livres)
+        .slice(0, 4),
+    [students, projects],
+  );
 
   return (
     <Screen>
-      <ScreenHead
-        titre="Communauté"
-        lede="La plupart des blocages de l'école ont déjà été résolus par quelqu'un de l'école."
-      />
+      {/* La bascule est à `xl`, pas à `lg`. À 1024px, le rail latéral prend
+          déjà 240px : une colonne de droite de 19rem laisserait au fil moins de
+          400px, soit une carte plus étroite que sur un téléphone. */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="min-w-0">
+          {/* Le cadre d'accueil. L'emblème remplace la forme jaune dans
+              l'angle : il porte déjà les deux couleurs de la marque, donc rien
+              n'est perdu du contraste, et le jaune redevient disponible pour ce
+              qu'il signifie ailleurs — la réussite.
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        {raccourcis.map(({ titre, corps, icone: Icone, route }) => (
-          <CardLink key={titre} href={hrefFor(route)} onClick={() => navigate(route)}>
-            <div className="flex items-start gap-3">
-              <span
-                aria-hidden
-                className="grid size-10 shrink-0 place-items-center rounded-sm bg-primary-wash text-primary"
-              >
-                <Icone className="size-5" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="text-body font-semibold text-ink">{titre}</h2>
-                <p className="mt-0.5 text-caption text-ink-muted">{corps}</p>
-              </div>
+              Il est décoratif : `alt=""`, aucun texte à annoncer. La marque est
+              déjà nommée dans le rail, la répéter à un lecteur d'écran ne dit
+              rien de plus. Il n'est pas rogné par le cadre, contrairement à la
+              forme qu'il remplace : une tache se coupe, un logo non.
+
+              Masqué sous 640px, où la largeur revient au texte. */}
+          <header className="relative overflow-hidden rounded-card border border-border bg-card p-6 shadow-card sm:p-8">
+            <img
+              src="/logo-vita-now.png"
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute top-5 right-5 hidden h-24 w-auto sm:block sm:h-28"
+            />
+
+            <div className="relative max-w-[44ch]">
+              {/* `.hand-note` — une par écran, c'est la règle du fichier de
+                  styles. Elle est dépensée ici, pas dans les blocs de droite. */}
+              <span className="hand-note">La cour de récré</span>
+              <h1 className="mt-1 font-display text-display-3 text-ink sm:text-display-2">
+                Communauté
+              </h1>
+              <p className="mt-3 text-body text-ink-muted">
+                {students.length} étudiants, {threads.length} sujets ouverts,{" "}
+                {reponses} réponses. La plupart des blocages de l'école ont déjà été
+                résolus par quelqu'un de l'école.
+              </p>
             </div>
-          </CardLink>
-        ))}
-      </div>
 
-      <Block titre="Forum">
-        <Tabs
-          valeurs={["Tout", ...FORUM_CATEGORIES] as const}
-          actif={categorie}
-          onChange={setCategorie}
-        />
+            {/* Le composeur ouvre le formulaire complet plutôt que de publier
+                directement : un sujet sans catégorie ne se retrouve pas, et
+                sans contexte il ne reçoit pas de réponse. Ce qui est tapé ici
+                est repris tel quel dans le champ du dessous — rien n'est
+                perdu, et c'est ce qui rend l'étape acceptable. */}
+            <div className="relative mt-6 flex items-center gap-3 rounded-full border border-border bg-surface py-2 pr-2 pl-3">
+              <Avatar initiales={me.initiales} nom={me.nom} taille="sm" />
+              <input
+                value={brouillon}
+                onChange={(e) => setBrouillon(e.target.value)}
+                onFocus={() => setRedige(true)}
+                aria-label="Poser une question à la communauté"
+                placeholder="Un blocage, une question, une solution trouvée…"
+                className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-muted"
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setRedige(true)}
+              >
+                <Icon name="sparkle" size={16} aria-hidden />
+                Publier
+              </Button>
+            </div>
+          </header>
 
-        <div className="mt-4 flex flex-col gap-3">
-          {visibles.map((t) => (
-            <ThreadRow key={t.id} thread={t} navigate={navigate} />
-          ))}
+          {redige && (
+            <NouveauSujet
+              titre={brouillon}
+              setTitre={setBrouillon}
+              onFerme={() => setRedige(false)}
+              navigate={navigate}
+            />
+          )}
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {RACCOURCIS.map(({ titre, corps, icone: Icone, route }) => (
+              <CardLink key={titre} href={hrefFor(route)} onClick={() => navigate(route)}>
+                <span
+                  aria-hidden
+                  className="grid size-10 place-items-center rounded-sm bg-primary-wash text-primary"
+                >
+                  <Icone className="size-5" />
+                </span>
+                <h2 className="mt-3 text-body font-semibold text-ink">{titre}</h2>
+                <p className="mt-0.5 line-clamp-2 text-caption text-ink-muted">{corps}</p>
+              </CardLink>
+            ))}
+          </div>
+
+          <Tabs
+            valeurs={["Tout", ...FORUM_CATEGORIES] as const}
+            actif={categorie}
+            onChange={setCategorie}
+            className="mt-6"
+          />
+
+          <motion.div
+            variants={sequence(0.04)}
+            initial="hidden"
+            animate="visible"
+            className="mt-4 flex flex-col gap-4"
+          >
+            {visibles.map((t) => (
+              <motion.div key={t.id} variants={rise}>
+                <PostCard thread={t} navigate={navigate} />
+              </motion.div>
+            ))}
+          </motion.div>
+
           {visibles.length === 0 && (
             <EmptyState
               title={`Aucun sujet en ${categorie}`}
@@ -133,14 +237,96 @@ export function CommunityScreen({ navigate }: { navigate: (to: Route) => void })
             />
           )}
         </div>
-      </Block>
 
-      <NouveauSujet navigate={navigate} />
+        {/* Les deux indicateurs. Ils collent au défilement sur grand écran :
+            ils accompagnent la lecture du fil, ils ne s'en éloignent pas. */}
+        <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-6 xl:self-start">
+          <section className="rounded-card border border-border bg-card p-5 shadow-card">
+            <div className="flex items-center gap-2">
+              <TrendingUp aria-hidden className="size-4 shrink-0 text-primary" />
+              <h2 className="font-heading text-heading text-ink">Ce qui revient</h2>
+            </div>
+
+            <ul className="mt-4 flex flex-col gap-3">
+              {technos.map(([nom, n]) => (
+                <li key={nom} className="flex items-baseline justify-between gap-3">
+                  <span className="truncate text-body font-medium text-ink">#{nom}</span>
+                  <span className="shrink-0 text-caption tabular-nums text-ink-muted">
+                    {n} projet{n > 1 ? "s" : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <p className="mt-4 border-t border-border pt-3 text-caption text-ink-muted">
+              Compté sur les {projects.length} projets publiés. Ce n'est pas une
+              tendance de la semaine : il n'y a pas d'historique pour en calculer une.
+            </p>
+          </section>
+
+          {livreurs.length > 0 && (
+            <section className="rounded-card border border-border bg-card p-5 shadow-card">
+              <div className="flex items-center gap-2">
+                <Icon name="trophy" size={16} aria-hidden className="shrink-0 text-primary" />
+                <h2 className="font-heading text-heading text-ink">Ceux qui livrent</h2>
+              </div>
+
+              <ul className="mt-4 flex flex-col gap-1">
+                {livreurs.map(({ etudiant, livres }) => (
+                  <li key={etudiant.id}>
+                    <a
+                      href={hrefFor({ name: "profil", id: etudiant.id })}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        navigate({ name: "profil", id: etudiant.id });
+                      }}
+                      className="-mx-2 flex items-center gap-3 rounded-sm px-2 py-2 transition-colors duration-150 hover:bg-surface"
+                    >
+                      <Avatar
+                        initiales={etudiant.initiales}
+                        nom={etudiant.nom}
+                        taille="sm"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-body font-medium text-ink">
+                          {etudiant.nom}
+                        </span>
+                        <span className="block truncate text-caption text-ink-muted">
+                          {etudiant.niveau} · {etudiant.filiere}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-caption font-medium tabular-nums text-primary">
+                        {livres} livré{livres > 1 ? "s" : ""}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+
+              <p className="mt-4 border-t border-border pt-3 text-caption text-ink-muted">
+                Classés sur les projets terminés — pas sur le nombre de messages.
+              </p>
+            </section>
+          )}
+        </aside>
+      </div>
     </Screen>
   );
 }
 
-function ThreadRow({
+/**
+ * Une carte du fil.
+ *
+ * L'auteur passe en tête, avant le titre : dans un forum d'école, savoir qui
+ * parle change la façon dont on lit la question — un M1 et un mentor ne
+ * décrivent pas le même blocage.
+ *
+ * Il n'y a **ni compteur de likes ni bouton de partage**. Le domaine n'a pas de
+ * likes, et la maquette les montre ; les afficher voudrait dire écrire un
+ * chiffre décoratif sous chaque sujet. Le pied de carte ne porte donc que ce
+ * qui est vrai : les réponses, le passage d'un mentor, la résolution.
+ */
+function PostCard({
   thread,
   navigate,
 }: {
@@ -149,69 +335,105 @@ function ThreadRow({
 }) {
   const auteur = studentById(thread.auteurId);
   const resolu = Boolean(thread.resoluPar);
+  const parMentor = thread.reponses.some((r) => r.deMentor);
 
   return (
     <CardLink
       href={hrefFor({ name: "sujet", id: thread.id })}
       onClick={() => navigate({ name: "sujet", id: thread.id })}
+      className="p-5 sm:p-6"
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="min-w-0 text-body font-semibold text-ink">{thread.titre}</h3>
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar
+            initiales={auteur?.initiales ?? "??"}
+            nom={auteur?.nom ?? "Anonyme"}
+          />
+          <div className="min-w-0">
+            <p className="truncate text-body font-semibold text-ink">
+              {auteur?.nom ?? "Anonyme"}
+            </p>
+            <p className="truncate text-caption text-ink-muted">
+              {auteur ? `${auteur.niveau} · ${auteur.filiere} · ` : ""}
+              {dateCourte(thread.date)}
+            </p>
+          </div>
+        </div>
+
+        <span className="shrink-0 rounded-full border border-border px-2.5 py-1 font-heading text-micro text-ink-muted">
+          {thread.categorie}
+        </span>
+      </div>
+
+      <h3 className="mt-4 font-heading text-heading text-ink">{thread.titre}</h3>
+      <p className="mt-2 line-clamp-3 text-body text-ink-muted">{thread.corps}</p>
+
+      {thread.ressource && (
+        <span className="mt-3 inline-flex max-w-full items-center gap-2 text-caption text-primary">
+          <Link2 aria-hidden className="size-3.5 shrink-0" />
+          <span className="truncate">{thread.ressource.libelle}</span>
+        </span>
+      )}
+
+      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-4">
+        <span className="flex items-center gap-1.5 text-caption text-ink-muted">
+          <MessageCircle aria-hidden className="size-4" />
+          {thread.reponses.length} réponse{thread.reponses.length > 1 ? "s" : ""}
+        </span>
+
+        {parMentor && (
+          <span className="flex items-center gap-1.5 text-caption text-ink">
+            <Handshake aria-hidden className="size-4" />
+            Un mentor a répondu
+          </span>
+        )}
+
         {resolu && (
-          <Chip tone="success">
-            <Check aria-hidden className="size-3.5" />
+          <Chip tone="success" className="ml-auto">
+            <Icon name="check" size={14} aria-hidden />
             Résolu
           </Chip>
         )}
-      </div>
-
-      <p className="line-clamp-2 mt-2 text-caption text-ink-muted">{thread.corps}</p>
-
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
-        <Chip tone="primary">{thread.categorie}</Chip>
-        <span className="flex items-center gap-1.5 text-caption text-ink-muted">
-          <MessageCircle aria-hidden className="size-3.5" />
-          {thread.reponses.length}
-        </span>
-        <span className="text-caption text-ink-muted">
-          {auteur?.nom ?? "Anonyme"} · {dateCourte(thread.date)}
-        </span>
       </div>
     </CardLink>
   );
 }
 
-function NouveauSujet({ navigate }: { navigate: (to: Route) => void }) {
+/**
+ * Le formulaire complet, ouvert par le composeur.
+ *
+ * Le titre est piloté par l'écran : c'est la phrase déjà tapée dans la barre du
+ * haut. Le reste — catégorie, contexte — lui appartient.
+ */
+function NouveauSujet({
+  titre,
+  setTitre,
+  onFerme,
+  navigate,
+}: {
+  titre: string;
+  setTitre: (v: string) => void;
+  onFerme: () => void;
+  navigate: (to: Route) => void;
+}) {
   const { createThread } = useSoa();
-  const [ouvert, setOuvert] = useState(false);
   const [categorie, setCategorie] = useState<ForumCategory>("Java");
-  const [titre, setTitre] = useState("");
   const [corps, setCorps] = useState("");
 
   function soumettre(event: FormEvent) {
     event.preventDefault();
     if (!titre.trim()) return;
     const sujet = createThread({ categorie, titre: titre.trim(), corps: corps.trim() });
-    setOuvert(false);
     setTitre("");
     setCorps("");
+    onFerme();
     navigate({ name: "sujet", id: sujet.id });
-  }
-
-  if (!ouvert) {
-    return (
-      <div className="mt-8">
-        <Button variant="secondary" onClick={() => setOuvert(true)}>
-          Poser une question
-        </Button>
-      </div>
-    );
   }
 
   return (
     <form
       onSubmit={soumettre}
-      className="mt-8 flex flex-col gap-5 rounded-card border border-border bg-card p-5 sm:p-6"
+      className="mt-4 flex flex-col gap-5 rounded-card border border-border bg-card p-5 shadow-card sm:p-6"
     >
       <h2 className="font-heading text-heading text-ink">Poser une question</h2>
 
@@ -257,7 +479,7 @@ function NouveauSujet({ navigate }: { navigate: (to: Route) => void }) {
         <Button type="submit" variant="primary" disabled={!titre.trim()}>
           Publier
         </Button>
-        <Button variant="ghost" onClick={() => setOuvert(false)}>
+        <Button variant="ghost" onClick={onFerme}>
           Annuler
         </Button>
       </div>
@@ -325,7 +547,7 @@ export function ThreadScreen({
             href={thread.ressource.url}
             className="mt-5 flex items-center gap-2 rounded-sm border border-primary/25 bg-primary-wash p-3 text-caption font-medium text-primary"
           >
-            <Sparkles aria-hidden className="size-4 shrink-0" />
+            <Icon name="sparkle" size={16} aria-hidden className="shrink-0" />
             {thread.ressource.libelle}
           </a>
         )}
@@ -367,7 +589,7 @@ export function ThreadScreen({
                   </div>
                   {accepte && (
                     <Chip tone="success">
-                      <Check aria-hidden className="size-3.5" />
+                      <Icon name="check" size={14} aria-hidden />
                       A résolu
                     </Chip>
                   )}
@@ -396,7 +618,7 @@ export function ThreadScreen({
         />
         <div>
           <Button type="submit" variant="primary" disabled={!reponse.trim()}>
-            <Send aria-hidden className="size-4" />
+            <Icon name="send" size={16} aria-hidden />
             Envoyer
           </Button>
         </div>
@@ -507,7 +729,7 @@ export function CompanionsScreen({ navigate }: { navigate: (to: Route) => void }
                 <ul className="mt-3 flex flex-col gap-1">
                   {raisons.map((r) => (
                     <li key={r} className="flex gap-2 text-caption text-ink-muted">
-                      <Check aria-hidden className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                      <Icon name="check" size={14} aria-hidden className="mt-0.5 shrink-0 text-primary" />
                       {r}
                     </li>
                   ))}
@@ -524,7 +746,7 @@ export function CompanionsScreen({ navigate }: { navigate: (to: Route) => void }
 /* ── M10 — Challenges ───────────────────────────────────────────────────── */
 
 export function ChallengesScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { challenges } = useSoa();
+  const { challenges, me } = useSoa();
 
   return (
     <Screen>
@@ -539,7 +761,7 @@ export function ChallengesScreen({ navigate }: { navigate: (to: Route) => void }
       <div className="mt-8 flex flex-col gap-3">
         {challenges.map((c) => {
           const sponsor = COMPANIES.find((e) => e.id === c.sponsorId);
-          const inscrit = c.participants.some((p) => p.studentId === CURRENT_STUDENT_ID);
+          const inscrit = c.participants.some((p) => p.studentId === me.id);
           return (
             <CardLink
               key={c.id}
@@ -574,7 +796,7 @@ export function ChallengeScreen({
   id: string;
   navigate: (to: Route) => void;
 }) {
-  const { challenges, joinChallenge, checkChallengeWeek } = useSoa();
+  const { challenges, joinChallenge, checkChallengeWeek, me } = useSoa();
   const challenge = challenges.find((c) => c.id === id);
 
   if (!challenge) {
@@ -586,7 +808,7 @@ export function ChallengeScreen({
   }
 
   const sponsor = COMPANIES.find((e) => e.id === challenge.sponsorId);
-  const moi = challenge.participants.find((p) => p.studentId === CURRENT_STUDENT_ID);
+  const moi = challenge.participants.find((p) => p.studentId === me.id);
   const semainesEcoulees = Math.max(
     1,
     Math.min(Math.ceil(challenge.dureeJours / 7), Math.ceil(joursDepuis(challenge.debut) / 7)),
@@ -644,7 +866,7 @@ export function ChallengeScreen({
                         : "border-border text-ink-muted hover:border-border-strong",
                     )}
                   >
-                    {fait ? <Check aria-hidden className="size-4" /> : i + 1}
+                    {fait ? <Icon name="check" size={16} aria-hidden /> : i + 1}
                   </button>
                 );
               })}
@@ -720,7 +942,7 @@ function CommentaireIdee({ ideaId }: { ideaId: string }) {
 }
 
 export function IdeasScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { ideas, voteIdea } = useSoa();
+  const { ideas, voteIdea, me } = useSoa();
 
   return (
     <Screen>
@@ -735,8 +957,8 @@ export function IdeasScreen({ navigate }: { navigate: (to: Route) => void }) {
       <div className="mt-8 flex flex-col gap-4">
         {ideas.map((idee) => {
           const auteur = studentById(idee.auteurId);
-          const aVotePour = idee.votesPour.includes(CURRENT_STUDENT_ID);
-          const aVoteReserve = idee.votesReserve.includes(CURRENT_STUDENT_ID);
+          const aVotePour = idee.votesPour.includes(me.id);
+          const aVoteReserve = idee.votesReserve.includes(me.id);
           const total = idee.votesPour.length + idee.votesReserve.length;
 
           return (
@@ -828,7 +1050,7 @@ function DemandeMentor({ mentorId, nom }: { mentorId: string; nom: string }) {
   if (envoye) {
     return (
       <p className="mt-4 flex items-center gap-2 rounded-sm bg-success/10 p-3 text-caption text-success">
-        <Check aria-hidden className="size-4 shrink-0" />
+        <Icon name="check" size={16} aria-hidden className="shrink-0" />
         Demande envoyée à {nom.split(" ")[0]}.
       </p>
     );
@@ -942,7 +1164,7 @@ function MesDemandes() {
                       size="sm"
                       disabled={!(reponses[d.id] ?? "").trim()}
                     >
-                      <Send aria-hidden className="size-4" />
+                      <Icon name="send" size={16} aria-hidden />
                       Envoyer
                     </Button>
                   </div>

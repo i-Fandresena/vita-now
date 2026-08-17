@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { RotateCcw, Search } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
@@ -14,6 +14,7 @@ import { exitTransition, rise, sequence } from "@/lib/motion";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
 import { Avatar, Progress } from "@/ui/data";
+import { Icon } from "@/ui/Icon";
 import { Block, CardLink, Screen, ScreenHead, Tabs } from "@/ui/layout";
 import { EmptyState, ErrorState, FragmentSkeleton, Pending } from "@/ui/states";
 
@@ -28,7 +29,7 @@ import { EmptyState, ErrorState, FragmentSkeleton, Pending } from "@/ui/states";
 
 export function MemoryScreen({ navigate }: { navigate: (to: Route) => void }) {
   const { query, hits, status, run } = useSearch();
-  const { projects } = useSoa();
+  const { me, projects } = useSoa();
   const reduced = useReducedMotion() ?? false;
   const vierge = status === "vierge";
 
@@ -39,7 +40,7 @@ export function MemoryScreen({ navigate }: { navigate: (to: Route) => void }) {
   }, [status, hits.length]);
 
   const aReprendre = projects.filter(
-    (p) => p.status === "Abandonné" && p.ownerId !== "s-soa",
+    (p) => p.status === "Abandonné" && p.ownerId !== me.id,
   ).length;
 
   return (
@@ -79,7 +80,7 @@ export function MemoryScreen({ navigate }: { navigate: (to: Route) => void }) {
                 onClick={() => navigate({ name: "depot" })}
               >
                 <div className="flex items-start gap-3">
-                  <Search aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />
+                  <Icon name="search" size={20} aria-hidden className="mt-0.5 shrink-0 text-primary" />
                   <div className="min-w-0">
                     <h3 className="text-body font-semibold text-ink">Déposer</h3>
                     <p className="mt-0.5 text-caption text-ink-muted">
@@ -167,7 +168,7 @@ export function MemoryScreen({ navigate }: { navigate: (to: Route) => void }) {
 const FILTRES = ["Tous", "Java", "PHP", "Python", "Go", "TypeScript"] as const;
 
 export function RenaissanceScreen({ navigate }: { navigate: (to: Route) => void }) {
-  const { projects, journalFor, reviveProject, progressOf } = useSoa();
+  const { me, projects, journalFor, reviveProject, progressOf } = useSoa();
   const [filtre, setFiltre] = useState<(typeof FILTRES)[number]>("Tous");
 
   const arretes = projects.filter((p) => p.status === "Abandonné");
@@ -197,7 +198,7 @@ export function RenaissanceScreen({ navigate }: { navigate: (to: Route) => void 
         {visibles.map((projet) => {
           const auteur = studentById(projet.ownerId);
           const entrees = journalFor(projet.id);
-          const mien = projet.ownerId === "s-soa";
+          const mien = projet.ownerId === me.id;
 
           return (
             <motion.article
@@ -223,7 +224,7 @@ export function RenaissanceScreen({ navigate }: { navigate: (to: Route) => void 
               {/* La raison d'arrêt est le cœur de l'écran : c'est elle qui dit
                   où quelqu'un s'est cassé les dents, donc où tu commences. */}
               {projet.raisonAbandon && (
-                <div className="mt-4 rounded-sm border-l-2 border-accent bg-accent-soft/50 p-4">
+                <div className="mt-4 rounded-sm bg-accent-soft/50 p-4">
                   <p className="label-eyebrow text-on-accent">Là où ça s'est arrêté</p>
                   <p className="mt-1 text-body text-ink">{projet.raisonAbandon}</p>
                 </div>

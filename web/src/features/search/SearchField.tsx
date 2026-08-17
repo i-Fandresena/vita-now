@@ -1,8 +1,8 @@
-import { Search } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 
 import { cn } from "@/lib/cn";
 import { Button } from "@/ui/Button";
+import { Icon } from "@/ui/Icon";
 
 /**
  * Le champ de recherche — l'objet central du produit.
@@ -64,7 +64,7 @@ export function SearchField({
             : "border-border shadow-card transition-[border-color,box-shadow] duration-150 ease-out",
         )}
       >
-        <Search aria-hidden className="size-5 shrink-0 text-ink-muted" />
+        <Icon name="search" size={20} aria-hidden className="shrink-0 text-ink-muted" />
 
         <input
           ref={inputRef}

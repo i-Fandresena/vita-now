@@ -1,17 +1,6 @@
-import { motion, useReducedMotion, type Variants } from "framer-motion";
-import {
-  ArrowUpRight,
-  Brain,
-  Calendar,
-  Flame,
-  MessageCircle,
-  RotateCcw,
-  Search,
-  Sparkles,
-  Trophy,
-  Zap,
-} from "lucide-react";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform, type Variants } from "framer-motion";
+import { ArrowLeft, ArrowRight, Brain, Flame, MessageCircle, RotateCcw, Zap } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import type { Route } from "@/app/router";
 import { cn } from "@/lib/cn";
@@ -19,6 +8,7 @@ import { EASE, REVEAL_VIEWPORT, reveal, rise, sequence, staggerItem } from "@/li
 import { Magnetic } from "@/features/landing/Magnetic";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow, Section, SectionHead } from "@/ui/Editorial";
+import { Icon } from "@/ui/Icon";
 import { Surface } from "@/ui/Surface";
 
 /**
@@ -43,8 +33,24 @@ import { Surface } from "@/ui/Surface";
 
 const DOMAINES = ["Java", "PHP", "React", "IA", "Base de données", "Réseau"];
 
+/* Bascule de sécurité : le storytelling ajouté à la landing reste facultatif.
+   `VITE_LANDING_MOTION=0` remet le collage héro stable, sans changer ni le
+   contenu ni les liens. La variable est inlinée par Vite au build. */
+// La landing est narrative par défaut. Seule la valeur explicite `0` coupe
+// les mouvements en cas de régression visuelle, sans retirer le contenu.
+const LANDING_MOTION_ENABLED = import.meta.env.VITE_LANDING_MOTION !== "0";
+const LANDING_REVEAL_EASE = `cubic-bezier(${EASE.outExpo.join(", ")})`;
+const LANDING_REVEAL_DURATION_MS = 1350;
+type LandingRevealVariant = "rise" | "glide" | "scale" | "tilt";
+const LANDING_REVEAL_TRANSFORMS: Record<LandingRevealVariant, string> = {
+  rise: "translate3d(0, 38px, 0) scale(0.985)",
+  glide: "translate3d(-46px, 12px, 0) scale(0.99)",
+  scale: "translate3d(0, 20px, 0) scale(0.94)",
+  tilt: "translate3d(42px, 16px, 0) rotate(1.2deg) scale(0.975)",
+};
+
 /** Trois cartes lues de gauche à droite : un pas court suffit. */
-const CARTE_PILIER = staggerItem(0.07);
+const CARTE_PILIER = staggerItem(0.11, 22);
 
 const PILIERS = [
   {
@@ -78,7 +84,7 @@ const PILIERS = [
  * trois cartes sont une séquence, et les voir se poser une à une dit la même
  * chose que leurs numéros.
  */
-const CARTE_ETAPE = staggerItem(0.13, 16);
+const CARTE_ETAPE = staggerItem(0.18, 24);
 
 const ETAPES = [
   {
@@ -100,6 +106,266 @@ const ETAPES = [
     apercu: ["Portfolio", "Renaissance", "Retour à l'auteur"],
   },
 ] as const;
+
+/* Un reveal de second niveau pour les blocs de lecture importants. Il complète
+   l'arrivée de la section, sans transformer chaque paragraphe en animation.
+   La bascule de stabilité conserve un DOM et une mise en page strictement
+   identiques, mais rend ces blocs immédiatement visibles. */
+function LandingReveal({
+  children,
+  delay = 0,
+  className,
+  variant = "rise",
+}: {
+  children: ReactNode;
+  delay?: number;
+  className?: string;
+  variant?: LandingRevealVariant;
+}) {
+  const reduced = useReducedMotion() ?? false;
+  const enabled = LANDING_MOTION_ENABLED && !reduced;
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(!enabled);
+
+  /* La section parente possède déjà ses propres variants Framer Motion. Un
+     observateur isolé évite qu'elle ne prenne la priorité sur cette seconde
+     révélation : chaque bloc garde donc son propre cycle d'entrée/sortie. */
+  useEffect(() => {
+    if (!enabled) {
+      setVisible(true);
+      return;
+    }
+    if (!("IntersectionObserver" in window) || !ref.current) {
+      setVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(entry?.isIntersecting ?? true),
+      // Déclenche avant que le contenu soit au centre de la fenêtre : la
+      // révélation accompagne le scroll au lieu d'arriver après la lecture.
+      { threshold: 0.12, rootMargin: "0px 0px -7% 0px" },
+    );
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={
+        enabled
+          ? {
+              opacity: visible ? 1 : 0,
+              transform: visible ? "translate3d(0, 0, 0) scale(1) rotate(0deg)" : LANDING_REVEAL_TRANSFORMS[variant],
+              transition: `opacity ${LANDING_REVEAL_DURATION_MS}ms ${LANDING_REVEAL_EASE}, transform ${LANDING_REVEAL_DURATION_MS}ms ${LANDING_REVEAL_EASE}`,
+              transitionDelay: visible ? `${delay}s` : "0s",
+              willChange: "transform, opacity",
+            }
+          : undefined
+      }
+    >
+      {children}
+    </div>
+  );
+}
+
+const PARCOURS_CAROUSEL = [
+  {
+    etape: "01 / CAPTURER",
+    titre: "Une décision ne disparaît plus.",
+    corps:
+      "Le journal garde le contexte d'un choix, même quand le projet attend quelques semaines.",
+    details: ["Décision", "Contexte", "Journal"],
+    image: "/mascotte1.png",
+    couleur: "bg-primary text-on-primary",
+  },
+  {
+    etape: "02 / REPRENDRE",
+    titre: "Revenir au bon endroit.",
+    corps:
+      "VITA'NOW reformule ce qui comptait, ce qui bloquait et la prochaine action utile pour repartir sans friction.",
+    details: ["Résumé", "Blocage", "Prochaine action"],
+    image: "/mascotte2.png",
+    couleur: "bg-accent text-on-accent",
+  },
+  {
+    etape: "03 / TRANSMETTRE",
+    titre: "Faire durer l'effort au-delà du projet.",
+    corps:
+      "Une expérience terminée ou arrêtée devient une piste concrète pour la prochaine personne qui rencontre le même problème.",
+    details: ["Mémoire", "Corpus", "Transmission"],
+    image: "/mascotte3.png",
+    couleur: "bg-ink text-background",
+  },
+] as const;
+
+/**
+ * Section « parcours » du produit — le carrousel réintégré à la landing.
+ * Repasser ce drapeau à `false` la retire sans devoir supprimer le composant
+ * ni ses données, qui restent juste en dessous.
+ */
+const AFFICHER_PARCOURS_EN_CLAIR = true;
+
+/**
+ * Carrousel de produit : une seule idée à la fois, avec contrôle explicite.
+ * L'avance automatique s'arrête dès qu'on survole, touche ou focalise le bloc
+ * pour que le contenu ne bouge jamais sous le lecteur.
+ */
+function ParcoursCarousel() {
+  const reduced = useReducedMotion() ?? false;
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const animated = LANDING_MOTION_ENABLED && !reduced;
+  const slide = PARCOURS_CAROUSEL[index]!;
+
+  useEffect(() => {
+    if (!animated || paused) return;
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % PARCOURS_CAROUSEL.length);
+    }, 8400);
+    return () => window.clearInterval(timer);
+  }, [animated, paused]);
+
+  const previous = () =>
+    setIndex((current) => (current - 1 + PARCOURS_CAROUSEL.length) % PARCOURS_CAROUSEL.length);
+  const next = () => setIndex((current) => (current + 1) % PARCOURS_CAROUSEL.length);
+
+  return (
+    <Section tone="background">
+      <LandingReveal variant="glide">
+        <SectionHead
+          align="split"
+          eyebrow="Le parcours, en clair"
+          title={<>Une continuité qui se voit.</>}
+          lede="Trois scènes du quotidien d'un projet : garder la trace, reprendre sans se perdre, transmettre ce qui a été appris."
+        />
+      </LandingReveal>
+
+      <LandingReveal delay={0.14} variant="tilt">
+        <section
+          aria-label="Les étapes d'un projet dans VITA'NOW"
+          className="mt-14 overflow-hidden rounded-card border border-border bg-card shadow-float"
+          onPointerEnter={() => setPaused(true)}
+          onPointerLeave={() => setPaused(false)}
+          onFocusCapture={() => setPaused(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
+          }}
+        >
+          <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 md:px-7">
+            <span className="label-eyebrow text-primary">Expérience VITA'NOW</span>
+            <span className="font-mono text-micro text-ink-muted">
+              {String(index + 1).padStart(2, "0")} / {String(PARCOURS_CAROUSEL.length).padStart(2, "0")}
+            </span>
+          </div>
+
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.article
+              inherit={false}
+              key={slide.etape}
+              initial={animated ? { opacity: 0, x: 56, scale: 0.965, rotate: 1.2 } : false}
+              animate={{ opacity: 1, x: 0, scale: 1, rotate: 0 }}
+              exit={animated ? { opacity: 0, x: -42, scale: 0.98, rotate: -0.7 } : undefined}
+              transition={animated ? { duration: 0.78, ease: EASE.outExpo } : { duration: 0 }}
+              className="grid min-h-[30rem] md:grid-cols-[1.05fr_0.95fr] md:min-h-[27rem]"
+            >
+            <div className="flex flex-col items-start justify-between gap-8 p-7 md:p-10">
+              <div className="flex flex-col gap-5">
+                <span className="font-mono text-caption text-ink-muted">{slide.etape}</span>
+                <h3 className="max-w-[13ch] text-balance font-display text-display-2 text-ink">
+                  {slide.titre}
+                </h3>
+                <p className="max-w-[43ch] text-body text-ink-muted">{slide.corps}</p>
+              </div>
+              <ChipRow>
+                {slide.details.map((detail) => (
+                  <Chip key={detail}>{detail}</Chip>
+                ))}
+              </ChipRow>
+            </div>
+
+            <div className={cn("relative flex min-h-64 items-end overflow-hidden p-7 md:p-10", slide.couleur)}>
+              <motion.span
+                inherit={false}
+                aria-hidden
+                className="absolute -bottom-24 -left-20 size-72 rounded-full border border-current opacity-20"
+                initial={animated ? { scale: 0.7, opacity: 0, rotate: -22 } : false}
+                animate={{ scale: 1, opacity: 0.2, rotate: 0 }}
+                transition={animated ? { duration: 1.25, delay: 0.08, ease: EASE.outExpo } : { duration: 0 }}
+              />
+              <motion.span
+                inherit={false}
+                aria-hidden
+                className="absolute -top-16 right-14 size-28 rounded-full border border-current opacity-20"
+                initial={animated ? { scale: 0, opacity: 0 } : false}
+                animate={{ scale: 1, opacity: 0.2 }}
+                transition={animated ? { duration: 0.9, delay: 0.3, ease: EASE.outExpo } : { duration: 0 }}
+              />
+              <span aria-hidden className="pointer-events-none absolute -right-4 -top-12 font-display text-[13rem] leading-none opacity-10 md:text-[17rem]">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <motion.img
+                inherit={false}
+                src={slide.image}
+                alt=""
+                aria-hidden
+                className="relative z-10 ml-auto h-52 w-auto object-contain md:h-64"
+                initial={animated ? { opacity: 0, y: 48, rotate: 7, scale: 0.93 } : false}
+                animate={{ opacity: 1, y: 0, rotate: 0 }}
+                transition={animated ? { duration: 1, delay: 0.18, ease: EASE.outExpo } : { duration: 0 }}
+              />
+            </div>
+            </motion.article>
+          </AnimatePresence>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-5 py-4 md:px-7">
+            <div role="tablist" aria-label="Choisir une étape" className="flex items-center gap-2">
+              {PARCOURS_CAROUSEL.map((item, itemIndex) => (
+                <button
+                  key={item.etape}
+                  type="button"
+                  role="tab"
+                  aria-selected={itemIndex === index}
+                  aria-label={`Voir l'étape ${itemIndex + 1} : ${item.titre}`}
+                  onClick={() => setIndex(itemIndex)}
+                  className="grid size-11 place-items-center rounded-full"
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "h-2.5 rounded-full transition-[width,background-color] duration-700 ease-out",
+                      itemIndex === index ? "w-9 bg-primary" : "w-2.5 bg-border hover:bg-ink-muted",
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label="Étape précédente"
+                onClick={previous}
+                className="grid size-11 place-items-center rounded-full border border-border text-ink transition-colors duration-150 hover:border-primary hover:bg-primary hover:text-on-primary"
+              >
+                <ArrowLeft aria-hidden className="size-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Étape suivante"
+                onClick={next}
+                className="grid size-11 place-items-center rounded-full bg-primary text-on-primary transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <ArrowRight aria-hidden className="size-4" />
+              </button>
+            </div>
+          </div>
+        </section>
+      </LandingReveal>
+    </Section>
+  );
+}
 
 const FAQ = [
   {
@@ -159,7 +425,7 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
           tout l'espace disponible revient au texte, qui sait le remplir. */}
       <div className="page-measure relative grid w-full items-center gap-12 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-12">
         <motion.div
-          variants={sequence(0.06)}
+          variants={sequence(0.09)}
           initial="hidden"
           animate="visible"
           className="flex flex-col items-start gap-7"
@@ -209,7 +475,7 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
               style={
                 {
                   "--type-steps": mot.length,
-                  "--type-cycle": "6.5s",
+                  "--type-cycle": "7.5s",
                   "--type-delay": "0.5s",
                 } as CSSProperties
               }
@@ -269,7 +535,7 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
             </Button>
             <Button variant="secondary" size="lg" onClick={() => navigate({ name: "memoire" })}>
               Explorer le corpus
-              <ArrowUpRight aria-hidden className="size-4" />
+              <Icon name="arrowRight" size={16} aria-hidden />
             </Button>
           </motion.div>
         </motion.div>
@@ -293,8 +559,14 @@ function Hero({ navigate, reduced }: { navigate: (to: Route) => void; reduced: b
  * saute au moment où l'image arrive.
  */
 function HeroCollage({ reduced }: { reduced: boolean }) {
+  const { scrollY } = useScroll();
+  const y = useTransform(scrollY, [0, 720], [0, -28]);
+  const rotate = useTransform(scrollY, [0, 720], [0, -2.2]);
+  const opacity = useTransform(scrollY, [0, 820], [1, 0.72]);
+  const storytelling = LANDING_MOTION_ENABLED && !reduced;
+
   return (
-    <div
+    <motion.div
       className={cn(
         /* Plus de `max-w` au-delà de `lg` : la colonne fait exactement 26rem,
            l'image la remplit. En dessous, la borne redevient utile — sur une
@@ -302,6 +574,7 @@ function HeroCollage({ reduced }: { reduced: boolean }) {
         "mx-auto w-full max-w-[26rem] lg:max-w-none lg:-mt-6",
         !reduced && "motion-safe:animate-floaty",
       )}
+      style={storytelling ? { y, rotate, opacity } : undefined}
     >
       <img
         src="/hero-section.png"
@@ -310,7 +583,7 @@ function HeroCollage({ reduced }: { reduced: boolean }) {
         alt="Des touches de clavier en relief composent le mot VITA'NOW, entourées d'icônes de code, de message et de curseur."
         className="h-auto w-full"
       />
-    </div>
+    </motion.div>
   );
 }
 
@@ -431,7 +704,7 @@ function Bandeau() {
           <div
             className="flex shrink-0 items-center gap-10 whitespace-nowrap"
             style={{
-              animation: reduced ? "none" : "marquee 20s linear infinite",
+              animation: reduced ? "none" : "marquee 32s linear infinite",
               willChange: "transform",
             }}
           >
@@ -467,18 +740,20 @@ function Piliers() {
           Le titre passe en monospace : c'est la police qui laisse la marque
           être le seul accent de la phrase. Anton, grasse et condensée, se
           disputerait la vedette avec elle. */}
-      <SectionHead
-        align="center"
-        variant="mono"
-        eyebrow="Pourquoi VITA'NOW"
-        title={
-          <>
-            Assez d'idées <span className="mark-select">abandonnées</span> au fond
-            d'un dossier.
-          </>
-        }
-        lede="Deux échecs reviennent chaque année : le projet qu'on arrête au troisième jour, et le mémoire terminé que personne ne retrouve jamais. VITA'NOW s'attaque aux deux."
-      />
+      <LandingReveal variant="rise">
+        <SectionHead
+          align="center"
+          variant="mono"
+          eyebrow="Pourquoi VITA'NOW"
+          title={
+            <>
+              Assez d'idées <span className="mark-select">abandonnées</span> au fond
+              d'un dossier.
+            </>
+          }
+          lede="Deux échecs reviennent chaque année : le projet qu'on arrête au troisième jour, et le mémoire terminé que personne ne retrouve jamais. VITA'NOW s'attaque aux deux."
+        />
+      </LandingReveal>
 
       {/* Les trois cartes du modèle : bord franc, ombre pleine, et surtout un
           décalage — la carte du milieu descend, les deux autres s'inclinent en
@@ -570,12 +845,14 @@ function Piliers() {
 function Methode() {
   return (
     <Section id="methode" tone="surface">
-      <SectionHead
-        align="split"
-        eyebrow="Comment ça marche"
-        title={<>Trois temps, dans cet ordre.</>}
-        lede="La numérotation n'est pas décorative : c'est une séquence, et sauter une étape casse la suivante."
-      />
+      <LandingReveal variant="glide">
+        <SectionHead
+          align="split"
+          eyebrow="Comment ça marche"
+          title={<>Trois temps, dans cet ordre.</>}
+          lede="La numérotation n'est pas décorative : c'est une séquence, et sauter une étape casse la suivante."
+        />
+      </LandingReveal>
 
       <ol className="mt-14 grid gap-6 md:grid-cols-3">
         {ETAPES.map(({ titre, corps, apercu }, index) => {
@@ -696,7 +973,7 @@ const DOMAINES_PRODUIT = [
 ] as const;
 
 /** Six cellules sans ordre de lecture imposé : pas court. */
-const CELLULE_DOMAINE = staggerItem(0.05, 12);
+const CELLULE_DOMAINE = staggerItem(0.08, 18);
 
 /** Une cellule de la grille des domaines. */
 function CelluleDomaine({
@@ -743,12 +1020,14 @@ function CelluleDomaine({
 function Perimetre() {
   return (
     <Section tone="background">
-      <SectionHead
-        align="center"
-        eyebrow="Le périmètre"
-        title={<>Cinq domaines, trente et un modules.</>}
-        lede="VITA'NOW n'est pas un outil de plus à ouvrir le matin. C'est l'endroit où un projet étudiant naît, avance, s'arrête, reprend — et finit par servir à quelqu'un d'autre."
-      />
+      <LandingReveal variant="scale">
+        <SectionHead
+          align="center"
+          eyebrow="Le périmètre"
+          title={<>Cinq domaines, trente et un modules.</>}
+          lede="VITA'NOW n'est pas un outil de plus à ouvrir le matin. C'est l'endroit où un projet étudiant naît, avance, s'arrête, reprend — et finit par servir à quelqu'un d'autre."
+        />
+      </LandingReveal>
 
       {/* La grille de filets du modèle : pas de cartes, pas d'ombres, juste des
           traits de 1px entre les cellules.
@@ -800,7 +1079,8 @@ function Perimetre() {
 function Lettre() {
   return (
     <Section tone="background">
-      <figure className="overflow-hidden rounded-card bg-ink text-background">
+      <LandingReveal variant="tilt">
+        <figure className="overflow-hidden rounded-card bg-ink text-background">
         <div className="flex flex-col gap-10 px-8 pt-14 pb-12 md:flex-row md:items-start md:gap-14 md:px-14">
           <figcaption className="flex shrink-0 flex-col gap-1 md:w-48">
             <span className="font-heading text-heading text-accent">Soa</span>
@@ -816,7 +1096,8 @@ function Lettre() {
         </div>
 
         <FriseSignature />
-      </figure>
+        </figure>
+      </LandingReveal>
     </Section>
   );
 }
@@ -1038,7 +1319,8 @@ function Dashboard() {
           jaune est la seule autre couleur du produit, et c'est le seul endroit
           de la page où il porte autre chose qu'une réussite — un fond d'action
           ne laisse pas d'autre choix. */}
-      <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:gap-16">
+      <LandingReveal variant="glide">
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:gap-16">
         <div className="flex flex-col gap-3">
           <p className="font-hand text-title font-semibold text-on-primary/80">
             Le dashboard
@@ -1054,9 +1336,11 @@ function Dashboard() {
           Un espace calme et puissant — inspiré de Linear, Notion et Raycast —
           pour piloter tous tes projets sans t'y perdre.
         </p>
-      </div>
+        </div>
+      </LandingReveal>
 
-      <div className="relative mt-14">
+      <LandingReveal delay={0.16} variant="scale" className="mt-14">
+      <div className="relative">
         {/* Le liseré seul — plus de halo flouté.
             Le dégradé conique sert de fond au conteneur, et son rembourrage de
             2px est tout ce que le panneau opaque laisse dépasser : le trait
@@ -1082,7 +1366,7 @@ function Dashboard() {
               <span className="size-3 rounded-full bg-success/70" />
             </span>
             <span className="mx-auto flex items-center gap-2 rounded-full border border-border px-4 py-1.5">
-              <Search aria-hidden className="size-3.5 text-ink-muted" />
+              <Icon name="search" size={14} aria-hidden className="text-ink-muted" />
               <span className="text-caption text-ink-muted">
                 Rechercher un projet, une tâche…
               </span>
@@ -1099,9 +1383,19 @@ function Dashboard() {
               <span aria-hidden className="h-9" />
 
               {[
-                { icone: Calendar, label: "Planning" },
+                {
+                  icone: (props: { className?: string }) => (
+                    <Icon name="calendar" size={16} {...props} />
+                  ),
+                  label: "Planning",
+                },
                 { icone: MessageCircle, label: "Communauté" },
-                { icone: Trophy, label: "Réussites" },
+                {
+                  icone: (props: { className?: string }) => (
+                    <Icon name="trophy" size={16} {...props} />
+                  ),
+                  label: "Réussites",
+                },
               ].map(({ icone: Icone, label }) => (
                 <span key={label} className="flex items-center gap-3 px-2 py-2">
                   <Icone aria-hidden className="size-4 text-ink-muted" />
@@ -1125,7 +1419,7 @@ function Dashboard() {
               <div className="grid gap-4 lg:grid-cols-[1.9fr_1fr]">
                 <div className="flex flex-col items-start gap-4 rounded-card bg-primary p-6 text-on-primary">
                   <span className="flex items-center gap-2 text-caption text-on-primary/80">
-                    <Sparkles aria-hidden className="size-4" />
+                    <Icon name="sparkle" size={16} aria-hidden />
                     Résumé du jour
                   </span>
                   <p className="text-balance font-display text-display-3">
@@ -1221,7 +1515,7 @@ function Dashboard() {
           className="absolute -top-6 left-4 z-10 hidden max-w-[16rem] flex-col gap-1 rounded-card border border-border bg-card p-4 shadow-float md:flex"
         >
           <span className="label-eyebrow">Notifications</span>
-          <span className="text-body text-ink">Marc a commenté ton projet ✨</span>
+          <span className="text-body text-ink">Marc a commenté ton projet</span>
         </motion.span>
 
         <motion.span
@@ -1230,7 +1524,7 @@ function Dashboard() {
           className="absolute -bottom-6 right-4 z-10 hidden max-w-[18rem] flex-col gap-1 rounded-card border border-border bg-card p-4 shadow-float md:flex"
         >
           <span className="flex items-center gap-2 text-body font-semibold text-ink">
-            <Trophy aria-hidden className="size-4 text-accent" />
+            <Icon name="trophy" size={16} aria-hidden className="text-accent" />
             Badge débloqué
           </span>
           <span className="text-caption text-ink-muted">
@@ -1238,22 +1532,25 @@ function Dashboard() {
           </span>
         </motion.span>
       </div>
+      </LandingReveal>
     </Section>
   );
 }
 
 /** Une pile de questions : pas très court, sinon la liste ondule. */
-const QUESTION_FAQ = staggerItem(0.04, 10);
+const QUESTION_FAQ = staggerItem(0.07, 16);
 
 function Faq() {
   const [ouvert, setOuvert] = useState<number | null>(0);
 
   return (
     <Section id="faq" tone="surface">
-      <SectionHead
-        eyebrow="FAQ"
-        title={<>Les questions qu'on nous pose.</>}
-      />
+      <LandingReveal variant="rise">
+        <SectionHead
+          eyebrow="FAQ"
+          title={<>Les questions qu'on nous pose.</>}
+        />
+      </LandingReveal>
 
       <ul className="mt-12 flex flex-col gap-3">
         {FAQ.map(({ q, r }, index) => {
@@ -1303,6 +1600,7 @@ function AppelFinal({ navigate }: { navigate: (to: Route) => void }) {
           aplat franc qui arrête la page avant le pied. Le bouton, lui, reste
           un contour et non un aplat : un bouton jaune viderait le jaune de son
           sens, qui est de dire « c'est acquis », jamais « c'est cliquable ». */}
+      <LandingReveal variant="tilt">
       <div className="rounded-card bg-accent px-8 py-12 text-on-accent md:px-12">
         <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr_auto] lg:items-center lg:gap-12">
           <h2 className="max-w-[14ch] text-balance font-display text-display-2">
@@ -1336,11 +1634,12 @@ function AppelFinal({ navigate }: { navigate: (to: Route) => void }) {
                 "active:translate-y-px",
               )}
             >
-              <ArrowUpRight aria-hidden className="size-10" />
+              <Icon name="arrowRight" size={40} aria-hidden />
             </button>
           </Magnetic>
         </div>
       </div>
+      </LandingReveal>
     </Section>
   );
 }
@@ -1364,7 +1663,7 @@ function PiedDePage() {
           </p>
         </div>
         <p className="text-caption text-ink-muted">
-          © 2026 VITA'NOW — prototype de hackathon, sans backend.
+          © 2026 VITA'NOW
         </p>
       </div>
     </footer>
@@ -1382,6 +1681,7 @@ export function LandingScreen({ navigate }: { navigate: (to: Route) => void }) {
       <Bandeau />
       <Piliers />
       <Methode />
+      {AFFICHER_PARCOURS_EN_CLAIR && <ParcoursCarousel />}
       <Perimetre />
       <Lettre />
       <Dashboard />

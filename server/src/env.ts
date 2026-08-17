@@ -80,7 +80,33 @@ export const env = {
   port: Number(optionnel("PORT", "3000")),
   corsOrigin: optionnel("CORS_ORIGIN", "http://localhost:5173"),
   cookieSecret,
+  /** Photos de profil et CV — servis par nginx en `/uploads/` (voir routes/medias.ts). */
+  uploadsDir: optionnel("UPLOADS_DIR", resolve(process.cwd(), "uploads")),
   /** Vide = pas de résumé par IA ; l'API se rabat sur les règles du journal. */
   anthropicKey: process.env.ANTHROPIC_API_KEY ?? "",
+  /** Vide = pas de résumé Gemini ; l'API essaie Claude puis les règles du journal. */
+  geminiKey: process.env.GEMINI_API_KEY ?? "",
+  /** Compte d'administration : fourni uniquement par l'environnement du VPS. */
+  adminEmail: process.env.ADMIN_EMAIL ?? "",
+  adminPassword: process.env.ADMIN_PASSWORD ?? "",
+  /** Vide = bouton « Google » désactivé côté écrans de connexion/inscription. */
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  /** Doit correspondre exactement à l'URI enregistrée dans Google Cloud Console. */
+  googleRedirectUri: optionnel(
+    "GOOGLE_REDIRECT_URI",
+    "http://localhost:3000/api/auth/google/callback",
+  ),
+  /** OAuth GitHub — le scope user:email est nécessaire aux adresses privées. */
+  githubClientId: process.env.GITHUB_CLIENT_ID ?? "",
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
+  githubRedirectUri: optionnel(
+    "GITHUB_REDIRECT_URI",
+    "http://localhost:3000/api/auth/github/callback",
+  ),
+  smtpHost: process.env.SMTP_HOST ?? "smtp.gmail.com",
+  smtpPort: Number(process.env.SMTP_PORT ?? "465"),
+  smtpUser: process.env.SMTP_USER ?? "aura30072026@gmail.com",
+  smtpPass: process.env.SMTP_PASS ?? "devhunt.eni.2026",
   production,
 } as const;

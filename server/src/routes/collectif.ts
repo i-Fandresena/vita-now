@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 
 import { query, queryOne, transaction } from "../db.js";
-import { exigerSession } from "../session.js";
+import { sessionEntrepriseDe } from "../session-entreprise.js";
+import { exigerSession, sessionDe } from "../session.js";
 
 /**
  * collectif.ts — les écritures de la communauté : forum (M8), idées (M14),
@@ -338,7 +339,7 @@ export async function routesCollectif(app: FastifyInstance): Promise<void> {
     },
   );
 
-  /* ── M13 — Un étudiant publie une opportunité ────────────────────────── */
+  /* ── M13 — Un étudiant ou une entreprise publie une opportunité ───────── */
 
   app.post<{
     Body: {
@@ -348,28 +349,60 @@ export async function routesCollectif(app: FastifyInstance): Promise<void> {
       dureeMois?: number;
       profil?: string;
       nature?: string;
+      emetteur?: "etudiant" | "entreprise";
     };
   }>("/api/opportunites", async (requete, reponse) => {
-    const moi = await exigerSession(requete, reponse);
-    if (!moi) return;
+    // L'émetteur est explicite : un navigateur peut conserver simultanément
+    // une session étudiant et une session entreprise. Sans ce choix, publier
+    // depuis l'espace entreprise pourrait rattacher l'appel à l'étudiant.
+    const sessionEtudiant = await sessionDe(requete);
+    const sessionEntreprise = sessionEntrepriseDe(requete);
+    const typeEmetteur = requete.body?.emetteur;
+    if (typeEmetteur !== undefined && typeEmetteur !== "etudiant" && typeEmetteur !== "entreprise") {
+      return reponse.code(400).send({ erreur: "Émetteur d'opportunité invalide." });
+    }
+    // Les anciens appelants sans ce champ gardent le comportement historique
+    // (étudiant prioritaire), sans jamais créer une ligne avec deux émetteurs.
+    const moi = typeEmetteur === "entreprise" ? null : sessionEtudiant;
+    const monEntreprise = typeEmetteur === "etudiant" || moi ? null : sessionEntreprise;
+    if (!moi && !monEntreprise) {
+      return reponse.code(401).send({ erreur: "Connexion requise" });
+    }
 
     const c = requete.body ?? {};
-    if (!c.titre?.trim()) {
-      return reponse.code(400).send({ erreur: "Le titre est requis." });
+    const titre = c.titre?.trim() ?? "";
+    const description = c.description?.trim() ?? "";
+    const profil = c.profil?.trim() ?? "";
+    const dureeMois = Number(c.dureeMois);
+    const nature = c.nature ?? "Projet";
+    const natures = ["Projet", "Stage", "Alternance"];
+    const technos = Array.isArray(c.technos)
+      ? c.technos.filter((techno): techno is string => typeof techno === "string").map((techno) => techno.trim()).filter(Boolean).slice(0, 12)
+      : [];
+
+    if (!titre || !description || !profil) {
+      return reponse.code(400).send({ erreur: "Le titre, la description et le profil recherché sont requis." });
+    }
+    if (!Number.isInteger(dureeMois) || dureeMois < 1 || dureeMois > 24) {
+      return reponse.code(400).send({ erreur: "La durée doit être comprise entre 1 et 24 mois." });
+    }
+    if (!natures.includes(nature)) {
+      return reponse.code(400).send({ erreur: "Nature d'opportunité invalide." });
     }
 
     const l = await query<{ id: string }>(
       `INSERT INTO opportunities
-         (student_id, titre, description, technos, duree_mois, profil, nature)
-       VALUES ($1, $2, $3, $4, $5, $6, $7::opportunite_nature) RETURNING id`,
+         (student_id, company_id, titre, description, technos, duree_mois, profil, nature)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::opportunite_nature) RETURNING id`,
       [
         moi,
-        c.titre.trim(),
-        c.description?.trim() ?? "",
-        c.technos ?? [],
-        c.dureeMois ?? 3,
-        c.profil?.trim() ?? "",
-        c.nature || "Projet",
+        monEntreprise,
+        titre,
+        description,
+        technos,
+        dureeMois,
+        profil,
+        nature,
       ],
     );
     return reponse.code(201).send({ id: l[0]!.id });

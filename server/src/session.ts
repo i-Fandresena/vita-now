@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
+import { queryOne } from "./db.js";
 import { env } from "./env.js";
 
 /**
@@ -48,7 +49,7 @@ export function fermerSession(reponse: FastifyReply): void {
 }
 
 /** L'identifiant de l'étudiant connecté, ou `null`. Ne lève jamais. */
-export function sessionDe(requete: FastifyRequest): string | null {
+export async function sessionDe(requete: FastifyRequest): Promise<string | null> {
   const brut = requete.cookies[NOM_COOKIE];
   if (!brut) return null;
 
@@ -56,7 +57,16 @@ export function sessionDe(requete: FastifyRequest): string | null {
   // Signature absente ou invalide : cookie forgé ou secret changé. Dans les
   // deux cas on traite la requête comme anonyme plutôt que de lever — une
   // erreur 500 sur un cookie périmé enfermerait l'utilisateur dehors.
-  return verifie.valid ? verifie.value : null;
+  if (!verifie.valid) return null;
+
+  /* Une désactivation doit fermer toutes les sessions, pas seulement celle du
+     navigateur qui a cliqué. La session est un cookie signé sans table dédiée,
+     on vérifie donc l'état du compte ici avant d'autoriser une route privée. */
+  const etudiant = await queryOne<{ id: string }>(
+    "SELECT id FROM students WHERE id = $1 AND desactive_le IS NULL",
+    [verifie.value],
+  );
+  return etudiant ? verifie.value : null;
 }
 
 /**
@@ -69,7 +79,7 @@ export async function exigerSession(
   requete: FastifyRequest,
   reponse: FastifyReply,
 ): Promise<string | null> {
-  const id = sessionDe(requete);
+  const id = await sessionDe(requete);
   if (!id) {
     await reponse.code(401).send({ erreur: "Connexion requise" });
     return null;

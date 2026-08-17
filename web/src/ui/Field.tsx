@@ -1,4 +1,3 @@
-import { Eye, EyeOff } from "lucide-react";
 import {
   forwardRef,
   useId,
@@ -9,6 +8,7 @@ import {
 } from "react";
 
 import { cn } from "@/lib/cn";
+import { Icon } from "@/ui/Icon";
 
 const control = [
   "w-full rounded-sm bg-card text-ink",
@@ -104,9 +104,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xs p-1 text-ink-muted transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {afficherMotDePasse ? (
-                <EyeOff className="size-5" aria-hidden />
+                <Icon name="eyeOff" size={20} aria-hidden />
               ) : (
-                <Eye className="size-5" aria-hidden />
+                <Icon name="eye" size={20} aria-hidden />
               )}
             </button>
           </div>

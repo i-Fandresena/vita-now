@@ -1,10 +1,10 @@
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
 
 import { hrefFor } from "@/app/router";
 import type { SearchHit } from "@/domain/types";
 import { rise } from "@/lib/motion";
 import { Chip, ChipRow } from "@/ui/Editorial";
+import { Icon } from "@/ui/Icon";
 
 /**
  * Un résultat de recherche.
@@ -58,9 +58,11 @@ export function HitRow({
             </Chip>
           </ChipRow>
 
-          <ArrowUpRight
+          <Icon
+            name="arrowRight"
+            size={20}
             aria-hidden
-            className="mt-1 size-5 shrink-0 text-ink-muted transition-transform duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+            className="mt-1 shrink-0 text-ink-muted transition-transform duration-150 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
           />
         </div>
 

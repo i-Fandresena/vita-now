@@ -1,7 +1,20 @@
 # HANDOFF.md — VITA'NOW
 
 > Document de passation. Destiné à qui reprend le projet sans avoir assisté à ce
-> qui précède. **Dernière mise à jour : 26 juillet 2026.**
+> qui précède. **Dernière mise à jour : 26 juillet 2026 (session icônes Lottie +
+> checklist projet + résumé Gemini — voir §11, c'est la lecture prioritaire si
+> vous reprenez juste après cette session).**
+
+**Le plus important avant tout le reste : ce dépôt fonctionne actuellement en
+mode « pas de commit ».** Depuis plusieurs sessions, toutes les modifications
+sont écrites directement dans `/opt/Aura++` (qui **est** la prod — voir §11.2),
+puis buildées et déployées sans `git commit` ni `git push`. `git status`
+montrera donc un nombre important de fichiers modifiés/non trackés qui ne sont
+**pas** un accident : c'est le mode de travail courant. Si vous reprenez avec
+un accès normal (commits attendus), **demandez confirmation à l'utilisateur**
+avant de committer quoi que ce soit — l'historique local ne reflète plus l'état
+réel du code en prod depuis un moment, et un commit massif sans revue serait
+risqué. Voir §11.1 pour le détail.
 
 ---
 
@@ -58,7 +71,21 @@ description de ce qui tourne encore en ligne.
 - **CI GitHub Actions** : typecheck, build, et le schéma joué pour de vrai sur
   PostgreSQL 16.
 - **Artefacts de déploiement** dans [`deploy/`](deploy/) — systemd, nginx,
-  script idempotent, procédure de première installation.
+  script idempotent, procédure de première installation. ⚠️ Ces fichiers sont
+  **désynchronisés de la prod réelle** sur au moins un point — voir §11.2
+  avant de vous y fier pour un chemin de fichier.
+- **Icônes animées (Lottie)** : les icônes en forme d'étoile/logo IA et les
+  emoji ont été retirées de l'interface ; la majorité des icônes du produit
+  passent par un composant `Icon` (`web/src/ui/Icon.tsx`, `react-useanimations`
+  + `lottie-web`, aucun appel réseau). Une quinzaine d'icônes très spécifiques
+  sans équivalent Lottie correct restent en `lucide-react` — c'est voulu, pas
+  un oubli. Voir §11.3 pour le piège d'interop rencontré et corrigé.
+- **Checklist de projet ("post-it") + résumé IA** : à la création d'un projet,
+  l'étudiant peut définir des étapes prévues, affichées et cochables dans
+  l'espace projet (`checklist_items`, jamais couplée à `avancement()` — voir
+  §11.4 et la règle M15 déjà citée en §7). Le résumé IA (M5) est désormais
+  **réellement appelé par le front** (il ne l'était pas jusqu'ici), avec
+  Gemini en premier, repli sur Claude puis sur les règles. Voir §11.4.
 
 ### Pas fait
 
@@ -293,6 +320,33 @@ Voir [BACKLOG.md](BACKLOG.md) — priorisé, chiffré, avec les dépendances.
 - **La persistance est locale.** Un navigateur qui a déjà servi garde son état :
   une correction du corpus dans le code n'apparaît pas sur un poste déjà utilisé.
   La sortie est le bouton « Repartir de zéro » en bas du profil.
+- **CJS/ESM cassé : `import X from "un-paquet"` peut renvoyer l'objet d'exports
+  entier au lieu de `X`.** Rencontré deux fois de suite avec `react-useanimations`
+  (le composant par défaut, puis chaque import `react-useanimations/lib/xxx`) —
+  le bundler (Vite/esbuild/Rolldown) ne fait pas toujours l'interop par défaut
+  attendue sur un module CJS généré par Babel/tsc. Symptôme : React error #130
+  (« expected a string or class/function but got: object ») **ou**, pire, un
+  échec **silencieux** (le composant se rend en `<div>` vide, sans erreur) si
+  seule une valeur de données (pas un composant) est mal déballée. Solution
+  appliquée dans `web/src/ui/Icon.tsx` : `const X = (importBrut as any)?.default
+  ?? importBrut;` sur **chaque** import du paquet concerné, pas seulement celui
+  qui plante visiblement. Si un autre paquet tiers se comporte bizarrement après
+  un `npm install` (page blanche, ou composant présent mais vide), soupçonner ce
+  pattern en premier — diagnostic rapide : `tail -5
+  node_modules/.vite/deps/<paquet>.js`, si la dernière ligne est `export default
+  require_xxx();`, c'est ce bug.
+- **Pour diagnostiquer une page blanche en prod, ne devinez pas — ouvrez un
+  vrai navigateur headless.** `curl` ne montre jamais une erreur JS runtime. La
+  méthode qui a fonctionné dans cette session : installer Puppeteer dans le
+  scratchpad (`npm install puppeteer`, puis `apt-get install -y libatk1.0-0
+  libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1
+  libxfixes3 libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 libnss3` si le
+  lancement échoue avec des `.so` manquants), puis un script qui écoute
+  `page.on("pageerror", ...)` et `page.on("console", ...)` en visitant l'URL —
+  React affiche en clair le composant fautif en mode dev (`vite` non buildé),
+  contrairement au message minifié qu'on obtient en pointant directement sur la
+  prod. Un `vite build --minify false` local + `vite preview` donne un entre-deux
+  utile quand on ne peut/veut pas relancer un serveur `vite` dev complet.
 
 ---
 
@@ -413,3 +467,193 @@ explicitement.
 zcat /var/backups/vitanow/vitanow-AAAAMMJJ-HHMM.sql.gz \
   | sudo -u postgres psql -p 5433 -d vitanow
 ```
+
+---
+
+## 11. Session du 26 juillet 2026 — icônes, fusion mirindra, incident prod, checklist + IA Gemini
+
+Session dense, quatre chantiers distincts. Dans l'ordre chronologique, parce que
+chacun explique une décision du suivant.
+
+### 11.1 Changement de mode de travail : plus de commit/push
+
+L'utilisateur a explicitement demandé, en cours de session, d'arrêter de
+committer/pousser : chaque modification est désormais appliquée directement
+aux fichiers réels, buildée, puis redéployée (front : rsync vers
+`/var/www/aura-plus-plus` ; backend : `npm run build` + `systemctl restart
+vitanow-api`). **Aucun commit n'a été fait depuis.** `git log` s'arrête donc à
+`8edc8f8` (« docs(readme)… ») alors que le code réel a beaucoup avancé depuis.
+
+Ce que ça veut dire pour vous qui reprenez :
+- Ne vous fiez **pas** à `git log`/`git diff HEAD` pour savoir ce qui a changé
+  récemment — comparez plutôt le contenu réel des fichiers à ce que ce HANDOFF
+  décrit.
+- `git status` va lister énormément de fichiers modifiés/nouveaux. C'est normal,
+  ce n'est pas un travail non sauvegardé à risque de perte : le code **est**
+  déployé et vérifié en prod, juste jamais commité.
+- Si votre mandat implique de committer normalement, **demandez d'abord** à
+  l'utilisateur comment il veut traiter ce retard (un commit unique
+  récapitulatif ? plusieurs commits reconstitués par thème ? on continue sans
+  committer ?). Ne décidez pas seul, l'ampleur du diff non commité est
+  inhabituelle.
+
+### 11.2 Correction importante : la topologie réelle de la prod
+
+Découvert en cours de session via `systemctl cat vitanow-api` (jamais confié à
+un fichier avant) : **le service tourne directement depuis `/opt/Aura++/server`**
+(`WorkingDirectory=/opt/Aura++/server`, `EnvironmentFile=/opt/Aura++/server/.env`),
+et non depuis `/opt/vitanow` comme le documentent `deploy/vitanow-api.service`
+et `deploy/PREMIERE-INSTALLATION.md` — ces deux fichiers versionnés sont
+**restés à l'ancien chemin** alors que l'unit réellement installée dans
+`/etc/systemd/system/vitanow-api.service` a été adaptée à la main (cohérent
+avec le §9 ci-dessus, qui documente déjà l'écart `/opt/vitanow` → `/opt/Aura++`
+pour le dépôt, mais ne précisait pas que le fichier unit versionné lui-même
+n'a jamais été mis à jour pour le refléter).
+
+**Conséquence pratique** : `/opt/Aura++` n'est pas un checkout de dev à côté de
+la prod — **c'est** la prod, pour le front (buildé puis rsyncé vers
+`/var/www/aura-plus-plus`) et pour le backend (`server/dist/index.js` tourne
+depuis ce dossier exact). Éditer un fichier ici, puis builder et redémarrer,
+modifie directement ce que voient les utilisateurs. Il n'y a pas de copie
+intermédiaire à synchroniser.
+
+Cycle de déploiement backend, tel qu'utilisé toute la session :
+```bash
+cd /opt/Aura++/server
+npx tsc --noEmit          # vérifier avant de construire
+npm run build             # tsc → dist/
+systemctl restart vitanow-api
+curl -s http://127.0.0.1:3100/api/sante   # {"statut":"ok",...}
+```
+Et côté front (rappel identique au §5, avec la variable `VITE_MODE_API=1` à
+ne jamais oublier) :
+```bash
+cd /opt/Aura++/web
+VITE_MODE_API=1 npm run build
+sudo rsync -a --delete dist/ /var/www/aura-plus-plus/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 11.3 Icônes Lottie, et l'incident de page blanche qu'elles ont causé deux fois
+
+À la demande de l'utilisateur (« remplacer les icônes en étoile façon logo
+Gemini/IA, et plus largement toutes les icônes, par des animations Lottie »),
+`react-useanimations` (bundle `lottie-web`, JSON embarqué, aucun appel réseau)
+a été installé et un composant unique `Icon` créé
+([`web/src/ui/Icon.tsx`](web/src/ui/Icon.tsx)). Table de correspondance des
+noms utilisés : `sparkle, trophy, bell, clock, plus, search, arrowRight, back,
+eye, eyeOff, alertTriangle, calendar, menu, user, building, logout, lock,
+check, folder, send, settings, book`. Une quinzaine d'icônes sans bon
+équivalent (`X, RotateCcw, Filter, ListOrdered, GitBranch, Lightbulb,
+Presentation, Handshake, MessageCircle, Brain, Flame, Zap, LayoutDashboard,
+LibraryBig, Briefcase, Link2, TrendingUp, SlidersHorizontal`) sont restées en
+`lucide-react` — **c'est un choix assumé**, pas un oubli : les forcer vers des
+animations sans rapport visuel aurait été pire que de les garder statiques.
+
+**Deux incidents de page blanche coup sur coup**, tous deux causés par le même
+type de bug (interop CJS/ESM cassée, détaillé au §7) :
+1. D'abord sur le composant `UseAnimations` lui-même (React error #130) —
+   corrigé en déballant `.default` à l'import.
+2. Puis, une fois ce premier bug corrigé et un autre chantier terminé (fusion
+   du design de la branche `mirindra`), un second signalement : « les icônes
+   Lottie ne sont pas visibles ». Cette fois pas de crash — chaque import
+   individuel `react-useanimations/lib/xxx` (les données d'animation, pas un
+   composant) souffrait du **même** défaut d'interop, silencieusement :
+   `animationData` valait `undefined`, `lottie-web` ne dessinait rien, aucune
+   erreur console. Diagnostiqué en inspectant le DOM en headless (les `<div>`
+   wrapper des icônes étaient présents, correctement dimensionnés, mais vides).
+   Corrigé en généralisant le déballage `.default` à **tous** les imports
+   d'animation, pas seulement au composant.
+
+**Si une future icône ajoutée au mapping ne s'affiche pas** : vérifier d'abord
+qu'elle passe bien par la fonction `unwrap()` de `Icon.tsx` — c'est presque
+certainement la même cause.
+
+Effet de bord découvert au passage : le bundle JS principal est passé
+d'environ 640 Ko à ~1,1 Mo (gzip ~295 Ko) à cause du moteur `lottie-web`
+embarqué. Accepté par l'utilisateur, mais à garder en tête si la taille du
+bundle redevient un sujet.
+
+### 11.4 Checklist de projet ("post-it") et résumé IA Gemini
+
+**Ne pas confondre deux jauges distinctes**, décision actée explicitement avec
+l'utilisateur après qu'une lecture du code a révélé la règle M15 (« le
+pourcentage vient du journal, jamais d'une saisie », voir §7 du fichier et les
+commentaires dans `domain/soa.ts` / `001_schema.sql`) :
+- **`avancement()` / `progressOf` / le Stat « Avancement »** : **inchangés**,
+  toujours dérivés uniquement du journal. Cocher une case de checklist ne les
+  touche jamais.
+- **La checklist a sa propre jauge** : « X/Y étapes cochées », affichée dans le
+  nouveau bloc « Étapes » de `ProjectScreen` (post-it inclinés, `web/src/screens/ProjectScreens.tsx`).
+
+Ce que ça a nécessité :
+- **Migrations** `server/migrations/003_checklist.sql` (table
+  `checklist_items`) et `004_resume_ia.sql` (colonne `project_summaries.provider`
+  + table `ai_usage`). **Appliquées manuellement via `psql`** sur la base
+  réelle — rappel : il n'existe **aucun runner de migrations** dans ce projet,
+  juste des fichiers `.sql` numérotés à jouer à la main (voir §6 du dossier
+  `migrations/`, et ne **jamais** rejouer `002_seed.sql` sur cette base, il fait
+  un `TRUNCATE`).
+- **Backend** : `POST /api/projets` accepte un `checklist?: {id?, libelle}[]`
+  optionnel (insertion dans une transaction avec le projet — `ecriture.ts`) ;
+  `PATCH /api/projets/:id/checklist/:itemId` coche/décoche (ne touche jamais
+  `derniere_activite`, volontairement — voir le commentaire dans le code) ;
+  `GET /api/projets/:id` et `GET /api/etat` renvoient désormais la checklist
+  de chaque projet (`etat.ts` avait sa **propre** requête SQL pour les projets,
+  séparée de celle de `projets.ts` — les deux ont dû être étendues, sinon la
+  checklist disparaissait après un rechargement de page).
+- **Résumé IA (M5)** : existait déjà côté serveur (`server/src/resume.ts`,
+  provider Claude) mais **n'était jamais appelé par le front** — `summaryFor()`
+  dans `soa-store.tsx` est une heuristique locale entièrement déconnectée de la
+  route `/api/projets/:id/resume`. Corrigé : `ProjectScreen` appelle
+  maintenant réellement cette route en mode API (`API_ACTIVE`), l'heuristique
+  locale ne servant plus que d'affichage instantané pendant le chargement.
+  - Provider **Gemini ajouté et préféré à Claude** quand `GEMINI_API_KEY` est
+    configurée (`env.geminiKey`). **Piège testé et vérifié en direct** : le
+    modèle `gemini-2.0-flash` a un quota gratuit à **0** sur la clé fournie
+    (429 systématique) — le modèle qui fonctionne réellement est
+    `gemini-flash-latest`. `generationConfig.thinkingConfig.thinkingBudget: 0`
+    est **rejeté** (400) par ce modèle ; `512` fonctionne et réduit fortement
+    le coût en tokens de réflexion par rapport à l'absence de configuration
+    (observé : ~230 tokens de pensée sur un prompt trivial sans cette limite).
+    Si Gemini échoue ou que le quota du jour est atteint, repli sur Claude puis
+    sur les règles — jamais d'échec visible à l'écran, même philosophie que
+    l'existant.
+  - Quota « usage modéré » : table `ai_usage` (par étudiant, par jour
+    calendaire), incrémentée **avant** l'appel réseau (pas après un succès) —
+    sinon une clé cassée ne consommerait jamais le quota. **En base et non en
+    mémoire**, précisément parce que ce projet redémarre le service plusieurs
+    fois par jour en développement (voir §11.1) : un compteur en mémoire
+    perdrait toute utilité à chaque redémarrage.
+  - Colonne `project_summaries.provider` : le cache par empreinte renvoyait
+    avant un `source: "claude"` codé en dur sur tout hit de cache. Avec deux
+    providers possibles, ça mentirait sur l'origine d'un résumé caché — d'où
+    la colonne.
+- **Secret** : `GEMINI_API_KEY` est dans `/opt/Aura++/server/.env` (mode 0600,
+  propriétaire `vitanow` — **attention en éditant ce fichier avec un outil qui
+  écrit en tant que root, `chown vitanow:vitanow` derrière, sinon le service ne
+  peut plus lire son `.env` au redémarrage**, piège rencontré et corrigé dans
+  cette session). Jamais dans `web/`, jamais commitée. Ajoutée aussi (vide)
+  dans `server/.env.example`.
+
+**Vérifié en conditions réelles** : compte de test créé, projet + checklist
+créés via l'API, item coché (confirmé : `derniere_activite` inchangée),
+résumé demandé (confirmé : réponse `source: "gemini"`, ligne insérée dans
+`project_summaries` et `ai_usage`) — puis **tout supprimé** (le `DELETE` sur
+`students` cascade sur projet/checklist/résumé/usage). La base est revenue
+exactement à son état d'avant le test.
+
+**Non fait / à vérifier par qui reprend** :
+- `BACKLOG.md` **n'a pas été mis à jour** avec cette fonctionnalité — elle n'y
+  était pas prévue sous ce nom. À reconcilier si vous continuez sur ce fil.
+- Aucune limite de taille sur le nombre d'étapes qu'un étudiant peut ajouter à
+  la création (pas de plafond côté serveur). Probablement à ajouter si ça pose
+  problème en usage réel.
+- Le mirindra branch merge (design du rail de navigation, des onglets Projets
+  et Communauté) a été intégré en combinant manuellement (`git merge-file`,
+  base/ours/theirs extraits en fichiers temporaires) le nouveau design avec la
+  conversion Lottie déjà en place sur les mêmes fichiers — pas de trace de
+  cette fusion dans l'historique git puisque rien n'a été commité (voir §11.1).
+  Si `origin/mirindra` évolue encore, il faudra refaire cet exercice de fusion
+  à la main plutôt que `git merge` directement, tant que les changements
+  d'icônes ne sont pas commités sur `main`.

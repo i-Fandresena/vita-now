@@ -5,7 +5,8 @@
 > `https://aura.icpp-conformite.cloud`.
 >
 > **À jouer une seule fois.** Les mises à jour suivantes passent par
-> [`deployer.sh`](deployer.sh).
+> [`deployer.sh`](deployer.sh). Pour l'exploitation quotidienne, les contrôles
+> de santé et le diagnostic, suivre [`EXPLOITATION.md`](EXPLOITATION.md).
 
 ---
 
@@ -61,7 +62,7 @@ Les extensions `unaccent`, `pgcrypto` et `citext` demandent le rôle superuser.
 Le schéma les crée lui-même, on le joue donc en tant que `postgres` :
 
 ```bash
-cd /opt/vitanow
+cd /opt/Aura++
 sudo -u postgres psql -d vitanow -v ON_ERROR_STOP=1 -f server/migrations/001_schema.sql
 
 # Le schéma appartient alors à postgres : on rend la main à l'utilisateur applicatif.
@@ -86,8 +87,8 @@ sudo -u postgres psql -d vitanow -v ON_ERROR_STOP=1 -f server/migrations/002_see
 ## 4. Code
 
 ```bash
-git clone https://github.com/i-Fandresena/AuraPlusPlus.git /opt/vitanow
-cd /opt/vitanow
+git clone https://github.com/i-Fandresena/AuraPlusPlus.git /opt/Aura++
+cd /opt/Aura++
 git checkout staging
 ```
 
@@ -103,7 +104,7 @@ nano server/.env
 | Variable | Valeur |
 |---|---|
 | `DATABASE_URL` | `postgres://vitanow:LE_MOT_DE_PASSE@localhost:5432/vitanow` |
-| `PORT` | `3000` |
+| `PORT` | `3100` |
 | `CORS_ORIGIN` | `https://aura.icpp-conformite.cloud` |
 | `COOKIE_SECRET` | **`openssl rand -hex 32`** — jamais la valeur d'exemple |
 | `ANTHROPIC_API_KEY` | facultatif ; vide, le résumé se déduit du journal |
@@ -124,7 +125,7 @@ cp deploy/vitanow-api.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now vitanow-api
 systemctl status vitanow-api --no-pager
-curl -s http://127.0.0.1:3000/api/sante     # {"statut":"ok","base":"ok",...}
+curl -s http://127.0.0.1:3100/api/sante     # {"statut":"ok","base":"ok",...}
 ```
 
 ## 7. nginx
@@ -132,8 +133,8 @@ curl -s http://127.0.0.1:3000/api/sante     # {"statut":"ok","base":"ok",...}
 Ouvrir le vhost existant et **ajouter** le bloc `location /api/` de
 [`nginx-vitanow.conf`](nginx-vitanow.conf), avant le `location /`.
 
-Si la racine du front change de `/var/www/aura-plus-plus` vers
-`/var/www/vitanow`, mettre `root` à jour dans le même fichier.
+La racine de production est `/var/www/aura-plus-plus` ; elle doit rester
+alignée avec `root` dans le vhost nginx.
 
 ```bash
 nginx -t && systemctl reload nginx
@@ -156,9 +157,12 @@ serveur éteint.
 Pour qu'il parle à l'API, il faut construire avec `VITE_MODE_API=1` :
 
 ```bash
-cd /opt/vitanow/web
+cd /opt/Aura++/web
 VITE_MODE_API=1 npm run build
-sudo rsync -a --delete dist/ /var/www/vitanow/
+# Les anciens assets hashés restent disponibles pour les onglets ouverts avant
+# la publication : ne jamais ajouter --delete.
+sudo rsync -a --delay-updates --exclude='index.html' dist/ /var/www/aura-plus-plus/
+sudo install -m 0644 dist/index.html /var/www/aura-plus-plus/index.html
 ```
 
 > `VITE_API_URL` reste **vide** : front et API sont servis par le même nginx,
@@ -188,7 +192,7 @@ démonstration — reconstruire avec la variable.
 ## Mises à jour suivantes
 
 ```bash
-cd /opt/vitanow && sudo bash deploy/deployer.sh
+cd /opt/Aura++ && sudo bash deploy/deployer.sh
 ```
 
 Le script récupère la branche courante, reconstruit front et API, redéploie,
@@ -201,14 +205,14 @@ valeur d'exemple.
 ```bash
 journalctl -u vitanow-api -n 100 --no-pager   # journal de l'API (JSON)
 systemctl status vitanow-api --no-pager
-curl -s http://127.0.0.1:3000/api/sante       # 503 => base injoignable
+curl -s http://127.0.0.1:3100/api/sante       # 503 => base injoignable
 tail -50 /var/log/nginx/vitanow.error.log
 ```
 
 | Symptôme | Cause la plus fréquente |
 |---|---|
-| `EADDRINUSE` | Un ancien processus tient le port 3000 : `systemctl restart vitanow-api` |
+| `EADDRINUSE` | Un ancien processus tient le port 3100 : `systemctl restart vitanow-api` |
 | `/api/sante` en 503 | PostgreSQL arrêté, ou `DATABASE_URL` faux |
 | Le service ne démarre pas | `.env` absent, illisible par `vitanow`, ou `COOKIE_SECRET` d'exemple |
-| Écran blanc après déploiement | `index.html` mis en cache : vérifier son `Cache-Control: no-cache` |
+| Écran blanc après déploiement | Asset hashé supprimé ou `index.html` obsolète : voir `EXPLOITATION.md`, ne jamais employer `rsync --delete` |
 | 502 sur `/api/` | L'API est arrêtée — voir `journalctl` |

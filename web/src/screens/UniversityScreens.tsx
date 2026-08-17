@@ -1,4 +1,3 @@
-import { AlertTriangle, CalendarClock } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { hrefFor, type Route } from "@/app/router";
@@ -8,6 +7,7 @@ import { joursDepuis, type Cohort } from "@/domain/soa";
 import { Button } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Editorial";
 import { Avatar, Progress, Stat } from "@/ui/data";
+import { Icon } from "@/ui/Icon";
 import { CardLink, ScreenHead, Tabs, WideScreen } from "@/ui/layout";
 import { EmptyState } from "@/ui/states";
 
@@ -52,7 +52,7 @@ export function UniversityScreen({ navigate }: { navigate: (to: Route) => void }
       {/* L'avertissement est en tête, pas en bas de page : c'est la règle qui
           conditionne l'usage de tout l'espace, pas une note de bas de page. */}
       <div className="mt-6 flex gap-3 rounded-card border border-accent bg-accent-soft p-5">
-        <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0 text-on-accent" />
+        <Icon name="alertTriangle" size={20} aria-hidden className="mt-0.5 shrink-0 text-on-accent" />
         <div>
           <p className="text-body font-medium text-on-accent">
             Suivi, pas évaluation.
@@ -106,7 +106,7 @@ function SuiviPedagogique({ navigate }: { navigate: (to: Route) => void }) {
             {sante.etudiantsSansActivite.length > 0 && (
               <div className="mt-6 rounded-card border border-destructive/30 bg-destructive/5 p-5">
                 <p className="flex items-center gap-2 text-body font-medium text-ink">
-                  <AlertTriangle aria-hidden className="size-4 shrink-0 text-destructive" />
+                  <Icon name="alertTriangle" size={16} aria-hidden className="shrink-0 text-destructive" />
                   {sante.etudiantsSansActivite.length} étudiant
                   {sante.etudiantsSansActivite.length > 1 ? "s" : ""} sans activité
                 </p>
@@ -230,7 +230,7 @@ function ProjetsAcademiques({ navigate }: { navigate: (to: Route) => void }) {
                 </Chip>
                 {joursRestants !== null && (
                   <Chip tone={joursRestants < 10 ? "accent" : "neutral"}>
-                    <CalendarClock aria-hidden className="size-3.5" />
+                    <Icon name="calendar" size={14} aria-hidden />
                     {echeance!.libelle} — J{joursRestants >= 0 ? "-" : "+"}
                     {Math.abs(joursRestants)}
                   </Chip>

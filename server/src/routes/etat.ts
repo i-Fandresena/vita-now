@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 
 import { query } from "../db.js";
+import { genererNotificationsInactivite } from "../inactivite.js";
+import { genererRappelsEvenements } from "../rappels.js";
+import { lireReglages } from "../reglages.js";
+import { sessionEntrepriseDe } from "../session-entreprise.js";
 import { sessionDe } from "../session.js";
 
 /**
@@ -24,7 +28,20 @@ import { sessionDe } from "../session.js";
 
 export async function routesEtat(app: FastifyInstance): Promise<void> {
   app.get("/api/etat", async (requete) => {
-    const moi = sessionDe(requete);
+    const moi = await sessionDe(requete);
+    // Comptes entreprise réels, hors cadrage — session distincte de celle de
+    // l'étudiant (voir session-entreprise.ts). `companies` est déjà renvoyée
+    // en entier plus bas : pas de requête supplémentaire pour retrouver la
+    // ligne de l'entreprise connectée, le front la retrouve par id.
+    const sessionEntrepriseId = sessionEntrepriseDe(requete);
+
+    // M7 (+ calendrier) — avant de lire les notifications, générer celles
+    // qui manquent : projets en sommeil (inactivite.ts) et événements du
+    // jour/de demain (rappels.ts).
+    if (moi) {
+      await genererNotificationsInactivite(moi);
+      await genererRappelsEvenements(moi);
+    }
 
     /* Les collections sont demandées en parallèle. En série, dix requêtes à
        ~4 ms font 40 ms de latence cumulée pour rien : aucune ne dépend du
@@ -45,10 +62,12 @@ export async function routesEtat(app: FastifyInstance): Promise<void> {
       points,
       badges,
       notifications,
+      events,
     ] = await Promise.all([
       query(`
         SELECT s.id, s.nom, s.initiales, s.universite, s.niveau, s.filiere,
                s.interets, s.disponibilites, s.objectifs, s.mentor, s.promo,
+               s.photo_url AS "photoUrl", s.cv_url AS "cvUrl", s.cv_nom AS "cvNom",
                COALESCE(
                  (SELECT json_agg(json_build_object(
                     'nom', k.nom, 'maitrise', k.maitrise, 'valideePar', k.validee_par))
@@ -62,7 +81,14 @@ export async function routesEtat(app: FastifyInstance): Promise<void> {
                p.difficulte, p.owner_id AS "ownerId",
                p.derniere_activite AS "derniereActivite",
                p.raison_abandon AS "raisonAbandon", p.public,
-               p.presentation, p.depot
+               p.presentation, p.depot, p.opportunite_id AS "opportuniteId",
+               COALESCE(
+                 (SELECT json_agg(json_build_object(
+                    'id', c.id, 'projectId', c.project_id, 'libelle', c.libelle,
+                    'fait', c.fait, 'bloque', c.bloque, 'ordre', c.ordre, 'parentId', c.parent_id,
+                    'dureeHeures', c.duree_heures) ORDER BY c.ordre)
+                  FROM checklist_items c WHERE c.project_id = p.id),
+                 '[]'::json) AS checklist
         FROM projects p ORDER BY p.derniere_activite DESC`),
 
       query(`
@@ -143,7 +169,7 @@ export async function routesEtat(app: FastifyInstance): Promise<void> {
         FROM supervisions`),
 
       query(`
-        SELECT student_id AS "studentId", motif AS reason, detail, date
+        SELECT id, student_id AS "studentId", motif AS reason, detail, date
         FROM points ORDER BY date DESC`),
 
       query(`
@@ -163,10 +189,28 @@ export async function routesEtat(app: FastifyInstance): Promise<void> {
             [moi],
           )
         : Promise.resolve([]),
+
+      // Calendrier personnel — rien sans session, même raison.
+      moi
+        ? query(
+            `SELECT id, student_id AS "studentId", titre, date, heure, type,
+                    project_id AS "projectId"
+             FROM events WHERE student_id = $1 ORDER BY date`,
+            [moi],
+          )
+        : Promise.resolve([]),
     ]);
+
+    /* Réglages globaux : le front n'a besoin que de ce qui se voit — le
+       bandeau d'annonce et l'état de maintenance, pour expliquer d'avance
+       pourquoi une écriture va échouer plutôt que de laisser l'utilisateur le
+       découvrir sur un formulaire refusé. Les autres leviers (inscriptions,
+       Copilote) se manifestent d'eux-mêmes au moment où on les rencontre. */
+    const reglages = await lireReglages();
 
     return {
       sessionId: moi,
+      sessionEntrepriseId,
       students,
       projects,
       journal,
@@ -182,6 +226,9 @@ export async function routesEtat(app: FastifyInstance): Promise<void> {
       points,
       badges,
       notifications,
+      events,
+      annonce: reglages.annonce,
+      maintenance: reglages.maintenance,
     };
   });
 }

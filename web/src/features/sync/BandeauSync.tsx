@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { surEchecSync } from "@/app/sync";
+import { Icon } from "@/ui/Icon";
 
 /**
  * BandeauSync — ce qui n'a pas été enregistré, dit à voix haute.
@@ -42,9 +43,11 @@ export function BandeauSync() {
           className="fixed inset-x-0 bottom-0 z-50 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-4"
         >
           <div className="mx-auto flex max-w-2xl items-start gap-3 rounded-card border border-destructive/30 bg-card px-4 py-3 shadow-card mx-4 sm:mx-auto">
-            <AlertTriangle
+            <Icon
+              name="alertTriangle"
+              size={16}
               aria-hidden
-              className="mt-0.5 size-4 shrink-0 text-destructive"
+              className="mt-0.5 shrink-0 text-destructive"
             />
             <div className="min-w-0 flex-1">
               <p className="text-caption font-medium text-ink">{message}</p>
