@@ -23,13 +23,12 @@ import {
 import { hrefFor, type Route } from "@/app/router";
 import { useSoa, type NewProject } from "@/app/soa-store";
 import { API_ACTIVE, api, type ResumeDistant } from "@/data/api";
-import { COMPANIES, STUDENTS, studentById } from "@/data/soa-corpus";
+import { COMPANIES, studentById } from "@/data/soa-corpus";
 import {
   DEFAULT_KANBAN_COLUMNS,
   joursDepuis,
   type Difficulte,
   type JournalKind,
-  type KanbanColumn,
   type Project,
   type ProjectShowcase,
   type ProjectStatus,
@@ -1485,14 +1484,10 @@ export function ProjectScreen({
     progressOf,
     setProjectStatus,
     reviveProject,
-    toggleChecklistItem,
-    toggleChecklistBlocked,
   } = useSoa();
   const projet = projects.find((p) => p.id === id);
   const [raison, setRaison] = useState("");
   const [arret, setArret] = useState(false);
-  /** Tâche de premier niveau pour laquelle le formulaire de sous-tâche est ouvert. */
-  const [sousTacheDe, setSousTacheDe] = useState<string | null>(null);
 
   // Page dédiée à ce projet : le résumé réel est toujours demandé (`actif`),
   // contrairement à `ResumeButton` sur les cartes de liste.
